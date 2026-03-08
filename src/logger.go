@@ -1,9 +1,9 @@
-// Paket main - Logging fuer ssh-easy
+// Paket main - Logging für ssh-easy
 //
-// Einfaches dateibasiertes Logging fuer Debugging und Audit.
+// Einfaches dateibasiertes Logging für Debugging und Audit.
 // Logdatei wird unter ~/.ssh-easy/ssh-easy.log gespeichert.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 21:00
 package main
 
@@ -18,7 +18,7 @@ import (
 // Logger schreibt Lognachrichten in eine Datei.
 // Thread-sicher durch Mutex.
 type Logger struct {
-	// Mutex fuer thread-sicheres Schreiben
+	// Mutex für thread-sicheres Schreiben
 	mu sync.Mutex
 	// Pfad zur Logdatei
 	filePath string
@@ -86,7 +86,7 @@ func (l *Logger) write(level, format string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	// Logdatei oeffnen (Append-Modus)
+	// Logdatei öffnen (Append-Modus)
 	f, err := os.OpenFile(l.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return

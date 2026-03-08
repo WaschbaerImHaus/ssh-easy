@@ -1,4 +1,4 @@
-// Paket main - TUI-Core fuer ssh-easy
+// Paket main - TUI-Core für ssh-easy
 //
 // Zentrale Steuerung der Terminal-UI mit Bubbletea.
 // Definiert das Datenmodell, Styles und den Message-Dispatcher.
@@ -27,13 +27,13 @@ const (
 	ViewCreate
 	// ViewEdit - Formular zum Bearbeiten einer Verbindung
 	ViewEdit
-	// ViewDelete - Loeschbestaetigung
+	// ViewDelete - Löschbestätigung
 	ViewDelete
-	// ViewConnecting - Verbindungsaufbau laeuft (Auto-Auth)
+	// ViewConnecting - Verbindungsaufbau läuft (Auto-Auth)
 	ViewConnecting
 	// ViewConnect - Passwort-Eingabe (Auto-Auth fehlgeschlagen)
 	ViewConnect
-	// ViewHostKeyChanged - Host-Key hat sich geaendert: Nutzer befragt
+	// ViewHostKeyChanged - Host-Key hat sich geändert: Nutzer befragt
 	ViewHostKeyChanged
 	// ViewStatus - Statusanzeige einer aktiven Verbindung
 	ViewStatus
@@ -71,10 +71,10 @@ type sshConnectedMsg struct {
 	id          string
 	status      *ConnectionStatus
 	wasPassword bool       // War es Passwort-Auth? Dann Key automatisch deployen
-	conn        Connection // Verbindungsdaten fuer Key-Deployment
+	conn        Connection // Verbindungsdaten für Key-Deployment
 }
 
-// sshNeedPasswordMsg wird gesendet wenn Auto-Auth (Agent+Keys) fehlschlug.
+// sshNeedPasswordMsg wird gesendet wenn Auto-Auth (Agent+Keys) fehlgeschlagen ist.
 // Die TUI wechselt dann zur Passwort-Eingabe.
 type sshNeedPasswordMsg struct {
 	id string
@@ -87,13 +87,13 @@ type sshKeyDeployedMsg struct {
 	err     error
 }
 
-// sshHostKeyChangedMsg wird gesendet wenn sich der Host-Key geaendert hat.
+// sshHostKeyChangedMsg wird gesendet wenn sich der Host-Key geändert hat.
 // Zeigt einen Dialog mit der Frage ob der alte Key entfernt werden soll.
 type sshHostKeyChangedMsg struct {
 	connID      string
 	hostname    string
 	wasPassword bool   // War gerade Passwort-Auth im Gange?
-	password    string // Gespeichertes Passwort fuer Retry
+	password    string // Gespeichertes Passwort für Retry
 }
 
 // sshErrorMsg wird gesendet bei SSH-Verbindungsfehlern
@@ -158,9 +158,9 @@ type AppModel struct {
 	state ViewState
 	// Alle Verbindungen aus der Konfiguration
 	connections []Connection
-	// SSH-Manager fuer Verbindungsverwaltung
+	// SSH-Manager für Verbindungsverwaltung
 	sshManager *SSHManager
-	// Config-Cache fuer Lazy-Loading
+	// Config-Cache für Lazy-Loading
 	configCache *ConfigCache
 	// Cursor-Position in der Verbindungsliste
 	cursor int
@@ -176,7 +176,7 @@ type AppModel struct {
 	configPath string
 	// Build-Nummer
 	buildNumber string
-	// ID der aktiven Verbindung (fuer Bearbeiten/Loeschen/Status)
+	// ID der aktiven Verbindung (für Bearbeiten/Löschen/Status)
 	activeID string
 	// Passwort-Eingabefeld
 	passwordInput textinput.Model
@@ -186,7 +186,7 @@ type AppModel struct {
 	keygenFocused int
 	// Generierter Public Key (fuer Ergebnisanzeige)
 	generatedPubKey string
-	// Hostname bei dem sich der Host-Key geaendert hat (fuer Dialog)
+	// Hostname bei dem sich der Host-Key geändert hat (für Dialog)
 	hostKeyHostname string
 	// Passwort das beim Host-Key-Dialog-Retry verwendet werden soll
 	hostKeyPassword string
@@ -212,7 +212,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		buildNumber: buildNumber,
 	}
 
-	// Konfiguration ueber Cache laden
+	// Konfiguration über Cache laden
 	cfg, err := cache.Get()
 	if err != nil {
 		m.errorMsg = "Fehler beim Laden: " + err.Error()
@@ -227,7 +227,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	return m
 }
 
-// createFormInputs erstellt die Eingabefelder fuer das Verbindungsformular.
+// createFormInputs erstellt die Eingabefelder für das Verbindungsformular.
 //
 // @return []textinput.Model - Liste der Eingabefelder
 // @date   2026-03-07 21:00
@@ -278,7 +278,7 @@ func createPasswordInput() textinput.Model {
 	return pw
 }
 
-// createKeygenInputs erstellt die Eingabefelder fuer die Key-Generierung.
+// createKeygenInputs erstellt die Eingabefelder für die Key-Generierung.
 //
 // @return []textinput.Model - Liste der Keygen-Eingabefelder
 // @date   2026-03-07 21:00
@@ -343,7 +343,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case sshHostKeyChangedMsg:
-		// Host-Key hat sich geaendert - Dialog anzeigen
+		// Host-Key hat sich geändert - Dialog anzeigen
 		m.state = ViewHostKeyChanged
 		m.hostKeyHostname = msg.hostname
 		m.hostKeyPassword = msg.password
@@ -358,7 +358,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.errorMsg = "Key-Deployment fehlgeschlagen: " + msg.err.Error()
 		} else {
-			m.successMsg = "SSH-Key deployed! Naechste Verbindung ohne Passwort: " + msg.keyPath
+			m.successMsg = "SSH-Key deployed! Nächste Verbindung ohne Passwort: " + msg.keyPath
 			// Konfiguration neu laden (Key-Pfad wurde gespeichert)
 			m.configCache.Invalidate()
 			m.reloadConfig()
@@ -367,7 +367,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sshErrorMsg:
 		m.errorMsg = "Verbindungsfehler: " + msg.err.Error()
-		// Bei Passwort-Fehler: in ViewConnect bleiben statt zur Liste zurueck
+		// Bei Passwort-Fehler: in ViewConnect bleiben statt zur Liste zurück
 		if msg.returnToConnect {
 			m.state = ViewConnect
 			m.passwordInput = createPasswordInput()
@@ -391,7 +391,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.updateInputs(msg)
 }
 
-// handleKeyPress verarbeitet Tastendruecke und dispatcht an die View-Handler.
+// handleKeyPress verarbeitet Tastendrücke und dispatcht an die View-Handler.
 //
 // @param msg - Tastendruck-Nachricht
 // @return tea.Model - Aktualisiertes Modell
@@ -413,7 +413,7 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewDelete:
 		return m.handleDeleteKeys(msg)
 	case ViewConnecting:
-		// Waehrend Auto-Connect laeuft: keine Tastenverarbeitung (nur Ctrl+C oben)
+		// Während Auto-Connect läuft: keine Tastenverarbeitung (nur Ctrl+C oben)
 		return m, nil
 	case ViewHostKeyChanged:
 		return m.handleHostKeyChangedKeys(msg)
@@ -484,7 +484,7 @@ func (m AppModel) View() string {
 	return s.String()
 }
 
-// reloadConfig laedt die Konfiguration ueber den Cache neu.
+// reloadConfig lädt die Konfiguration über den Cache neu.
 //
 // @date   2026-03-07 21:00
 func (m *AppModel) reloadConfig() {

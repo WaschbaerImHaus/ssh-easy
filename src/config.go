@@ -1,9 +1,9 @@
-// Paket main - Konfigurationsverwaltung fuer ssh-easy
+// Paket main - Konfigurationsverwaltung für ssh-easy
 //
 // Laden und Speichern der SSH-Verbindungen als JSON-Datei.
 // Verwendet atomares Schreiben (Temp-Datei + Rename) um Datenverlust zu vermeiden.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 18:15
 package main
 
@@ -18,9 +18,9 @@ import (
 )
 
 // ConfigCache implementiert Lazy-Loading der Konfiguration.
-// Laedt die Datei nur neu wenn sie sich geaendert hat (Timestamp-basiert).
+// Lädt die Datei nur neu wenn sie sich geändert hat (Timestamp-basiert).
 type ConfigCache struct {
-	// Mutex fuer thread-sicheren Zugriff
+	// Mutex für thread-sicheren Zugriff
 	mu sync.RWMutex
 	// Pfad zur Konfigurationsdatei
 	path string
@@ -39,15 +39,15 @@ func NewConfigCache(path string) *ConfigCache {
 	return &ConfigCache{path: path}
 }
 
-// Get gibt die aktuelle Konfiguration zurueck.
-// Laedt nur neu von Disk wenn sich die Datei geaendert hat.
+// Get gibt die aktuelle Konfiguration zurück.
+// Lädt nur neu von Disk wenn sich die Datei geändert hat.
 //
 // @return *AppConfig - Aktuelle Konfiguration
 // @return error - Fehler beim Laden
 // @date   2026-03-07 21:00
 func (c *ConfigCache) Get() (*AppConfig, error) {
 	c.mu.RLock()
-	// Pruefen ob Neuladen noetig ist
+	// Prüfen ob Neuladen nötig ist
 	needsReload := c.config == nil
 	if !needsReload {
 		info, err := os.Stat(c.path)
@@ -63,7 +63,7 @@ func (c *ConfigCache) Get() (*AppConfig, error) {
 		return c.config, nil
 	}
 
-	// Neuladen noetig
+	// Neuladen nötig
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -81,7 +81,7 @@ func (c *ConfigCache) Get() (*AppConfig, error) {
 	return c.config, nil
 }
 
-// Invalidate markiert den Cache als ungueltig, sodass beim naechsten
+// Invalidate markiert den Cache als ungültig, sodass beim nächsten
 // Get() die Datei neu geladen wird.
 //
 // @date   2026-03-07 21:00
@@ -92,7 +92,7 @@ func (c *ConfigCache) Invalidate() {
 	c.lastModTime = time.Time{}
 }
 
-// GetConfigDir gibt den Pfad zum Konfigurationsverzeichnis zurueck.
+// GetConfigDir gibt den Pfad zum Konfigurationsverzeichnis zurück.
 // Unter Linux: ~/.ssh-easy/
 // Unter Windows: %USERPROFILE%/.ssh-easy/
 //
@@ -107,7 +107,7 @@ func GetConfigDir() (string, error) {
 	return filepath.Join(home, ".ssh-easy"), nil
 }
 
-// GetConfigPath gibt den vollstaendigen Pfad zur Konfigurationsdatei zurueck
+// GetConfigPath gibt den vollständigen Pfad zur Konfigurationsdatei zurück
 //
 // @return string - Pfad zur connections.json
 // @return error - Fehler bei der Pfadermittlung
@@ -121,7 +121,7 @@ func GetConfigPath() (string, error) {
 }
 
 // EnsureConfigDir stellt sicher, dass das Konfigurationsverzeichnis existiert.
-// Erstellt es mit Berechtigung 0700 wenn noetig.
+// Erstellt es mit Berechtigung 0700 wenn nötig.
 //
 // @return error - Fehler beim Erstellen des Verzeichnisses
 // @date   2026-03-07 18:15
@@ -131,7 +131,7 @@ func EnsureConfigDir() error {
 		return err
 	}
 
-	// Berechtigung 0700: nur Besitzer darf lesen/schreiben/ausfuehren
+	// Berechtigung 0700: nur Besitzer darf lesen/schreiben/ausführen
 	perm := os.FileMode(0700)
 	if runtime.GOOS == "windows" {
 		perm = os.FileMode(0755)
@@ -140,8 +140,8 @@ func EnsureConfigDir() error {
 	return os.MkdirAll(dir, perm)
 }
 
-// LoadConfig laedt die Konfiguration aus der JSON-Datei.
-// Wenn die Datei nicht existiert, wird eine leere Konfiguration zurueckgegeben.
+// LoadConfig lädt die Konfiguration aus der JSON-Datei.
+// Wenn die Datei nicht existiert, wird eine leere Konfiguration zurückgegeben.
 //
 // @param path - Pfad zur Konfigurationsdatei
 // @return *AppConfig - Geladene Konfiguration
@@ -152,7 +152,7 @@ func LoadConfig(path string) (*AppConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Datei existiert nicht - leere Konfiguration zurueckgeben
+			// Datei existiert nicht - leere Konfiguration zurückgeben
 			cfg := NewAppConfig()
 			return &cfg, nil
 		}
@@ -171,7 +171,7 @@ func LoadConfig(path string) (*AppConfig, error) {
 		return nil, fmt.Errorf("Konfiguration konnte nicht geparst werden: %w", err)
 	}
 
-	// Version pruefen
+	// Version prüfen
 	if cfg.Version == 0 {
 		cfg.Version = 1
 	}
@@ -180,15 +180,15 @@ func LoadConfig(path string) (*AppConfig, error) {
 }
 
 // SaveConfig speichert die Konfiguration als JSON-Datei.
-// Verwendet atomares Schreiben: zuerst in temporaere Datei schreiben,
-// dann per Rename ueberschreiben. Verhindert Datenverlust bei Absturz.
+// Verwendet atomares Schreiben: zuerst in temporäre Datei schreiben,
+// dann per Rename überschreiben. Verhindert Datenverlust bei Absturz.
 //
 // @param path - Pfad zur Konfigurationsdatei
 // @param cfg - Zu speichernde Konfiguration
 // @return error - Fehler beim Schreiben
 // @date   2026-03-07 18:15
 func SaveConfig(path string, cfg *AppConfig) error {
-	// JSON mit Einrueckung formatieren (lesbar fuer Menschen)
+	// JSON mit Einrückung formatieren (lesbar für Menschen)
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return fmt.Errorf("Konfiguration konnte nicht serialisiert werden: %w", err)
@@ -203,13 +203,13 @@ func SaveConfig(path string, cfg *AppConfig) error {
 	// Atomares Schreiben: Temp-Datei im gleichen Verzeichnis erstellen
 	tmpFile, err := os.CreateTemp(dir, "ssh-easy-*.tmp")
 	if err != nil {
-		return fmt.Errorf("Temporaere Datei konnte nicht erstellt werden: %w", err)
+		return fmt.Errorf("Temporäre Datei konnte nicht erstellt werden: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 
-	// Aufraumen bei Fehler
+	// Aufräumen bei Fehler
 	defer func() {
-		// Wenn die Temp-Datei noch existiert (Fehler aufgetreten), loeschen
+		// Wenn die Temp-Datei noch existiert (Fehler aufgetreten), löschen
 		if _, statErr := os.Stat(tmpPath); statErr == nil {
 			os.Remove(tmpPath)
 		}
@@ -221,7 +221,7 @@ func SaveConfig(path string, cfg *AppConfig) error {
 		return fmt.Errorf("Daten konnten nicht geschrieben werden: %w", err)
 	}
 
-	// Datei schliessen und sicherstellen, dass Daten auf Disk sind
+	// Datei schließen und sicherstellen, dass Daten auf Disk sind
 	if err := tmpFile.Sync(); err != nil {
 		tmpFile.Close()
 		return fmt.Errorf("Daten konnten nicht synchronisiert werden: %w", err)
@@ -243,7 +243,7 @@ func SaveConfig(path string, cfg *AppConfig) error {
 	return nil
 }
 
-// AddConnection fuegt eine neue Verbindung zur Konfiguration hinzu und speichert.
+// AddConnection fügt eine neue Verbindung zur Konfiguration hinzu und speichert.
 //
 // @param path - Pfad zur Konfigurationsdatei
 // @param conn Connection - Die neue Verbindung
@@ -261,7 +261,7 @@ func AddConnection(path string, conn Connection) error {
 // DeleteConnection entfernt eine Verbindung anhand ihrer ID und speichert.
 //
 // @param path - Pfad zur Konfigurationsdatei
-// @param id string - ID der zu loeschenden Verbindung
+// @param id string - ID der zu löschenden Verbindung
 // @return error - Fehler beim Speichern
 // @date   2026-03-07 18:15
 func DeleteConnection(path string, id string) error {

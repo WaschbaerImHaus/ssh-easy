@@ -1,9 +1,9 @@
-// Paket main - Datentypen fuer ssh-easy
+// Paket main - Datentypen für ssh-easy
 //
-// Definiert alle Strukturen fuer SSH-Verbindungen, Tunnel-Konfiguration
+// Definiert alle Strukturen für SSH-Verbindungen, Tunnel-Konfiguration
 // und Anwendungskonfiguration.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 18:15
 package main
 
@@ -22,13 +22,13 @@ type AuthMethod string
 const (
 	// AuthPassword - Passwort-basierte Authentifizierung
 	AuthPassword AuthMethod = "password"
-	// AuthKey - SSH-Schluessel-basierte Authentifizierung
+	// AuthKey - SSH-Schlüssel-basierte Authentifizierung
 	AuthKey AuthMethod = "key"
 	// AuthAgent - SSH-Agent-basierte Authentifizierung
 	AuthAgent AuthMethod = "agent"
 )
 
-// TunnelConfig repraesentiert einen einzelnen Port-Forward-Tunnel.
+// TunnelConfig repräsentiert einen einzelnen Port-Forward-Tunnel.
 // Lokaler Port wird immer auf 127.0.0.1 gebunden.
 type TunnelConfig struct {
 	// Lokaler Port auf dem eigenen Rechner
@@ -39,12 +39,12 @@ type TunnelConfig struct {
 	Enabled bool `json:"enabled"`
 }
 
-// Connection repraesentiert eine gespeicherte SSH-Verbindung
+// Connection repräsentiert eine gespeicherte SSH-Verbindung
 // mit allen Konfigurationsdetails.
 type Connection struct {
 	// Eindeutige ID der Verbindung (UUID-Format)
 	ID string `json:"id"`
-	// Anzeigename fuer die Verbindungsliste
+	// Anzeigename für die Verbindungsliste
 	Name string `json:"name"`
 	// Hostname oder IP-Adresse des SSH-Servers
 	Host string `json:"host"`
@@ -54,19 +54,19 @@ type Connection struct {
 	User string `json:"user"`
 	// Authentifizierungsmethode ("password" oder "key")
 	AuthType AuthMethod `json:"auth_type"`
-	// Pfad zum SSH-Schluessel (nur bei AuthKey)
+	// Pfad zum SSH-Schlüssel (nur bei AuthKey)
 	KeyPath string `json:"key_path,omitempty"`
 	// Liste der Port-Forward-Tunnel
 	Tunnels []TunnelConfig `json:"tunnels"`
 	// Erstellungszeitpunkt
 	CreatedAt string `json:"created_at"`
-	// Zeitpunkt der letzten Aenderung
+	// Zeitpunkt der letzten Änderung
 	UpdatedAt string `json:"updated_at"`
 }
 
 // AppConfig ist die gesamte Konfigurationsdatei mit allen Verbindungen
 type AppConfig struct {
-	// Schema-Version fuer zukuenftige Migrationen
+	// Schema-Version für zukünftige Migrationen
 	Version int `json:"version"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
@@ -86,8 +86,8 @@ type ConnectionStatus struct {
 	Cancel context.CancelFunc
 }
 
-// Validate prueft ob eine Verbindung gueltige Werte hat.
-// Gibt einen Fehler zurueck wenn Pflichtfelder fehlen oder ungueltig sind.
+// Validate prüft ob eine Verbindung gültige Werte hat.
+// Gibt einen Fehler zurück wenn Pflichtfelder fehlen oder ungültig sind.
 //
 // @return error - Fehlerbeschreibung oder nil
 // @date   2026-03-07 18:15
@@ -108,17 +108,17 @@ func (c *Connection) Validate() error {
 		return fmt.Errorf("Authentifizierungsmethode muss 'password', 'key' oder 'agent' sein")
 	}
 	if c.AuthType == AuthKey && c.KeyPath == "" {
-		return fmt.Errorf("SSH-Schluessel-Pfad darf bei Key-Authentifizierung nicht leer sein")
+		return fmt.Errorf("SSH-Schlüssel-Pfad darf bei Key-Authentifizierung nicht leer sein")
 	}
 
-	// Tunnel-Ports pruefen
+	// Tunnel-Ports prüfen
 	seenPorts := make(map[int]bool)
 	for _, t := range c.Tunnels {
 		if t.LocalPort < 1 || t.LocalPort > 65535 {
-			return fmt.Errorf("Lokaler Tunnel-Port %d ist ungueltig", t.LocalPort)
+			return fmt.Errorf("Lokaler Tunnel-Port %d ist ungültig", t.LocalPort)
 		}
 		if t.RemotePort < 1 || t.RemotePort > 65535 {
-			return fmt.Errorf("Remote Tunnel-Port %d ist ungueltig", t.RemotePort)
+			return fmt.Errorf("Remote Tunnel-Port %d ist ungültig", t.RemotePort)
 		}
 		if seenPorts[t.LocalPort] {
 			return fmt.Errorf("Lokaler Port %d ist doppelt vergeben", t.LocalPort)

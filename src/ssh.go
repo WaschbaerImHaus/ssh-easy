@@ -1,4 +1,4 @@
-// Paket main - SSH-Hilfsfunktionen fuer ssh-easy
+// Paket main - SSH-Hilfsfunktionen für ssh-easy
 //
 // Tunnel-Verwaltung, Disconnect-Logik, SSH-Key-Generierung und
 // automatisches Key-Deployment auf Remote-Server.
@@ -41,13 +41,13 @@ func startTunnel(ctx context.Context, client *ssh.Client, tunnel TunnelConfig) (
 	localAddr := fmt.Sprintf("127.0.0.1:%d", tunnel.LocalPort)
 	listener, err := net.Listen("tcp", localAddr)
 	if err != nil {
-		return nil, fmt.Errorf("Port %d konnte nicht geoeffnet werden: %w", tunnel.LocalPort, err)
+		return nil, fmt.Errorf("Port %d konnte nicht geöffnet werden: %w", tunnel.LocalPort, err)
 	}
 
 	// Remote-Adresse (immer localhost auf dem Remote-Server)
 	remoteAddr := fmt.Sprintf("127.0.0.1:%d", tunnel.RemotePort)
 
-	// Goroutine fuer eingehende Verbindungen
+	// Goroutine für eingehende Verbindungen
 	go func() {
 		for {
 			select {
@@ -71,7 +71,7 @@ func startTunnel(ctx context.Context, client *ssh.Client, tunnel TunnelConfig) (
 // und der Remote-Verbindung weiter.
 //
 // @param localConn - Lokale TCP-Verbindung
-// @param client - SSH-Client fuer die Remote-Verbindung
+// @param client - SSH-Client für die Remote-Verbindung
 // @param remoteAddr - Zieladresse auf dem Remote-Server
 // @date   2026-03-07 21:00
 func handleTunnelConnection(localConn net.Conn, client *ssh.Client, remoteAddr string) {
@@ -99,17 +99,17 @@ func handleTunnelConnection(localConn net.Conn, client *ssh.Client, remoteAddr s
 	wg.Wait()
 }
 
-// appendKnownHost fuegt einen neuen Host-Key zur known_hosts-Datei hinzu.
+// appendKnownHost fügt einen neuen Host-Key zur known_hosts-Datei hinzu.
 //
 // @param path - Pfad zur known_hosts-Datei
 // @param hostname - Hostname des Servers
-// @param key - Oeffentlicher Schluessel des Servers
+// @param key - Öffentlicher Schlüssel des Servers
 // @return error - Fehler beim Schreiben
 // @date   2026-03-07 21:00
 func appendKnownHost(path string, hostname string, key ssh.PublicKey) error {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
-		return fmt.Errorf("known_hosts konnte nicht geoeffnet werden: %w", err)
+		return fmt.Errorf("known_hosts konnte nicht geöffnet werden: %w", err)
 	}
 	defer f.Close()
 
@@ -118,7 +118,7 @@ func appendKnownHost(path string, hostname string, key ssh.PublicKey) error {
 	return err
 }
 
-// DisconnectSSH beendet eine aktive SSH-Verbindung und alle zugehoerigen Tunnel.
+// DisconnectSSH beendet eine aktive SSH-Verbindung und alle zugehörigen Tunnel.
 //
 // @param status - Status der zu beendenden Verbindung
 // @date   2026-03-07 21:00
@@ -142,15 +142,15 @@ func DisconnectSSH(status *ConnectionStatus) {
 	status.Connected = false
 }
 
-// GenerateSSHKey erzeugt ein neues Ed25519-Schluesselpaar und speichert es.
+// GenerateSSHKey erzeugt ein neues Ed25519-Schlüsselpaar und speichert es.
 //
-// @param keyPath - Pfad fuer den privaten Schluessel
+// @param keyPath - Pfad für den privaten Schlüssel
 // @param passphrase - Optionale Passphrase (leer = ohne)
-// @return string - Der oeffentliche Schluessel im OpenSSH-Format
+// @return string - Der öffentliche Schlüssel im OpenSSH-Format
 // @return error - Fehler bei der Generierung oder beim Speichern
 // @date   2026-03-07 21:00
 func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
-	// Tilde im Pfad aufloesen
+	// Tilde im Pfad auflösen
 	if len(keyPath) > 0 && keyPath[0] == '~' {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -159,63 +159,63 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 		keyPath = filepath.Join(home, keyPath[1:])
 	}
 
-	// Verzeichnis erstellen falls noetig
+	// Verzeichnis erstellen falls nötig
 	dir := filepath.Dir(keyPath)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", fmt.Errorf("Verzeichnis %s konnte nicht erstellt werden: %w", dir, err)
 	}
 
-	// Pruefen ob Datei bereits existiert
+	// Prüfen ob Datei bereits existiert
 	if _, err := os.Stat(keyPath); err == nil {
-		return "", fmt.Errorf("Datei %s existiert bereits - bitte anderen Namen waehlen", keyPath)
+		return "", fmt.Errorf("Datei %s existiert bereits - bitte anderen Namen wählen", keyPath)
 	}
 
-	// Ed25519-Schluesselpaar generieren
+	// Ed25519-Schlüsselpaar generieren
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
-		return "", fmt.Errorf("Schluesselpaar konnte nicht generiert werden: %w", err)
+		return "", fmt.Errorf("Schlüsselpaar konnte nicht generiert werden: %w", err)
 	}
 
-	// Privaten Schluessel als PEM-Block marshallen
+	// Privaten Schlüssel als PEM-Block marshallen
 	var pemBlock *pem.Block
 	if passphrase != "" {
 		pemBlock, err = ssh.MarshalPrivateKeyWithPassphrase(privKey, "", []byte(passphrase))
 		if err != nil {
-			return "", fmt.Errorf("Privater Schluessel konnte nicht verschluesselt werden: %w", err)
+			return "", fmt.Errorf("Privater Schlüssel konnte nicht verschlüsselt werden: %w", err)
 		}
 	} else {
 		pemBlock, err = ssh.MarshalPrivateKey(privKey, "")
 		if err != nil {
-			return "", fmt.Errorf("Privater Schluessel konnte nicht serialisiert werden: %w", err)
+			return "", fmt.Errorf("Privater Schlüssel konnte nicht serialisiert werden: %w", err)
 		}
 	}
 
-	// Privaten Schluessel in Datei schreiben
+	// Privaten Schlüssel in Datei schreiben
 	privKeyBytes := pem.EncodeToMemory(pemBlock)
 	if err := os.WriteFile(keyPath, privKeyBytes, 0600); err != nil {
-		return "", fmt.Errorf("Privater Schluessel konnte nicht gespeichert werden: %w", err)
+		return "", fmt.Errorf("Privater Schlüssel konnte nicht gespeichert werden: %w", err)
 	}
 
-	// Oeffentlichen Schluessel im OpenSSH-Format erstellen
+	// Öffentlichen Schlüssel im OpenSSH-Format erstellen
 	sshPubKey, err := ssh.NewPublicKey(pubKey)
 	if err != nil {
-		return "", fmt.Errorf("Oeffentlicher Schluessel konnte nicht erstellt werden: %w", err)
+		return "", fmt.Errorf("Öffentlicher Schlüssel konnte nicht erstellt werden: %w", err)
 	}
 	pubKeyStr := string(ssh.MarshalAuthorizedKey(sshPubKey))
 
-	// Oeffentlichen Schluessel in .pub-Datei schreiben
+	// Öffentlichen Schlüssel in .pub-Datei schreiben
 	pubKeyPath := keyPath + ".pub"
 	if err := os.WriteFile(pubKeyPath, []byte(pubKeyStr), 0644); err != nil {
-		return "", fmt.Errorf("Oeffentlicher Schluessel konnte nicht gespeichert werden: %w", err)
+		return "", fmt.Errorf("Öffentlicher Schlüssel konnte nicht gespeichert werden: %w", err)
 	}
 
 	return pubKeyStr, nil
 }
 
 // removeKnownHost entfernt einen Host-Eintrag aus der known_hosts-Datei.
-// Unterstuetzt unhashed Eintraege (hostname keytype key).
-// Wird benoetigt wenn ein Host-Key sich geaendert hat und der Nutzer
-// den alten Key bewusst loeschen moechte.
+// Unterstützt unhashed Einträge (hostname keytype key).
+// Wird benötigt wenn ein Host-Key sich geändert hat und der Nutzer
+// den alten Key bewusst löschen möchte.
 //
 // @param knownHostsPath - Pfad zur known_hosts-Datei
 // @param hostname - Hostname dessen Eintrag entfernt werden soll
@@ -240,7 +240,7 @@ func removeKnownHost(knownHostsPath, hostname string) error {
 			continue
 		}
 
-		// Hostnamen im ersten Feld pruefen (kommagetrennte Liste moeglich)
+		// Hostnamen im ersten Feld prüfen (kommagetrennte Liste möglich)
 		fields := strings.Fields(trimmed)
 		shouldSkip := false
 		if len(fields) >= 2 {
@@ -267,7 +267,7 @@ func removeKnownHost(knownHostsPath, hostname string) error {
 	return os.WriteFile(knownHostsPath, []byte(strings.Join(kept, "\n")), 0600)
 }
 
-// getKnownHostsPath gibt den Pfad zur known_hosts-Datei zurueck.
+// getKnownHostsPath gibt den Pfad zur known_hosts-Datei zurück.
 //
 // @return string - Absoluter Pfad zur known_hosts-Datei
 // @return error - Fehler wenn Home-Verzeichnis nicht ermittelbar
@@ -281,7 +281,7 @@ func getKnownHostsPath() (string, error) {
 }
 
 // parseHostKeyChangedHostname extrahiert den Hostname aus einer
-// "HOST-KEY GEAENDERT fuer HOSTNAME!"-Fehlermeldung.
+// "HOST-KEY GEÄNDERT für HOSTNAME!"-Fehlermeldung.
 //
 // @param err - Fehler der geparst werden soll
 // @return string - Hostname oder leer wenn kein Match
@@ -304,10 +304,10 @@ func parseHostKeyChangedHostname(err error) string {
 	return strings.TrimSpace(rest[:end])
 }
 
-// IsHostKeyChangedError prueft ob ein Fehler ein Host-Key-Aenderungsfehler ist.
+// IsHostKeyChangedError prüft ob ein Fehler ein Host-Key-Änderungsfehler ist.
 //
-// @param err - Zu pruefender Fehler
-// @return bool - Ob der Host-Key sich geaendert hat
+// @param err - Zu prüfender Fehler
+// @return bool - Ob der Host-Key sich geändert hat
 // @date   2026-03-08 00:00
 func IsHostKeyChangedError(err error) bool {
 	if err == nil {
@@ -316,11 +316,11 @@ func IsHostKeyChangedError(err error) bool {
 	return strings.Contains(err.Error(), "HOST-KEY GEAENDERT")
 }
 
-// deployPublicKey fuegt einen oeffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.
-// Uebertraegt den Key sicher ueber stdin (kein Shell-Escaping noetig).
+// deployPublicKey fügt einen öffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.
+// Überträgt den Key sicher über stdin (kein Shell-Escaping nötig).
 //
 // @param client - Aktiver SSH-Client
-// @param pubKeyStr - Oeffentlicher Schluessel im OpenSSH-Format
+// @param pubKeyStr - Öffentlicher Schlüssel im OpenSSH-Format
 // @return error - Fehler beim Deployment
 // @date   2026-03-08 00:00
 func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
@@ -330,7 +330,7 @@ func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
 	}
 	defer session.Close()
 
-	// Public Key ueber stdin sicher uebergeben (kein Shell-Escaping noetig)
+	// Public Key über stdin sicher übergeben (kein Shell-Escaping nötig)
 	session.Stdin = strings.NewReader(strings.TrimSpace(pubKeyStr) + "\n")
 
 	// Befehl: Verzeichnis erstellen, Berechtigungen setzen, Key appenden
@@ -343,7 +343,7 @@ func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
 }
 
 // sanitizeFilename entfernt Zeichen die in Dateinamen nicht erlaubt sind.
-// Ersetzt ungueltige Zeichen durch Unterstriche.
+// Ersetzt ungültige Zeichen durch Unterstriche.
 //
 // @param s - Eingabestring
 // @return string - Bereinigter Dateiname
@@ -363,7 +363,7 @@ func sanitizeFilename(s string) string {
 //
 // @param conn - Verbindungskonfiguration (wird aktualisiert)
 // @param client - Aktiver SSH-Client (nach Passwort-Login)
-// @param configPath - Pfad zur Konfigurationsdatei fuer Update
+// @param configPath - Pfad zur Konfigurationsdatei für Update
 // @return string - Pfad zum generierten Key (~/.ssh/...)
 // @return error - Fehler bei Generierung oder Deployment
 // @date   2026-03-08 00:00
@@ -380,7 +380,7 @@ func AutoDeployKey(conn Connection, client *ssh.Client, configPath string) (stri
 	keyPath := filepath.Join(home, ".ssh", keyName)
 	keyPathTilde := "~/.ssh/" + keyName
 
-	// Pruefen ob Key bereits existiert
+	// Prüfen ob Key bereits existiert
 	if _, err := os.Stat(keyPath); err == nil {
 		// Key existiert - nur Public Key deployen
 		pubKeyData, err := os.ReadFile(keyPath + ".pub")

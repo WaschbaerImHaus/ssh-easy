@@ -1,10 +1,10 @@
-// Paket main - Einstiegspunkt fuer ssh-easy
+// Paket main - Einstiegspunkt für ssh-easy
 //
 // SSH-Verbindungsmanager mit TUI (Terminal User Interface).
-// Ermoeglicht das Verwalten, Speichern und Aufbauen von SSH-Verbindungen
+// Ermöglicht das Verwalten, Speichern und Aufbauen von SSH-Verbindungen
 // mit Local-Port-Forwarding-Tunneln.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 21:00
 package main
 
@@ -95,7 +95,7 @@ func readBuildNumber() string {
 	return "dev"
 }
 
-// getBuildInfo gibt Build-Informationen als formatierten String zurueck.
+// getBuildInfo gibt Build-Informationen als formatierten String zurück.
 //
 // @return string - Build-Info (Version, OS, Architektur)
 // @date   2026-03-07 21:00

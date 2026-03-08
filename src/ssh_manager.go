@@ -1,8 +1,8 @@
-// Paket main - SSH-Verbindungsmanager fuer ssh-easy
+// Paket main - SSH-Verbindungsmanager für ssh-easy
 //
-// Zentraler Manager fuer SSH-Verbindungen mit Keepalive, Reconnect und
-// SSH-Agent-Unterstuetzung. Implementiert automatische Key-Erkennung:
-// Beim Verbinden werden SSH-Agent und alle verfuegbaren Keys automatisch
+// Zentraler Manager für SSH-Verbindungen mit Keepalive, Reconnect und
+// SSH-Agent-Unterstützung. Implementiert automatische Key-Erkennung:
+// Beim Verbinden werden SSH-Agent und alle verfügbaren Keys automatisch
 // ausprobiert, ohne den Benutzer nach der Methode zu fragen.
 //
 // @author Kurt Ingwer
@@ -28,7 +28,7 @@ import (
 const (
 	// KeepaliveInterval - Intervall zwischen Keepalive-Paketen
 	KeepaliveInterval = 30 * time.Second
-	// KeepaliveTimeout - Timeout fuer Keepalive-Antwort
+	// KeepaliveTimeout - Timeout für Keepalive-Antwort
 	KeepaliveTimeout = 10 * time.Second
 	// ReconnectMaxRetries - Maximale Anzahl Reconnect-Versuche
 	ReconnectMaxRetries = 5
@@ -37,9 +37,9 @@ const (
 )
 
 // SSHManager verwaltet alle SSH-Verbindungen zentral.
-// Bietet Keepalive-Ueberwachung, automatischen Reconnect und Logging.
+// Bietet Keepalive-Überwachung, automatischen Reconnect und Logging.
 type SSHManager struct {
-	// Mutex fuer thread-sicheren Zugriff auf Verbindungen
+	// Mutex für thread-sicheren Zugriff auf Verbindungen
 	mu sync.RWMutex
 	// Aktive Verbindungen (Key = Connection.ID)
 	connections map[string]*ManagedConnection
@@ -51,9 +51,9 @@ type SSHManager struct {
 type ManagedConnection struct {
 	// Eingebetteter Verbindungsstatus
 	Status *ConnectionStatus
-	// Originale Verbindungskonfiguration (fuer Reconnect)
+	// Originale Verbindungskonfiguration (für Reconnect)
 	Config Connection
-	// Passwort/Passphrase (nur im Speicher, fuer Reconnect)
+	// Passwort/Passphrase (nur im Speicher, für Reconnect)
 	password string
 	// Anzahl bisheriger Reconnect-Versuche
 	reconnectCount int
@@ -63,7 +63,7 @@ type ManagedConnection struct {
 
 // NewSSHManager erstellt einen neuen SSH-Manager.
 //
-// @param logger - Logger-Instanz fuer Protokollierung
+// @param logger - Logger-Instanz für Protokollierung
 // @return *SSHManager - Neuer Manager
 // @date   2026-03-08 00:00
 func NewSSHManager(logger *Logger) *SSHManager {
@@ -73,8 +73,8 @@ func NewSSHManager(logger *Logger) *SSHManager {
 	}
 }
 
-// ConnectAuto verbindet automatisch: probiert SSH-Agent und alle verfuegbaren
-// Keys aus ~/.ssh/ ohne den Benutzer zu fragen. Gibt einen Fehler zurueck
+// ConnectAuto verbindet automatisch: probiert SSH-Agent und alle verfügbaren
+// Keys aus ~/.ssh/ ohne den Benutzer zu fragen. Gibt einen Fehler zurück
 // wenn keine Methode funktioniert (dann sollte Passwort versucht werden).
 //
 // @param conn - Die Verbindungskonfiguration
@@ -84,15 +84,15 @@ func NewSSHManager(logger *Logger) *SSHManager {
 func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 	m.logger.Info("Auto-Verbindung zu %s@%s:%d (Agent + Keys)...", conn.User, conn.Host, conn.Port)
 
-	// Auth-Methoden sammeln: Agent + alle unverschluesselten Keys
+	// Auth-Methoden sammeln: Agent + alle unverschlüsselten Keys
 	methods := m.buildAutoAuthMethods(conn)
 	if len(methods) == 0 {
-		return nil, fmt.Errorf("keine SSH-Schluessel oder Agent verfuegbar")
+		return nil, fmt.Errorf("keine SSH-Schlüssel oder Agent verfügbar")
 	}
 
 	ctx, status, err := m.dialSSH(conn, methods)
 	if err != nil {
-		m.logger.Info("Auto-Verbindung fehlgeschlagen fuer %s: %v", conn.Name, err)
+		m.logger.Info("Auto-Verbindung fehlgeschlagen für %s: %v", conn.Name, err)
 		return nil, err
 	}
 
@@ -102,7 +102,7 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 }
 
 // ConnectWithPassword verbindet mit Passwort-Authentifizierung.
-// Wird aufgerufen wenn die automatische Key-Authentifizierung fehlschlug.
+// Wird aufgerufen wenn die automatische Key-Authentifizierung fehlgeschlagen ist.
 //
 // @param conn - Die Verbindungskonfiguration
 // @param password - Das eingegebene Passwort
@@ -117,7 +117,7 @@ func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*Con
 	// Passwort-Authentifizierung
 	methods = append(methods, ssh.Password(password))
 
-	// Keyboard-Interactive fuer Server die das statt Password verwenden
+	// Keyboard-Interactive für Server die das statt Password verwenden
 	pwCopy := password
 	methods = append(methods, ssh.KeyboardInteractive(
 		func(user, instruction string, questions []string, echos []bool) ([]string, error) {
@@ -141,7 +141,7 @@ func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*Con
 }
 
 // Connect baut eine SSH-Verbindung mit expliziter Auth-Methode auf (Legacy).
-// Wird fuer gespeicherte Verbindungen mit bekanntem AuthType verwendet.
+// Wird für gespeicherte Verbindungen mit bekanntem AuthType verwendet.
 //
 // @param conn - Die Verbindungskonfiguration
 // @param password - Passwort oder Key-Passphrase
@@ -153,7 +153,7 @@ func (m *SSHManager) Connect(conn Connection, password string) (*ConnectionStatu
 
 	authMethods, err := m.buildAuthMethods(conn, password)
 	if err != nil {
-		m.logger.Error("Auth fehlgeschlagen fuer %s: %v", conn.Name, err)
+		m.logger.Error("Auth fehlgeschlagen für %s: %v", conn.Name, err)
 		return nil, fmt.Errorf("Authentifizierung fehlgeschlagen: %w", err)
 	}
 
@@ -169,18 +169,18 @@ func (m *SSHManager) Connect(conn Connection, password string) (*ConnectionStatu
 }
 
 // dialSSH stellt die eigentliche SSH-TCP-Verbindung her und startet Tunnel.
-// Gibt den Kontext fuer Keepalive zurueck (wird benoetigt um Keepalive zu stoppen).
+// Gibt den Kontext für Keepalive zurück (wird benötigt um Keepalive zu stoppen).
 //
 // @param conn - Verbindungskonfiguration
 // @param methods - SSH-Authentifizierungsmethoden
-// @return context.Context - Kontext (fuer Keepalive-Loop)
+// @return context.Context - Kontext (für Keepalive-Loop)
 // @return *ConnectionStatus - Verbindungsstatus
 // @return error - Fehler beim Verbinden
 // @date   2026-03-08 00:00
 func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod) (context.Context, *ConnectionStatus, error) {
 	hostKeyCallback, err := m.getHostKeyCallback()
 	if err != nil {
-		return nil, nil, fmt.Errorf("HostKey-Pruefung fehlgeschlagen: %w", err)
+		return nil, nil, fmt.Errorf("HostKey-Prüfung fehlgeschlagen: %w", err)
 	}
 
 	config := &ssh.ClientConfig{
@@ -228,8 +228,8 @@ func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod) (context
 //
 // @param conn - Verbindungskonfiguration
 // @param status - Verbindungsstatus
-// @param password - Passwort (fuer Reconnect)
-// @param ctx - Kontext fuer Keepalive-Loop
+// @param password - Passwort (für Reconnect)
+// @param ctx - Kontext für Keepalive-Loop
 // @date   2026-03-08 00:00
 func (m *SSHManager) registerConnection(conn Connection, status *ConnectionStatus, password string, ctx context.Context) {
 	managed := &ManagedConnection{
@@ -245,11 +245,11 @@ func (m *SSHManager) registerConnection(conn Connection, status *ConnectionStatu
 	go m.keepaliveLoop(ctx, conn.ID)
 }
 
-// buildAutoAuthMethods sammelt alle verfuegbaren Auth-Methoden automatisch:
-// SSH-Agent + alle unverschluesselten Keys aus ~/.ssh/
+// buildAutoAuthMethods sammelt alle verfügbaren Auth-Methoden automatisch:
+// SSH-Agent + alle unverschlüsselten Keys aus ~/.ssh/
 // Den konfigurierten Key (conn.KeyPath) probiert er zuerst.
 //
-// @param conn - Verbindungskonfiguration (fuer bevorzugten Key-Pfad)
+// @param conn - Verbindungskonfiguration (für bevorzugten Key-Pfad)
 // @return []ssh.AuthMethod - Gesammelte Auth-Methoden
 // @date   2026-03-08 00:00
 func (m *SSHManager) buildAutoAuthMethods(conn Connection) []ssh.AuthMethod {
@@ -258,7 +258,7 @@ func (m *SSHManager) buildAutoAuthMethods(conn Connection) []ssh.AuthMethod {
 	// 1. SSH-Agent versuchen (falls laufend)
 	if agentAuth, err := m.getAgentAuth(); err == nil {
 		methods = append(methods, agentAuth)
-		m.logger.Info("SSH-Agent fuer Auto-Auth verfuegbar")
+		m.logger.Info("SSH-Agent für Auto-Auth verfügbar")
 	}
 
 	// 2. Konfigurierten Key bevorzugt laden (falls angegeben)
@@ -268,7 +268,7 @@ func (m *SSHManager) buildAutoAuthMethods(conn Connection) []ssh.AuthMethod {
 		}
 	}
 
-	// 3. Alle anderen unverschluesselten Keys aus ~/.ssh/ laden
+	// 3. Alle anderen unverschlüsselten Keys aus ~/.ssh/ laden
 	if signers := m.loadAllSSHKeys(conn.KeyPath); len(signers) > 0 {
 		methods = append(methods, ssh.PublicKeys(signers...))
 	}
@@ -276,10 +276,10 @@ func (m *SSHManager) buildAutoAuthMethods(conn Connection) []ssh.AuthMethod {
 	return methods
 }
 
-// loadAllSSHKeys laedt alle SSH-Private-Keys aus ~/.ssh/ die keine Passphrase haben.
-// excludePath wird uebersprungen (bereits separat geladen).
+// loadAllSSHKeys lädt alle SSH-Private-Keys aus ~/.ssh/ die keine Passphrase haben.
+// excludePath wird übersprungen (bereits separat geladen).
 //
-// @param excludePath - Pfad der uebersprungen werden soll (leer = nichts ueberspringen)
+// @param excludePath - Pfad der übersprungen werden soll (leer = nichts überspringen)
 // @return []ssh.Signer - Geladene Signierer
 // @date   2026-03-08 00:00
 func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
@@ -294,7 +294,7 @@ func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
 		return nil
 	}
 
-	// Diese Dateien sind keine privaten Keys
+	// Diese Dateien sind keine privaten Schlüssel
 	skipFiles := map[string]bool{
 		"known_hosts":      true,
 		"config":           true,
@@ -303,7 +303,7 @@ func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
 		"environment":      true,
 	}
 
-	// Absoluten Ausschlusspfad aufloesen
+	// Absoluten Ausschlusspfad auflösen
 	absExclude := ""
 	if excludePath != "" {
 		absExclude = expandTilde(excludePath)
@@ -315,12 +315,12 @@ func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
 			continue
 		}
 		name := entry.Name()
-		// .pub-Dateien und bekannte Nicht-Key-Dateien ueberspringen
+		// .pub-Dateien und bekannte Nicht-Key-Dateien überspringen
 		if strings.HasSuffix(name, ".pub") || skipFiles[name] {
 			continue
 		}
 		absPath := filepath.Join(sshDir, name)
-		// Bereits konfigurierten Key nicht doppelt laden
+		// Bereits konfigurierten Schlüssel nicht doppelt laden
 		if absPath == absExclude {
 			continue
 		}
@@ -330,8 +330,8 @@ func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
 	return m.loadKeysFromPaths(paths)
 }
 
-// loadKeysFromPaths laedt SSH-Private-Keys aus den angegebenen Pfaden.
-// Verschluesselte Keys werden stille uebersprungen.
+// loadKeysFromPaths lädt SSH-Private-Keys aus den angegebenen Pfaden.
+// Verschlüsselte Keys werden still übersprungen.
 //
 // @param paths - Pfade zu den Key-Dateien
 // @return []ssh.Signer - Erfolgreich geladene Signierer
@@ -348,8 +348,8 @@ func (m *SSHManager) loadKeysFromPaths(paths []string) []ssh.Signer {
 
 		signer, err := ssh.ParsePrivateKey(data)
 		if err != nil {
-			// Verschluesselter Key (passphrase-protected) - still ueberspringen
-			m.logger.Info("SSH-Key %s ist verschluesselt oder ungueltig, ueberspringe", filepath.Base(path))
+			// Verschlüsselter Key (passphrase-protected) - still überspringen
+			m.logger.Info("SSH-Key %s ist verschlüsselt oder ungültig, überspringe", filepath.Base(path))
 			continue
 		}
 		m.logger.Info("SSH-Key geladen: %s", path)
@@ -358,9 +358,9 @@ func (m *SSHManager) loadKeysFromPaths(paths []string) []ssh.Signer {
 	return signers
 }
 
-// expandTilde loest eine Tilde am Anfang eines Pfades zum Home-Verzeichnis auf.
+// expandTilde löst eine Tilde am Anfang eines Pfades zum Home-Verzeichnis auf.
 //
-// @param path - Pfad mit moeglicher Tilde
+// @param path - Pfad mit möglicher Tilde
 // @return string - Absoluter Pfad
 // @date   2026-03-08 00:00
 func expandTilde(path string) string {
@@ -374,10 +374,10 @@ func expandTilde(path string) string {
 	return path
 }
 
-// IsSSHAuthError prueft ob ein Fehler ein SSH-Authentifizierungsfehler ist.
+// IsSSHAuthError prüft ob ein Fehler ein SSH-Authentifizierungsfehler ist.
 // Wird verwendet um zu entscheiden ob ein Passwort abgefragt werden soll.
 //
-// @param err - Zu pruefender Fehler
+// @param err - Zu prüfender Fehler
 // @return bool - Ob es ein Auth-Fehler ist
 // @date   2026-03-08 00:00
 func IsSSHAuthError(err error) bool {
@@ -391,9 +391,9 @@ func IsSSHAuthError(err error) bool {
 		strings.Contains(msg, "permission denied")
 }
 
-// IsNetworkError prueft ob ein Fehler ein Netzwerkfehler ist (kein Auth-Fehler).
+// IsNetworkError prüft ob ein Fehler ein Netzwerkfehler ist (kein Auth-Fehler).
 //
-// @param err - Zu pruefender Fehler
+// @param err - Zu prüfender Fehler
 // @return bool - Ob es ein Netzwerkfehler ist
 // @date   2026-03-08 00:00
 func IsNetworkError(err error) bool {
@@ -446,7 +446,7 @@ func (m *SSHManager) DisconnectAll() {
 	}
 }
 
-// GetStatus gibt den Verbindungsstatus fuer eine ID zurueck.
+// GetStatus gibt den Verbindungsstatus für eine ID zurück.
 //
 // @param id - Verbindungs-ID
 // @return *ConnectionStatus - Status oder nil
@@ -463,7 +463,7 @@ func (m *SSHManager) GetStatus(id string) (*ConnectionStatus, bool) {
 	return managed.Status, true
 }
 
-// IsConnected prueft ob eine Verbindung aktiv ist.
+// IsConnected prüft ob eine Verbindung aktiv ist.
 //
 // @param id - Verbindungs-ID
 // @return bool - Ob verbunden
@@ -473,8 +473,8 @@ func (m *SSHManager) IsConnected(id string) bool {
 	return ok && status != nil && status.Connected
 }
 
-// buildAuthMethods erstellt SSH-Authentifizierungsmethoden fuer eine bestimmte
-// konfigurierte Auth-Methode (wird fuer gespeicherte Konfigurationen verwendet).
+// buildAuthMethods erstellt SSH-Authentifizierungsmethoden für eine bestimmte
+// konfigurierte Auth-Methode (wird für gespeicherte Konfigurationen verwendet).
 //
 // @param conn - Verbindungskonfiguration
 // @param password - Passwort oder Passphrase
@@ -490,10 +490,10 @@ func (m *SSHManager) buildAuthMethods(conn Connection, password string) ([]ssh.A
 		methods = append(methods, ssh.Password(password))
 
 	case AuthKey:
-		// SSH-Schluessel lesen
+		// SSH-Schlüssel lesen
 		keyData, err := os.ReadFile(expandTilde(conn.KeyPath))
 		if err != nil {
-			return nil, fmt.Errorf("SSH-Schluessel %s konnte nicht gelesen werden: %w", conn.KeyPath, err)
+			return nil, fmt.Errorf("SSH-Schlüssel %s konnte nicht gelesen werden: %w", conn.KeyPath, err)
 		}
 
 		var signer ssh.Signer
@@ -503,7 +503,7 @@ func (m *SSHManager) buildAuthMethods(conn Connection, password string) ([]ssh.A
 			signer, err = ssh.ParsePrivateKey(keyData)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("SSH-Schluessel konnte nicht geparst werden: %w", err)
+			return nil, fmt.Errorf("SSH-Schlüssel konnte nicht geparst werden: %w", err)
 		}
 		methods = append(methods, ssh.PublicKeys(signer))
 
@@ -511,7 +511,7 @@ func (m *SSHManager) buildAuthMethods(conn Connection, password string) ([]ssh.A
 		// SSH-Agent-Authentifizierung
 		agentAuth, err := m.getAgentAuth()
 		if err != nil {
-			return nil, fmt.Errorf("SSH-Agent nicht verfuegbar: %w", err)
+			return nil, fmt.Errorf("SSH-Agent nicht verfügbar: %w", err)
 		}
 		methods = append(methods, agentAuth)
 	}
@@ -520,7 +520,7 @@ func (m *SSHManager) buildAuthMethods(conn Connection, password string) ([]ssh.A
 }
 
 // getAgentAuth stellt eine Verbindung zum SSH-Agent her und gibt die
-// Authentifizierungsmethode zurueck.
+// Authentifizierungsmethode zurück.
 //
 // @return ssh.AuthMethod - Agent-basierte Authentifizierung
 // @return error - Fehler bei Agent-Verbindung
@@ -529,7 +529,7 @@ func (m *SSHManager) getAgentAuth() (ssh.AuthMethod, error) {
 	// SSH_AUTH_SOCK Umgebungsvariable lesen
 	socketPath := os.Getenv("SSH_AUTH_SOCK")
 	if socketPath == "" {
-		return nil, fmt.Errorf("SSH_AUTH_SOCK nicht gesetzt - SSH-Agent laeuft nicht")
+		return nil, fmt.Errorf("SSH_AUTH_SOCK nicht gesetzt - SSH-Agent läuft nicht")
 	}
 
 	// Verbindung zum Agent-Socket aufbauen
@@ -545,11 +545,11 @@ func (m *SSHManager) getAgentAuth() (ssh.AuthMethod, error) {
 }
 
 // getHostKeyCallback erstellt einen HostKey-Callback.
-// known_hosts MUSS existieren. Neue Hosts werden automatisch hinzugefuegt,
-// aber geaenderte Keys werden abgelehnt (MITM-Schutz).
+// known_hosts MUSS existieren. Neue Hosts werden automatisch hinzugefügt,
+// aber geänderte Keys werden abgelehnt (MITM-Schutz).
 //
 // @return ssh.HostKeyCallback - Callback-Funktion
-// @return error - Fehler wenn known_hosts nicht verfuegbar
+// @return error - Fehler wenn known_hosts nicht verfügbar
 // @date   2026-03-08 00:00
 func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 	home, err := os.UserHomeDir()
@@ -560,12 +560,12 @@ func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 	sshDir := home + "/.ssh"
 	knownHostsPath := sshDir + "/known_hosts"
 
-	// SSH-Verzeichnis erstellen falls noetig
+	// SSH-Verzeichnis erstellen falls nötig
 	if err := os.MkdirAll(sshDir, 0700); err != nil {
 		return nil, fmt.Errorf("SSH-Verzeichnis konnte nicht erstellt werden: %w", err)
 	}
 
-	// known_hosts erstellen falls noetig
+	// known_hosts erstellen falls nötig
 	if _, err := os.Stat(knownHostsPath); os.IsNotExist(err) {
 		if err := os.WriteFile(knownHostsPath, []byte{}, 0600); err != nil {
 			return nil, fmt.Errorf("known_hosts konnte nicht erstellt werden: %w", err)
@@ -579,31 +579,31 @@ func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 		return nil, fmt.Errorf("known_hosts konnte nicht geladen werden: %w", err)
 	}
 
-	// Wrapper: unbekannte Hosts automatisch hinzufuegen,
-	// geaenderte Keys ablehnen (MITM-Schutz)
+	// Wrapper: unbekannte Hosts automatisch hinzufügen,
+	// geänderte Keys ablehnen (MITM-Schutz)
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		err := hostKeyCallback(hostname, remote, key)
 		if err != nil {
 			knownHostsErr, ok := err.(*knownhosts.KeyError)
 			if ok && len(knownHostsErr.Want) == 0 {
 				// Neuer Host - Key speichern
-				m.logger.Info("Neuer Host-Key gespeichert fuer %s", hostname)
+				m.logger.Info("Neuer Host-Key gespeichert für %s", hostname)
 				return appendKnownHost(knownHostsPath, hostname, key)
 			}
-			// Key geaendert - MITM-Warnung!
-			m.logger.Error("HOST-KEY GEAENDERT fuer %s - moeglicher MITM-Angriff!", hostname)
-			return fmt.Errorf("HOST-KEY GEAENDERT fuer %s! Moeglicher MITM-Angriff. "+
-				"Alten Key in ~/.ssh/known_hosts loeschen wenn beabsichtigt", hostname)
+			// Key geändert - MITM-Warnung!
+			m.logger.Error("HOST-KEY GEAENDERT fuer %s - möglicher MITM-Angriff!", hostname)
+			return fmt.Errorf("HOST-KEY GEAENDERT fuer %s! Möglicher MITM-Angriff. "+
+				"Alten Key in ~/.ssh/known_hosts löschen wenn beabsichtigt", hostname)
 		}
 		return nil
 	}, nil
 }
 
-// keepaliveLoop sendet regelmaessig Keepalive-Pakete und erkennt
-// Verbindungsabbrueche. Bei Abbruch wird automatisch ein Reconnect versucht.
+// keepaliveLoop sendet regelmäßig Keepalive-Pakete und erkennt
+// Verbindungsabbrüche. Bei Abbruch wird automatisch ein Reconnect versucht.
 //
 // @param ctx - Kontext zum Beenden
-// @param connID - ID der zu ueberwachenden Verbindung
+// @param connID - ID der zu überwachenden Verbindung
 // @date   2026-03-08 00:00
 func (m *SSHManager) keepaliveLoop(ctx context.Context, connID string) {
 	ticker := time.NewTicker(KeepaliveInterval)
@@ -625,7 +625,7 @@ func (m *SSHManager) keepaliveLoop(ctx context.Context, connID string) {
 			// Keepalive-Paket senden (SSH Global Request)
 			_, _, err := managed.Status.SSHClient.SendRequest("keepalive@ssh-easy", true, nil)
 			if err != nil {
-				m.logger.Warn("Keepalive fehlgeschlagen fuer %s: %v", managed.Config.Name, err)
+				m.logger.Warn("Keepalive fehlgeschlagen für %s: %v", managed.Config.Name, err)
 				managed.Status.Connected = false
 
 				// Reconnect versuchen
@@ -638,7 +638,7 @@ func (m *SSHManager) keepaliveLoop(ctx context.Context, connID string) {
 
 // reconnect versucht eine abgebrochene Verbindung wiederherzustellen.
 // Maximal ReconnectMaxRetries Versuche mit ReconnectDelay Pause.
-// Verwendet Auto-Auth (Agent + alle Keys) dann gespeichertes Passwort.
+// Verwendet Auto-Auth (Agent + alle Schlüssel) dann gespeichertes Passwort.
 //
 // @param connID - ID der wiederherzustellenden Verbindung
 // @date   2026-03-08 00:00
@@ -650,7 +650,7 @@ func (m *SSHManager) reconnect(connID string) {
 		return
 	}
 
-	// Pruefen ob bereits Reconnect laeuft
+	// Prüfen ob bereits Reconnect läuft
 	if managed.reconnecting {
 		m.mu.Unlock()
 		return
@@ -659,9 +659,9 @@ func (m *SSHManager) reconnect(connID string) {
 	managed.reconnectCount = 0
 	m.mu.Unlock()
 
-	m.logger.Info("Starte Reconnect fuer %s...", managed.Config.Name)
+	m.logger.Info("Starte Reconnect für %s...", managed.Config.Name)
 
-	// Alte Verbindung aufraumen
+	// Alte Verbindung aufräumen
 	DisconnectSSH(managed.Status)
 
 	for i := 0; i < ReconnectMaxRetries; i++ {
@@ -670,7 +670,7 @@ func (m *SSHManager) reconnect(connID string) {
 		m.mu.RUnlock()
 
 		if !stillExists {
-			// Verbindung wurde manuell geloescht
+			// Verbindung wurde manuell gelöscht
 			return
 		}
 
@@ -679,7 +679,7 @@ func (m *SSHManager) reconnect(connID string) {
 
 		time.Sleep(ReconnectDelay)
 
-		// Auto-Auth versuchen (Agent + alle Keys)
+		// Auto-Auth versuchen (Agent + alle Schlüssel)
 		autoMethods := m.buildAutoAuthMethods(managed.Config)
 		var status *ConnectionStatus
 		var ctx context.Context
@@ -689,7 +689,7 @@ func (m *SSHManager) reconnect(connID string) {
 			ctx, status, err = m.dialSSH(managed.Config, autoMethods)
 		}
 
-		// Falls Auto fehlschlaegt und Passwort bekannt: Passwort versuchen
+		// Falls Auto fehlschlägt und Passwort bekannt: Passwort versuchen
 		if (err != nil || len(autoMethods) == 0) && managed.password != "" {
 			m.logger.Info("Auto-Reconnect fehlgeschlagen, versuche Passwort...")
 			pwMethods := []ssh.AuthMethod{ssh.Password(managed.password)}
@@ -710,14 +710,14 @@ func (m *SSHManager) reconnect(connID string) {
 		}
 		m.mu.Unlock()
 
-		m.logger.Info("Reconnect erfolgreich fuer %s nach %d Versuchen", managed.Config.Name, i+1)
+		m.logger.Info("Reconnect erfolgreich für %s nach %d Versuchen", managed.Config.Name, i+1)
 
 		// Keepalive-Loop fuer neue Verbindung starten
 		go m.keepaliveLoop(ctx, connID)
 		return
 	}
 
-	m.logger.Error("Reconnect fehlgeschlagen fuer %s nach %d Versuchen",
+	m.logger.Error("Reconnect fehlgeschlagen für %s nach %d Versuchen",
 		managed.Config.Name, ReconnectMaxRetries)
 
 	m.mu.Lock()

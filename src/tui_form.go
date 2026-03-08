@@ -1,7 +1,7 @@
-// Paket main - TUI Formularansichten fuer ssh-easy
+// Paket main - TUI Formularansichten für ssh-easy
 //
 // Formulare zum Erstellen und Bearbeiten von Verbindungen sowie
-// die Passwort-Eingabe fuer den Verbindungsaufbau.
+// die Passwort-Eingabe für den Verbindungsaufbau.
 // Nach erfolgreicher Passwort-Anmeldung wird automatisch ein SSH-Key
 // generiert und auf dem Remote-Server deployed.
 //
@@ -113,7 +113,7 @@ func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			status, err := manager.ConnectWithPassword(connCopy, pwCopy)
 			if err != nil {
-				// Host-Key hat sich geaendert: Dialog anzeigen
+				// Host-Key hat sich geändert: Dialog anzeigen
 				if IsHostKeyChangedError(err) {
 					hostname := parseHostKeyChangedHostname(err)
 					return sshHostKeyChangedMsg{
@@ -143,7 +143,7 @@ func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // renderForm rendert das Formular zum Erstellen/Bearbeiten von Verbindungen.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @param title - Titel des Formulars
 // @date   2026-03-07 21:00
 func (m AppModel) renderForm(s *strings.Builder, title string) {
@@ -175,15 +175,15 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
 	}
 
-	s.WriteString(helpStyle.Render("\n  Tab:Naechstes Feld  Enter:Speichern  Esc:Abbrechen"))
+	s.WriteString(helpStyle.Render("\n  Tab:Nächstes Feld  Enter:Speichern  Esc:Abbrechen"))
 }
 
 // renderConnect rendert die Passwort-Eingabe.
-// Wird angezeigt wenn Auto-Auth (Agent + alle Keys) fehlschlug.
+// Wird angezeigt wenn Auto-Auth (Agent + alle Keys) fehlgeschlagen ist.
 // Nach erfolgreicher Anmeldung wird automatisch ein SSH-Key generiert
-// und auf dem Server deployed, sodass die naechste Verbindung ohne Passwort klappt.
+// und auf dem Server deployed, sodass die nächste Verbindung ohne Passwort klappt.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-08 00:00
 func (m AppModel) renderConnect(s *strings.Builder) {
 	name := ""
@@ -205,11 +205,11 @@ func (m AppModel) renderConnect(s *strings.Builder) {
 		s.WriteString("\n")
 	}
 
-	s.WriteString(helpStyle.Render("\n  Nach erfolgreicher Anmeldung wird automatisch ein SSH-Key erstellt."))
+	s.WriteString(helpStyle.Render("\n  Nach erfolgreicher Anmeldung wird automatisch ein SSH-Schlüssel erstellt."))
 	s.WriteString(helpStyle.Render("\n  Enter:Verbinden  Esc:Abbrechen"))
 }
 
-// fillFormFromConnection befuellt die Formularfelder mit Daten einer Verbindung.
+// fillFormFromConnection befüllt die Formularfelder mit Daten einer Verbindung.
 //
 // @param conn - Die Verbindung deren Daten eingetragen werden
 // @date   2026-03-07 21:00
@@ -273,7 +273,7 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 			}
 			tunnelPort, err := strconv.Atoi(p)
 			if err != nil {
-				return Connection{}, fmt.Errorf("Tunnel-Port '%s' ist keine gueltige Zahl", p)
+				return Connection{}, fmt.Errorf("Tunnel-Port '%s' ist keine gültige Zahl", p)
 			}
 			conn.Tunnels = append(conn.Tunnels, TunnelConfig{
 				LocalPort:  tunnelPort,

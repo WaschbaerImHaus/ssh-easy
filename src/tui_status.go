@@ -1,8 +1,8 @@
-// Paket main - TUI Statusansicht fuer ssh-easy
+// Paket main - TUI Statusansicht für ssh-easy
 //
 // Zeigt den Verbindungsstatus und Tunnel-Details an.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 21:00
 package main
 
@@ -17,7 +17,7 @@ import (
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Folge-Kommando
+// @return tea.Cmd - Folgekommando
 // @date   2026-03-07 21:00
 func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -35,7 +35,7 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // renderStatus rendert die Statusanzeige einer aktiven Verbindung.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderStatus(s *strings.Builder) {
 	var conn *Connection
@@ -82,5 +82,5 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 
 	s.WriteString(infoBoxStyle.Render(info.String()))
 
-	s.WriteString(helpStyle.Render("\n\n  x:Trennen  Esc:Zurueck"))
+	s.WriteString(helpStyle.Render("\n\n  x:Trennen  Esc:Zurück"))
 }

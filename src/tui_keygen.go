@@ -1,8 +1,8 @@
-// Paket main - TUI Key-Generierungs-Ansicht fuer ssh-easy
+// Paket main - TUI Key-Generierungs-Ansicht für ssh-easy
 //
 // Formular zur Generierung von SSH-Keys und Anzeige des Public Keys.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
+// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
 // @date   2026-03-07 21:00
 package main
 
@@ -75,7 +75,7 @@ func (m AppModel) handleKeygenResultKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // renderKeygen rendert das Formular zur SSH-Key-Generierung.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderKeygen(s *strings.Builder) {
 	s.WriteString(titleStyle.Render("  SSH-Key generieren (Ed25519)"))
@@ -101,18 +101,18 @@ func (m AppModel) renderKeygen(s *strings.Builder) {
 		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
 	}
 
-	s.WriteString(helpStyle.Render("\n  Tab:Naechstes Feld  Enter:Generieren  Esc:Abbrechen"))
+	s.WriteString(helpStyle.Render("\n  Tab:Nächstes Feld  Enter:Generieren  Esc:Abbrechen"))
 }
 
 // renderKeygenResult rendert den generierten Public Key.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderKeygenResult(s *strings.Builder) {
 	s.WriteString(titleStyle.Render("  SSH-Key generiert!"))
 	s.WriteString("\n\n")
 
-	s.WriteString(successStyle.Render("  Schluessel erfolgreich erstellt."))
+	s.WriteString(successStyle.Render("  Schlüssel erfolgreich erstellt."))
 	s.WriteString("\n\n")
 
 	s.WriteString("  " + labelStyle.Render("Public Key:"))
@@ -122,5 +122,5 @@ func (m AppModel) renderKeygenResult(s *strings.Builder) {
 	s.WriteString("\n\n")
 
 	s.WriteString(helpStyle.Render("  Diesen Public Key auf dem Zielserver in ~/.ssh/authorized_keys eintragen."))
-	s.WriteString(helpStyle.Render("\n  Enter/Esc:Zurueck"))
+	s.WriteString(helpStyle.Render("\n  Enter/Esc:Zurück"))
 }

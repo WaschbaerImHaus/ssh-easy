@@ -1,8 +1,8 @@
-// Paket main - TUI Listenansicht fuer ssh-easy
+// Paket main - TUI Listenansicht für ssh-easy
 //
 // Rendert die Hauptansicht mit Verbindungsliste und verarbeitet
 // deren Tasteneingaben. Startet beim Verbinden automatisch den
-// Auto-Connect (Agent + alle verfuegbaren Keys) ohne Nutzerabfrage.
+// Auto-Connect (Agent + alle verfügbaren Keys) ohne Nutzerabfrage.
 //
 // @author Kurt Ingwer
 // @date   2026-03-08 00:00
@@ -21,7 +21,7 @@ import (
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Folge-Kommando
+// @return tea.Cmd - Folgekommando
 // @date   2026-03-07 21:00
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
@@ -41,7 +41,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "n":
-		// Neue Verbindung - Formular zuruecksetzen
+		// Neue Verbindung - Formular zurücksetzen
 		m.state = ViewCreate
 		m.inputs = createFormInputs()
 		m.focusedInput = 0
@@ -66,7 +66,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "d":
-		// Verbindung loeschen (Bestaetigung)
+		// Verbindung löschen (Bestätigung)
 		if len(m.connections) > 0 {
 			m.state = ViewDelete
 			m.activeID = m.connections[m.cursor].ID
@@ -93,7 +93,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					status, err := manager.ConnectAuto(connCopy)
 					if err != nil {
-						// Host-Key hat sich geaendert: Dialog anzeigen
+						// Host-Key hat sich geändert: Dialog anzeigen
 						if IsHostKeyChangedError(err) {
 							hostname := parseHostKeyChangedHostname(err)
 							return sshHostKeyChangedMsg{
@@ -144,7 +144,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // renderList rendert die Hauptansicht mit der Verbindungsliste.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderList(s *strings.Builder) {
 	s.WriteString(titleStyle.Render(fmt.Sprintf("  ssh-easy v%s", m.buildNumber)))
@@ -152,7 +152,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 
 	if len(m.connections) == 0 {
 		s.WriteString("  Keine Verbindungen gespeichert.\n")
-		s.WriteString("  Druecke 'n' um eine neue Verbindung anzulegen.\n")
+		s.WriteString("  Drücke 'n' um eine neue Verbindung anzulegen.\n")
 	} else {
 		for i, conn := range m.connections {
 			// Status-Indikator
@@ -203,12 +203,12 @@ func (m AppModel) renderList(s *strings.Builder) {
 	}
 
 	// Hilfe
-	s.WriteString(helpStyle.Render("\n  n:Neu  e:Bearbeiten  d:Loeschen  Enter:Verbinden  x:Trennen  g:Key-Gen  q:Beenden"))
+	s.WriteString(helpStyle.Render("\n  n:Neu  e:Bearbeiten  d:Löschen  Enter:Verbinden  x:Trennen  g:Key-Gen  q:Beenden"))
 }
 
-// renderConnecting rendert den Verbindungsaufbau-Bildschirm (Auto-Auth laeuft).
+// renderConnecting rendert den Verbindungsaufbau-Bildschirm (Auto-Auth läuft).
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-08 00:00
 func (m AppModel) renderConnecting(s *strings.Builder) {
 	name := m.activeID
@@ -221,16 +221,16 @@ func (m AppModel) renderConnecting(s *strings.Builder) {
 
 	s.WriteString(titleStyle.Render(fmt.Sprintf("  Verbinde mit: %s", name)))
 	s.WriteString("\n\n")
-	s.WriteString("  Probiere SSH-Agent und verfuegbare Schluessel...\n\n")
+	s.WriteString("  Probiere SSH-Agent und verfügbare Schlüssel...\n\n")
 	s.WriteString(helpStyle.Render("  Bitte warten"))
 }
 
-// renderDeleteConfirm rendert die Loeschbestaetigung.
+// renderDeleteConfirm rendert die Löschbestätigung.
 //
-// @param s - String-Builder fuer die Ausgabe
+// @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
-	s.WriteString(titleStyle.Render("  Verbindung loeschen?"))
+	s.WriteString(titleStyle.Render("  Verbindung löschen?"))
 	s.WriteString("\n\n")
 
 	name := m.activeID
@@ -241,11 +241,11 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 		}
 	}
 
-	s.WriteString(fmt.Sprintf("  Soll die Verbindung '%s' wirklich geloescht werden?\n\n", name))
+	s.WriteString(fmt.Sprintf("  Soll die Verbindung '%s' wirklich gelöscht werden?\n\n", name))
 	s.WriteString("  [j/y] Ja   [n/Esc] Nein")
 }
 
-// handleDeleteKeys verarbeitet Tasten in der Loeschbestaetigung.
+// handleDeleteKeys verarbeitet Tasten in der Löschbestätigung.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
@@ -257,12 +257,12 @@ func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Verbindung trennen falls aktiv
 		m.sshManager.Disconnect(m.activeID)
 
-		// Verbindung loeschen
+		// Verbindung löschen
 		err := DeleteConnection(m.configPath, m.activeID)
 		if err != nil {
 			m.errorMsg = err.Error()
 		} else {
-			m.successMsg = "Verbindung geloescht!"
+			m.successMsg = "Verbindung gelöscht!"
 		}
 		m.configCache.Invalidate()
 		m.reloadConfig()

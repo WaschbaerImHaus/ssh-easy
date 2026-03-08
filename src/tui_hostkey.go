@@ -1,8 +1,8 @@
-// Paket main - TUI Host-Key-Dialog fuer ssh-easy
+// Paket main - TUI Host-Key-Dialog für ssh-easy
 //
-// Zeigt einen Dialog wenn sich der SSH-Host-Key eines Servers geaendert hat.
+// Zeigt einen Dialog wenn sich der SSH-Host-Key eines Servers geändert hat.
 // Der Nutzer kann den alten Key entfernen und die Verbindung neu aufbauen.
-// Der Dialog warnt klar vor moeglichen MITM-Angriffen.
+// Der Dialog warnt klar vor möglichen MITM-Angriffen.
 //
 // @author Kurt Ingwer
 // @date   2026-03-08 00:00
@@ -15,7 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// handleHostKeyChangedKeys verarbeitet Tasten im Host-Key-Changed-Dialog.
+// handleHostKeyChangedKeys verarbeitet Tasten im Host-Key-Geändert-Dialog.
 // 'j' oder 'y' -> alten Key entfernen und Verbindung neu aufbauen
 // 'n' oder Esc  -> Abbrechen
 //
@@ -49,7 +49,7 @@ func (m AppModel) handleHostKeyChangedKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 		connCopy := *conn
 		manager := m.sshManager
 
-		// Zum verbindenden-Zustand wechseln
+		// Zum Verbinden-Zustand wechseln
 		m.state = ViewConnecting
 		m.errorMsg = ""
 		m.successMsg = ""
@@ -96,14 +96,14 @@ func (m AppModel) handleHostKeyChangedKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 	return m, nil
 }
 
-// renderHostKeyChanged rendert den Host-Key-Aenderungs-Warndialog.
-// Zeigt klar an dass der Host-Key sich geaendert hat und fragt den Nutzer
-// ob er den alten Key entfernen und die Verbindung fortsetzen moechte.
+// renderHostKeyChanged rendert den Host-Key-Änderungs-Warndialog.
+// Zeigt klar an dass der Host-Key sich geändert hat und fragt den Nutzer
+// ob er den alten Key entfernen und die Verbindung fortsetzen möchte.
 //
 // @param s - String-Builder fuer die Ausgabe
 // @date   2026-03-08 00:00
 func (m AppModel) renderHostKeyChanged(s *strings.Builder) {
-	s.WriteString(errorStyle.Render("  SICHERHEITSWARNUNG: SSH HOST-KEY GEAENDERT!"))
+	s.WriteString(errorStyle.Render("  SICHERHEITSWARNUNG: SSH HOST-KEY GEÄNDERT!"))
 	s.WriteString("\n\n")
 
 	hostname := m.hostKeyHostname
@@ -113,14 +113,14 @@ func (m AppModel) renderHostKeyChanged(s *strings.Builder) {
 
 	// Warnungsbox
 	var warn strings.Builder
-	warn.WriteString(fmt.Sprintf("Der SSH-Schluessel des Servers hat sich geaendert!\n\n"))
+	warn.WriteString(fmt.Sprintf("Der SSH-Schlüssel des Servers hat sich geändert!\n\n"))
 	warn.WriteString(fmt.Sprintf("Host: %s\n\n", hostname))
-	warn.WriteString("MOEGLICHE URSACHEN:\n")
+	warn.WriteString("MÖGLICHE URSACHEN:\n")
 	warn.WriteString("  - Server wurde neu installiert (legitim)\n")
 	warn.WriteString("  - Server-Key wurde erneuert (legitim)\n")
-	warn.WriteString("  - Man-in-the-Middle-Angriff (GEFAEHRLICH!)\n\n")
-	warn.WriteString("Nur fortfahren wenn du weisst dass sich\n")
-	warn.WriteString("der Server-Key geaendert hat!")
+	warn.WriteString("  - Man-in-the-Middle-Angriff (GEFÄHRLICH!)\n\n")
+	warn.WriteString("Nur fortfahren wenn du weißt dass sich\n")
+	warn.WriteString("der Server-Key geändert hat!")
 	s.WriteString(infoBoxStyle.Render(warn.String()))
 	s.WriteString("\n\n")
 
