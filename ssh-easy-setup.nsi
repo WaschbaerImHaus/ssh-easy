@@ -2,61 +2,61 @@
 ; Erstellt mit NSIS (Nullsoft Scriptable Install System)
 ;
 ; Installiert ssh-easy mit Startmenüeintrag und optionalem Desktopicon.
-; Erstellt auch einen Deinstallationseintrag in der Systemsteuerung.
+; Erkennt automatisch eine bestehende Installation und deinstalliert
+; diese lautlos bevor die neue Version installiert wird.
 ;
 ; @author Kurt Ingwer
 ; @date   2026-03-08
 
 ;----------------------------------------------------------------------
+; Versionsdefinition – hier bei jedem Build anpassen
+;----------------------------------------------------------------------
+!define PRODUCT_VERSION "0.12.0"
+!define PRODUCT_BUILD   "12"
+
+;----------------------------------------------------------------------
 ; Allgemeine Einstellungen
 ;----------------------------------------------------------------------
 
-; Name und Dateiname des Installers
 Name "ssh-easy"
 OutFile "build\ssh-easy-setup-amd64.exe"
 
-; Standard-Installationsverzeichnis
+; Standard-Installationsverzeichnis (aus Registry falls bereits installiert)
 InstallDir "$PROGRAMFILES64\ssh-easy"
-
-; Registry-Schlüssel für das Installationsverzeichnis (für Deinstallation)
 InstallDirRegKey HKLM "Software\ssh-easy" "InstallDir"
 
-; Administratorrechte benötigt (für Program Files)
+; Administratorrechte benötigt (für Program Files + Registry HKLM)
 RequestExecutionLevel admin
 
-; Modernes UI verwenden
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
+!include "FileFunc.nsh"
 
 ;----------------------------------------------------------------------
 ; Installer-Optionen (MUI)
 ;----------------------------------------------------------------------
 
-; Icon für den Installer selbst
 !define MUI_ICON "assets\icon.ico"
 !define MUI_UNICON "assets\icon.ico"
 
-; Willkommens-Seite
 !define MUI_WELCOMEPAGE_TITLE "ssh-easy Installation"
-!define MUI_WELCOMEPAGE_TEXT "Willkommen beim Setup-Assistent für ssh-easy.$\n$\nssh-easy ist ein SSH-Verbindungsmanager mit Terminal-Oberfläche.$\nUnterstützt automatische Authentifizierung über SSH-Agent, Keys und Passwort.$\n$\nKlicken Sie auf Weiter um fortzufahren."
+!define MUI_WELCOMEPAGE_TEXT "Willkommen beim Setup-Assistent für ssh-easy.$\n$\nssh-easy ist ein SSH-Verbindungsmanager mit Terminal-Oberfläche.$\nUnterstützt automatische Authentifizierung über SSH-Agent, Keys und Passwort.$\n$\nEine eventuell vorhandene ältere Version wird automatisch ersetzt.$\n$\nKlicken Sie auf Weiter um fortzufahren."
 
-; Abschluss-Seite
 !define MUI_FINISHPAGE_RUN "$INSTDIR\ssh-easy.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "ssh-easy jetzt starten"
-!define MUI_FINISHPAGE_SHOWREADME ""
-!define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 
-; Seiten des Installers
+; Installer-Seiten
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 Page custom DesktopIconPage DesktopIconLeave
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
 
-; Seiten des Deinstallers
+; Deinstaller-Seiten
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
-; Sprachen
+; Sprachen (Deutsch zuerst = Standard)
 !insertmacro MUI_LANGUAGE "German"
 !insertmacro MUI_LANGUAGE "English"
 
@@ -64,16 +64,14 @@ Page custom DesktopIconPage DesktopIconLeave
 ; Variablen
 ;----------------------------------------------------------------------
 
-; Checkbox-Status für optionales Desktop-Icon
 Var DesktopIconCheckbox
 Var DesktopIconState
 
 ;----------------------------------------------------------------------
-; Desktop-Icon Optionsseite (Custom Page)
+; Desktop-Icon Optionsseite
 ;----------------------------------------------------------------------
 
 Function DesktopIconPage
-  ; Eigene Seite mit Checkbox für Desktop-Verknüpfung
   nsDialogs::Create 1018
   Pop $0
 
@@ -82,45 +80,61 @@ Function DesktopIconPage
 
   ${NSD_CreateCheckbox} 10u 30u 100% 14u "Desktop-Verknüpfung erstellen"
   Pop $DesktopIconCheckbox
-  ; Standard: nicht ausgewählt (optional)
   ${NSD_SetState} $DesktopIconCheckbox ${BST_UNCHECKED}
 
   nsDialogs::Show
 FunctionEnd
 
 Function DesktopIconLeave
-  ; Zustand der Checkbox speichern
   ${NSD_GetState} $DesktopIconCheckbox $DesktopIconState
 FunctionEnd
 
 ;----------------------------------------------------------------------
-; Installer - Hauptabschnitt
+; Vorversion erkennen und lautlos deinstallieren
+;----------------------------------------------------------------------
+
+Function .onInit
+  ; Prüfen ob bereits eine Version installiert ist
+  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" "UninstallString"
+  ${If} $0 != ""
+    ; Vorhandenen Deinstaller lautlos ausführen (/S = silent)
+    ; _? verhindert dass NSIS den Deinstaller in ein Temp-Verzeichnis kopiert,
+    ; damit die Pfade korrekt bleiben
+    ExecWait '"$0" /S _?=$INSTDIR'
+    ; Kurz warten damit der Deinstaller abgeschlossen ist
+    Sleep 500
+  ${EndIf}
+FunctionEnd
+
+;----------------------------------------------------------------------
+; Installer – Hauptabschnitt
 ;----------------------------------------------------------------------
 
 Section "ssh-easy (erforderlich)" SecMain
-  SectionIn RO  ; Pflichtkomponente, kann nicht abgewählt werden
+  SectionIn RO
 
-  ; Installationsverzeichnis setzen
   SetOutPath "$INSTDIR"
 
-  ; Programmdatei kopieren (amd64)
+  ; Programmdatei installieren
   File "build\ssh-easy-windows-amd64.exe"
   Rename "$INSTDIR\ssh-easy-windows-amd64.exe" "$INSTDIR\ssh-easy.exe"
 
-  ; Installationspfad in Registry speichern
+  ; Installationspfad und Version in Registry speichern
   WriteRegStr HKLM "Software\ssh-easy" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\ssh-easy" "Version" "0.10.0"
+  WriteRegStr HKLM "Software\ssh-easy" "Version" "${PRODUCT_VERSION}"
 
-  ; Deinstallationseintrag in der Systemsteuerung erstellen
+  ; Deinstallationseintrag in der Systemsteuerung (Apps & Features)
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
     "DisplayName" "ssh-easy"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
-    "DisplayVersion" "0.10.0"
+    "DisplayVersion" "${PRODUCT_VERSION} (Build ${PRODUCT_BUILD})"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
     "Publisher" "Kurt Ingwer"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
     "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
+    "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
     "DisplayIcon" "$INSTDIR\ssh-easy.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
@@ -130,7 +144,7 @@ Section "ssh-easy (erforderlich)" SecMain
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" \
     "NoRepair" 1
 
-  ; Startmenü-Eintrag erstellen
+  ; Startmenü-Eintrag
   CreateDirectory "$SMPROGRAMS\ssh-easy"
   CreateShortcut "$SMPROGRAMS\ssh-easy\ssh-easy.lnk" \
     "$INSTDIR\ssh-easy.exe" "" \
@@ -139,7 +153,7 @@ Section "ssh-easy (erforderlich)" SecMain
   CreateShortcut "$SMPROGRAMS\ssh-easy\Deinstallieren.lnk" \
     "$INSTDIR\Uninstall.exe"
 
-  ; Desktop-Icon nur wenn Checkbox aktiviert wurde
+  ; Optionales Desktop-Icon
   ${If} $DesktopIconState == ${BST_CHECKED}
     CreateShortcut "$DESKTOP\ssh-easy.lnk" \
       "$INSTDIR\ssh-easy.exe" "" \
@@ -153,22 +167,26 @@ SectionEnd
 ; Deinstaller
 ;----------------------------------------------------------------------
 
+; Lautlose Deinstallation unterstützen (/S Flag)
+Function un.onInit
+  ${GetParameters} $0
+  ${If} $0 == "/S"
+    SetSilent silent
+  ${EndIf}
+FunctionEnd
+
 Section "Uninstall"
 
-  ; Programm und Verzeichnis entfernen
   Delete "$INSTDIR\ssh-easy.exe"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
 
-  ; Startmenü-Einträge entfernen
   Delete "$SMPROGRAMS\ssh-easy\ssh-easy.lnk"
   Delete "$SMPROGRAMS\ssh-easy\Deinstallieren.lnk"
   RMDir "$SMPROGRAMS\ssh-easy"
 
-  ; Desktop-Icon entfernen (falls vorhanden)
   Delete "$DESKTOP\ssh-easy.lnk"
 
-  ; Registry-Einträge entfernen
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy"
   DeleteRegKey HKLM "Software\ssh-easy"
 
