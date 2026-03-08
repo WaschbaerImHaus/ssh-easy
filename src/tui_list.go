@@ -1,10 +1,11 @@
 // Paket main - TUI Listenansicht fuer ssh-easy
 //
 // Rendert die Hauptansicht mit Verbindungsliste und verarbeitet
-// deren Tasteneingaben.
+// deren Tasteneingaben. Startet beim Verbinden automatisch den
+// Auto-Connect (Agent + alle verfuegbaren Keys) ohne Nutzerabfrage.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-03-08 00:00
 package main
 
 import (
@@ -74,20 +75,37 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "enter":
-		// Verbindung herstellen oder Statusansicht
+		// Verbindung herstellen (Auto-Connect) oder Statusansicht
 		if len(m.connections) > 0 {
 			conn := m.connections[m.cursor]
 			if m.sshManager.IsConnected(conn.ID) {
+				// Bereits verbunden: Statusansicht anzeigen
 				m.state = ViewStatus
 				m.activeID = conn.ID
 			} else {
-				m.state = ViewConnect
+				// Auto-Connect: Agent + alle verfuegbaren Keys probieren
+				m.state = ViewConnecting
 				m.activeID = conn.ID
-				m.passwordInput = createPasswordInput()
-				m.passwordInput.Focus()
 				m.errorMsg = ""
 				m.successMsg = ""
-				return m, textinput.Blink
+				connCopy := conn
+				manager := m.sshManager
+				return m, func() tea.Msg {
+					status, err := manager.ConnectAuto(connCopy)
+					if err != nil {
+						// Netzwerkfehler: direkt melden
+						if IsNetworkError(err) {
+							return sshErrorMsg{id: connCopy.ID, err: err}
+						}
+						// Auth-Fehler oder kein Key: Passwort abfragen
+						return sshNeedPasswordMsg{id: connCopy.ID}
+					}
+					return sshConnectedMsg{
+						id:          connCopy.ID,
+						status:      status,
+						wasPassword: false,
+					}
+				}
 			}
 		}
 
@@ -177,6 +195,25 @@ func (m AppModel) renderList(s *strings.Builder) {
 
 	// Hilfe
 	s.WriteString(helpStyle.Render("\n  n:Neu  e:Bearbeiten  d:Loeschen  Enter:Verbinden  x:Trennen  g:Key-Gen  q:Beenden"))
+}
+
+// renderConnecting rendert den Verbindungsaufbau-Bildschirm (Auto-Auth laeuft).
+//
+// @param s - String-Builder fuer die Ausgabe
+// @date   2026-03-08 00:00
+func (m AppModel) renderConnecting(s *strings.Builder) {
+	name := m.activeID
+	for _, c := range m.connections {
+		if c.ID == m.activeID {
+			name = c.Name
+			break
+		}
+	}
+
+	s.WriteString(titleStyle.Render(fmt.Sprintf("  Verbinde mit: %s", name)))
+	s.WriteString("\n\n")
+	s.WriteString("  Probiere SSH-Agent und verfuegbare Schluessel...\n\n")
+	s.WriteString(helpStyle.Render("  Bitte warten"))
 }
 
 // renderDeleteConfirm rendert die Loeschbestaetigung.

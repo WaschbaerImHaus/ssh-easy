@@ -5,8 +5,8 @@
 // Die einzelnen Views sind in tui_list.go, tui_form.go, tui_status.go
 // und tui_keygen.go ausgelagert.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-03-08 00:00
 package main
 
 import (
@@ -29,7 +29,9 @@ const (
 	ViewEdit
 	// ViewDelete - Loeschbestaetigung
 	ViewDelete
-	// ViewConnect - Passwort-Eingabe vor dem Verbinden
+	// ViewConnecting - Verbindungsaufbau laeuft (Auto-Auth)
+	ViewConnecting
+	// ViewConnect - Passwort-Eingabe (Auto-Auth fehlgeschlagen)
 	ViewConnect
 	// ViewStatus - Statusanzeige einer aktiven Verbindung
 	ViewStatus
@@ -60,16 +62,34 @@ const (
 
 // --- Bubbletea Messages ---
 
-// sshConnectedMsg wird gesendet wenn eine SSH-Verbindung erfolgreich ist
+// sshConnectedMsg wird gesendet wenn eine SSH-Verbindung erfolgreich ist.
+// wasPassword=true bedeutet: Key wurde per Passwort authentifiziert ->
+// automatisch einen SSH-Key generieren und deployen.
 type sshConnectedMsg struct {
-	id     string
-	status *ConnectionStatus
+	id          string
+	status      *ConnectionStatus
+	wasPassword bool       // War es Passwort-Auth? Dann Key automatisch deployen
+	conn        Connection // Verbindungsdaten fuer Key-Deployment
+}
+
+// sshNeedPasswordMsg wird gesendet wenn Auto-Auth (Agent+Keys) fehlschlug.
+// Die TUI wechselt dann zur Passwort-Eingabe.
+type sshNeedPasswordMsg struct {
+	id string
+}
+
+// sshKeyDeployedMsg wird gesendet wenn der automatische Key-Deployment abgeschlossen ist.
+type sshKeyDeployedMsg struct {
+	connID  string
+	keyPath string
+	err     error
 }
 
 // sshErrorMsg wird gesendet bei SSH-Verbindungsfehlern
 type sshErrorMsg struct {
-	id  string
-	err error
+	id             string
+	err            error
+	returnToConnect bool // Fehler im Passwort-Modus -> in ViewConnect bleiben
 }
 
 // keygenResultMsg wird gesendet wenn ein SSH-Key generiert wurde
@@ -284,10 +304,48 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.successMsg = "Verbindung hergestellt!"
 		m.errorMsg = ""
 		m.state = ViewList
+		// Bei Passwort-Auth: automatisch SSH-Key generieren und deployen
+		if msg.wasPassword {
+			connCopy := msg.conn
+			status := msg.status
+			configPath := m.configPath
+			return m, func() tea.Msg {
+				keyPath, err := AutoDeployKey(connCopy, status.SSHClient, configPath)
+				return sshKeyDeployedMsg{connID: msg.id, keyPath: keyPath, err: err}
+			}
+		}
+		return m, nil
+
+	case sshNeedPasswordMsg:
+		// Auto-Auth fehlgeschlagen - Passwort abfragen
+		m.state = ViewConnect
+		m.passwordInput = createPasswordInput()
+		m.passwordInput.Focus()
+		m.errorMsg = ""
+		m.successMsg = ""
+		return m, textinput.Blink
+
+	case sshKeyDeployedMsg:
+		// Key-Deployment abgeschlossen
+		if msg.err != nil {
+			m.errorMsg = "Key-Deployment fehlgeschlagen: " + msg.err.Error()
+		} else {
+			m.successMsg = "SSH-Key deployed! Naechste Verbindung ohne Passwort: " + msg.keyPath
+			// Konfiguration neu laden (Key-Pfad wurde gespeichert)
+			m.configCache.Invalidate()
+			m.reloadConfig()
+		}
 		return m, nil
 
 	case sshErrorMsg:
 		m.errorMsg = "Verbindungsfehler: " + msg.err.Error()
+		// Bei Passwort-Fehler: in ViewConnect bleiben statt zur Liste zurueck
+		if msg.returnToConnect {
+			m.state = ViewConnect
+			m.passwordInput = createPasswordInput()
+			m.passwordInput.Focus()
+			return m, textinput.Blink
+		}
 		m.state = ViewList
 		return m, nil
 
@@ -326,6 +384,9 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleFormKeys(msg)
 	case ViewDelete:
 		return m.handleDeleteKeys(msg)
+	case ViewConnecting:
+		// Waehrend Auto-Connect laeuft: keine Tastenverarbeitung (nur Ctrl+C oben)
+		return m, nil
 	case ViewConnect:
 		return m.handleConnectKeys(msg)
 	case ViewStatus:
@@ -376,6 +437,8 @@ func (m AppModel) View() string {
 		m.renderForm(&s, "Verbindung bearbeiten")
 	case ViewDelete:
 		m.renderDeleteConfirm(&s)
+	case ViewConnecting:
+		m.renderConnecting(&s)
 	case ViewConnect:
 		m.renderConnect(&s)
 	case ViewStatus:

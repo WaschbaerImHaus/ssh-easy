@@ -1,10 +1,10 @@
 // Paket main - SSH-Hilfsfunktionen fuer ssh-easy
 //
-// Tunnel-Verwaltung, Disconnect-Logik und SSH-Key-Generierung.
-// Die Verbindungslogik ist in ssh_manager.go ausgelagert.
+// Tunnel-Verwaltung, Disconnect-Logik, SSH-Key-Generierung und
+// automatisches Key-Deployment auf Remote-Server.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-03-08 00:00
 package main
 
 import (
@@ -17,7 +17,10 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
+	"unicode"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -207,4 +210,103 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 	}
 
 	return pubKeyStr, nil
+}
+
+// deployPublicKey fuegt einen oeffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.
+// Uebertraegt den Key sicher ueber stdin (kein Shell-Escaping noetig).
+//
+// @param client - Aktiver SSH-Client
+// @param pubKeyStr - Oeffentlicher Schluessel im OpenSSH-Format
+// @return error - Fehler beim Deployment
+// @date   2026-03-08 00:00
+func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
+	session, err := client.NewSession()
+	if err != nil {
+		return fmt.Errorf("SSH-Session konnte nicht erstellt werden: %w", err)
+	}
+	defer session.Close()
+
+	// Public Key ueber stdin sicher uebergeben (kein Shell-Escaping noetig)
+	session.Stdin = strings.NewReader(strings.TrimSpace(pubKeyStr) + "\n")
+
+	// Befehl: Verzeichnis erstellen, Berechtigungen setzen, Key appenden
+	cmd := "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+	if err := session.Run(cmd); err != nil {
+		return fmt.Errorf("authorized_keys konnte nicht aktualisiert werden: %w", err)
+	}
+
+	return nil
+}
+
+// sanitizeFilename entfernt Zeichen die in Dateinamen nicht erlaubt sind.
+// Ersetzt ungueltige Zeichen durch Unterstriche.
+//
+// @param s - Eingabestring
+// @return string - Bereinigter Dateiname
+// @date   2026-03-08 00:00
+func sanitizeFilename(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' {
+			return r
+		}
+		return '_'
+	}, s)
+}
+
+// AutoDeployKey generiert einen neuen SSH-Key und deployt ihn automatisch
+// auf dem Remote-Server nach einer erfolgreichen Passwort-Anmeldung.
+// Aktualisiert auch die Verbindungskonfiguration auf Key-Auth.
+//
+// @param conn - Verbindungskonfiguration (wird aktualisiert)
+// @param client - Aktiver SSH-Client (nach Passwort-Login)
+// @param configPath - Pfad zur Konfigurationsdatei fuer Update
+// @return string - Pfad zum generierten Key (~/.ssh/...)
+// @return error - Fehler bei Generierung oder Deployment
+// @date   2026-03-08 00:00
+func AutoDeployKey(conn Connection, client *ssh.Client, configPath string) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("Home-Verzeichnis nicht ermittelbar: %w", err)
+	}
+
+	// Eindeutigen Key-Namen aus Host und User generieren
+	keyName := fmt.Sprintf("id_ed25519_%s_%s",
+		sanitizeFilename(conn.Host),
+		sanitizeFilename(conn.User))
+	keyPath := filepath.Join(home, ".ssh", keyName)
+	keyPathTilde := "~/.ssh/" + keyName
+
+	// Pruefen ob Key bereits existiert
+	if _, err := os.Stat(keyPath); err == nil {
+		// Key existiert - nur Public Key deployen
+		pubKeyData, err := os.ReadFile(keyPath + ".pub")
+		if err != nil {
+			return "", fmt.Errorf("Existierender Public Key konnte nicht gelesen werden: %w", err)
+		}
+		if err := deployPublicKey(client, string(pubKeyData)); err != nil {
+			return "", err
+		}
+	} else {
+		// Neuen Ed25519-Key generieren
+		pubKeyStr, err := GenerateSSHKey(keyPath, "")
+		if err != nil {
+			return "", fmt.Errorf("Key-Generierung fehlgeschlagen: %w", err)
+		}
+
+		// Key auf Remote-Server deployen
+		if err := deployPublicKey(client, pubKeyStr); err != nil {
+			return "", fmt.Errorf("Key-Deployment fehlgeschlagen: %w", err)
+		}
+	}
+
+	// Verbindungskonfiguration auf Key-Auth umstellen
+	conn.AuthType = AuthKey
+	conn.KeyPath = keyPathTilde
+	conn.UpdatedAt = time.Now().Format(time.RFC3339)
+	if err := UpdateConnection(configPath, conn); err != nil {
+		// Nicht kritisch - Key ist deployed, nur Config-Update fehlgeschlagen
+		return keyPathTilde, fmt.Errorf("Key deployed, Config-Update fehlgeschlagen: %w", err)
+	}
+
+	return keyPathTilde, nil
 }

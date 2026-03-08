@@ -2,9 +2,11 @@
 //
 // Formulare zum Erstellen und Bearbeiten von Verbindungen sowie
 // die Passwort-Eingabe fuer den Verbindungsaufbau.
+// Nach erfolgreicher Passwort-Anmeldung wird automatisch ein SSH-Key
+// generiert und auf dem Remote-Server deployed.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-03-08 00:00
 package main
 
 import (
@@ -75,11 +77,12 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleConnectKeys verarbeitet Tasten bei der Passwort-Eingabe.
+// Nach erfolgreicher Verbindung wird automatisch ein SSH-Key deployed.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-03-07 21:00
+// @date   2026-03-08 00:00
 func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
@@ -103,15 +106,22 @@ func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// SSH-Verbindung ueber Manager im Hintergrund aufbauen
+		// Passwort-Verbindung im Hintergrund aufbauen
 		connCopy := *conn
 		manager := m.sshManager
 		return m, func() tea.Msg {
-			status, err := manager.Connect(connCopy, password)
+			status, err := manager.ConnectWithPassword(connCopy, password)
 			if err != nil {
-				return sshErrorMsg{id: connID, err: err}
+				// Fehler -> in ViewConnect bleiben fuer erneuten Versuch
+				return sshErrorMsg{id: connID, err: err, returnToConnect: true}
 			}
-			return sshConnectedMsg{id: connID, status: status}
+			// Verbunden: Key wird automatisch in Update() deployed
+			return sshConnectedMsg{
+				id:          connID,
+				status:      status,
+				wasPassword: true,
+				conn:        connCopy,
+			}
 		}
 	}
 
@@ -157,35 +167,34 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 	s.WriteString(helpStyle.Render("\n  Tab:Naechstes Feld  Enter:Speichern  Esc:Abbrechen"))
 }
 
-// renderConnect rendert die Passwort-Eingabe fuer den Verbindungsaufbau.
+// renderConnect rendert die Passwort-Eingabe.
+// Wird angezeigt wenn Auto-Auth (Agent + alle Keys) fehlschlug.
+// Nach erfolgreicher Anmeldung wird automatisch ein SSH-Key generiert
+// und auf dem Server deployed, sodass die naechste Verbindung ohne Passwort klappt.
 //
 // @param s - String-Builder fuer die Ausgabe
-// @date   2026-03-07 21:00
+// @date   2026-03-08 00:00
 func (m AppModel) renderConnect(s *strings.Builder) {
 	name := ""
-	authType := AuthPassword
 	for _, c := range m.connections {
 		if c.ID == m.activeID {
 			name = c.Name
-			authType = c.AuthType
 			break
 		}
 	}
 
 	s.WriteString(titleStyle.Render(fmt.Sprintf("  Verbinde mit: %s", name)))
 	s.WriteString("\n\n")
-
-	switch authType {
-	case AuthKey:
-		s.WriteString("  Key-Passphrase (leer lassen wenn ohne):\n")
-	case AuthAgent:
-		s.WriteString("  SSH-Agent wird verwendet (Enter zum Verbinden):\n")
-	default:
-		s.WriteString("  Passwort:\n")
-	}
+	s.WriteString("  Kein passender SSH-Key gefunden. Bitte Passwort eingeben:\n")
 	s.WriteString("  " + m.passwordInput.View())
 	s.WriteString("\n")
 
+	if m.errorMsg != "" {
+		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
+		s.WriteString("\n")
+	}
+
+	s.WriteString(helpStyle.Render("\n  Nach erfolgreicher Anmeldung wird automatisch ein SSH-Key erstellt."))
 	s.WriteString(helpStyle.Render("\n  Enter:Verbinden  Esc:Abbrechen"))
 }
 
