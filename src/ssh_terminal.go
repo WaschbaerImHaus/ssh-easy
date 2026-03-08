@@ -73,6 +73,12 @@ func (t *sshTerminalCmd) Run() error {
 	// Terminal-Dateideskriptor (für Raw-Modus und Größenabfrage)
 	fd := int(os.Stdin.Fd())
 
+	// Windows: Virtual-Terminal-Verarbeitung aktivieren damit ANSI/VT-Escape-Sequenzen
+	// (Farben, Cursorbewegungen) korrekt dargestellt werden statt als Rohtext.
+	// Auf Unix ist dies ein No-Op.
+	restoreVT := setupConsoleVT()
+	defer restoreVT()
+
 	// Raw-Modus aktivieren: Tastendrücke werden sofort weitergeleitet (kein Zeilenpuffer).
 	// Wichtig für interaktive Programme wie mc, vim, bash etc.
 	// Auch nach Alt-Tab (Windows) stellt dies den korrekten Modus sicher.
