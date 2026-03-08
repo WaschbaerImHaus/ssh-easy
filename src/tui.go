@@ -43,19 +43,18 @@ const (
 	ViewKeygenResult
 )
 
-// Eingabefeld-Indizes fuer das Verbindungsformular
+// Eingabefeld-Indizes für das Verbindungsformular.
+// Auth-Typ und Key-Pfad entfernt – Authentifizierung erfolgt automatisch.
 const (
-	fieldName     = 0
-	fieldHost     = 1
-	fieldPort     = 2
-	fieldUser     = 3
-	fieldAuthType = 4
-	fieldKeyPath  = 5
-	fieldTunnels  = 6
-	fieldCount    = 7
+	fieldName    = 0
+	fieldHost    = 1
+	fieldPort    = 2
+	fieldUser    = 3
+	fieldTunnels = 4
+	fieldCount   = 5
 )
 
-// Eingabefeld-Indizes fuer das Keygen-Formular
+// Eingabefeld-Indizes für das Keygen-Formular
 const (
 	keygenFieldPath       = 0
 	keygenFieldPassphrase = 1
@@ -228,9 +227,10 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 }
 
 // createFormInputs erstellt die Eingabefelder für das Verbindungsformular.
+// Auth-Typ und Key-Pfad entfernt – Authentifizierung erfolgt automatisch.
 //
 // @return []textinput.Model - Liste der Eingabefelder
-// @date   2026-03-07 21:00
+// @date   2026-03-08 00:00
 func createFormInputs() []textinput.Model {
 	inputs := make([]textinput.Model, fieldCount)
 
@@ -249,14 +249,6 @@ func createFormInputs() []textinput.Model {
 	inputs[fieldUser] = textinput.New()
 	inputs[fieldUser].Placeholder = "root"
 	inputs[fieldUser].CharLimit = 50
-
-	inputs[fieldAuthType] = textinput.New()
-	inputs[fieldAuthType].Placeholder = "password, key oder agent"
-	inputs[fieldAuthType].CharLimit = 10
-
-	inputs[fieldKeyPath] = textinput.New()
-	inputs[fieldKeyPath].Placeholder = "~/.ssh/id_ed25519"
-	inputs[fieldKeyPath].CharLimit = 255
 
 	inputs[fieldTunnels] = textinput.New()
 	inputs[fieldTunnels].Placeholder = "3306,8080,5432"

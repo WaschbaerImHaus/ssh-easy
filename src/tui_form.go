@@ -155,9 +155,7 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 		"Host:",
 		"Port:",
 		"Benutzer:",
-		"Auth (password/key/agent):",
-		"Key-Pfad:",
-		"Tunnel-Ports (,):",
+		"Tunnel-Ports (kommagetrennt):",
 	}
 
 	for i, label := range labels {
@@ -218,8 +216,6 @@ func (m *AppModel) fillFormFromConnection(conn Connection) {
 	m.inputs[fieldHost].SetValue(conn.Host)
 	m.inputs[fieldPort].SetValue(strconv.Itoa(conn.Port))
 	m.inputs[fieldUser].SetValue(conn.User)
-	m.inputs[fieldAuthType].SetValue(string(conn.AuthType))
-	m.inputs[fieldKeyPath].SetValue(conn.KeyPath)
 
 	ports := make([]string, 0, len(conn.Tunnels))
 	for _, t := range conn.Tunnels {
@@ -238,8 +234,6 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 	host := strings.TrimSpace(m.inputs[fieldHost].Value())
 	portStr := strings.TrimSpace(m.inputs[fieldPort].Value())
 	user := strings.TrimSpace(m.inputs[fieldUser].Value())
-	authStr := strings.TrimSpace(m.inputs[fieldAuthType].Value())
-	keyPath := strings.TrimSpace(m.inputs[fieldKeyPath].Value())
 	tunnelStr := strings.TrimSpace(m.inputs[fieldTunnels].Value())
 
 	port := 22
@@ -251,17 +245,8 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 		}
 	}
 
-	// Auth-Typ bestimmen
-	authType := AuthPassword
-	switch authStr {
-	case "key":
-		authType = AuthKey
-	case "agent":
-		authType = AuthAgent
-	}
-
-	conn := NewConnection(name, host, port, user, authType)
-	conn.KeyPath = keyPath
+	// Authentifizierung erfolgt automatisch (Agent → Keys → Passwort)
+	conn := NewConnection(name, host, port, user, AuthPassword)
 
 	// Tunnel-Ports parsen
 	if tunnelStr != "" {
