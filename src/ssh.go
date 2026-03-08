@@ -10,7 +10,10 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha1"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"io"
@@ -212,59 +215,124 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 	return pubKeyStr, nil
 }
 
+// matchesHashedKnownHost prüft ob ein gehashter known_hosts-Eintrag zum Hostname passt.
+// OpenSSH hasht Hostnamen mit HMAC-SHA1(Salz, Hostname) und speichert Salz+Hash in Base64.
+// Format: |1|BASE64_SALT|BASE64_HASH
+//
+// @param hashField - Erstes Feld einer known_hosts-Zeile (z.B. "|1|abc...|xyz...")
+// @param hostname - Zu prüfender Hostname oder IP
+// @return bool - true wenn der Eintrag zu diesem Hostname gehört
+// @date   2026-03-08 00:00
+func matchesHashedKnownHost(hashField, hostname string) bool {
+	// Nur Format-Version 1 wird unterstützt (|1|...)
+	if !strings.HasPrefix(hashField, "|1|") {
+		return false
+	}
+
+	// Salz und Hash trennen: |1|SALZ|HASH → ["SALZ", "HASH"]
+	rest := hashField[3:]
+	pipe := strings.Index(rest, "|")
+	if pipe < 0 {
+		return false
+	}
+	saltB64 := rest[:pipe]
+	hashB64 := rest[pipe+1:]
+
+	// Salz und gespeicherten Hash dekodieren
+	salt, err := base64.StdEncoding.DecodeString(saltB64)
+	if err != nil {
+		return false
+	}
+	storedHash, err := base64.StdEncoding.DecodeString(hashB64)
+	if err != nil {
+		return false
+	}
+
+	// HMAC-SHA1(Salz, Hostname) berechnen und vergleichen
+	mac := hmac.New(sha1.New, salt)
+	mac.Write([]byte(hostname))
+	computed := mac.Sum(nil)
+
+	return hmac.Equal(computed, storedHash)
+}
+
 // removeKnownHost entfernt einen Host-Eintrag aus der known_hosts-Datei.
-// Unterstützt unhashed Einträge (hostname keytype key).
-// Wird benötigt wenn ein Host-Key sich geändert hat und der Nutzer
-// den alten Key bewusst löschen möchte.
+// Unterstützt sowohl unhashed (hostname keytype key) als auch gehashte
+// Einträge (|1|SALT|HASH keytype key) wie sie neuere OpenSSH-Versionen erzeugen.
+//
+// Verwendet das Umbenennen-Filtern-Zurückbenennen-Muster für Atomarität:
+// known_hosts → known_hosts.bak → gefiltert nach known_hosts → .bak löschen
 //
 // @param knownHostsPath - Pfad zur known_hosts-Datei
-// @param hostname - Hostname dessen Eintrag entfernt werden soll
+// @param hostname - Hostname/IP dessen Eintrag entfernt werden soll
 // @return error - Fehler beim Lesen/Schreiben
 // @date   2026-03-08 00:00
 func removeKnownHost(knownHostsPath, hostname string) error {
-	data, err := os.ReadFile(knownHostsPath)
+	bakPath := knownHostsPath + ".bak"
+
+	// Datei umbenennen für sicheres atomares Update
+	// (bei Absturz bleibt .bak erhalten, original ist weg - wird beim nächsten SSH neu erstellt)
+	if err := os.Rename(knownHostsPath, bakPath); err != nil {
+		return fmt.Errorf("known_hosts konnte nicht umbenannt werden: %w", err)
+	}
+
+	data, err := os.ReadFile(bakPath)
 	if err != nil {
-		return fmt.Errorf("known_hosts konnte nicht gelesen werden: %w", err)
+		// Umbenennung rückgängig machen damit keine Daten verloren gehen
+		os.Rename(bakPath, knownHostsPath)
+		return fmt.Errorf("known_hosts.bak konnte nicht gelesen werden: %w", err)
 	}
 
 	lines := strings.Split(string(data), "\n")
 	var kept []string
-	removed := false
 
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 
-		// Kommentare und Leerzeilen behalten
+		// Kommentare und Leerzeilen immer behalten
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			kept = append(kept, line)
 			continue
 		}
 
-		// Hostnamen im ersten Feld prüfen (kommagetrennte Liste möglich)
+		// Erstes Feld ist Hostname/IP oder Hash
 		fields := strings.Fields(trimmed)
-		shouldSkip := false
-		if len(fields) >= 2 {
-			hosts := strings.Split(fields[0], ",")
-			for _, h := range hosts {
+		if len(fields) < 2 {
+			kept = append(kept, line)
+			continue
+		}
+
+		hostField := fields[0]
+		shouldRemove := false
+
+		if strings.HasPrefix(hostField, "|1|") {
+			// Gehashter Eintrag: HMAC-SHA1-Vergleich durchführen
+			shouldRemove = matchesHashedKnownHost(hostField, hostname)
+		} else {
+			// Ungehashter Eintrag: direkte Zeichenkettensuche (kommagetrennte Hosts möglich)
+			for _, h := range strings.Split(hostField, ",") {
 				if h == hostname {
-					shouldSkip = true
-					removed = true
+					shouldRemove = true
 					break
 				}
 			}
 		}
 
-		if !shouldSkip {
+		if !shouldRemove {
 			kept = append(kept, line)
 		}
 	}
 
-	if !removed {
-		// Nicht gefunden - kein Fehler (bereits entfernt oder gehasht)
-		return nil
+	// Gefilterte known_hosts schreiben
+	if err := os.WriteFile(knownHostsPath, []byte(strings.Join(kept, "\n")), 0600); err != nil {
+		// Schreiben fehlgeschlagen: Backup wiederherstellen
+		os.Rename(bakPath, knownHostsPath)
+		return fmt.Errorf("known_hosts konnte nicht geschrieben werden: %w", err)
 	}
 
-	return os.WriteFile(knownHostsPath, []byte(strings.Join(kept, "\n")), 0600)
+	// Backup-Datei entfernen
+	os.Remove(bakPath)
+	return nil
 }
 
 // getKnownHostsPath gibt den Pfad zur known_hosts-Datei zurück.

@@ -1,9 +1,10 @@
 // Paket main - TUI Statusansicht für ssh-easy
 //
 // Zeigt den Verbindungsstatus und Tunnel-Details an.
+// Ermöglicht über 't' das Öffnen einer interaktiven Remote-Shell.
 //
-// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-03-08 00:00
 package main
 
 import (
@@ -23,6 +24,18 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
 		m.state = ViewList
+
+	case "t":
+		// Interaktive Remote-Shell öffnen
+		status, _ := m.sshManager.GetStatus(m.activeID)
+		if status != nil && status.Connected && status.SSHClient != nil {
+			// TUI pausieren, SSH-PTY-Session starten, danach TUI wiederherstellen
+			cmd := newSSHTerminalCmd(status.SSHClient, m.termWidth, m.termHeight)
+			return m, tea.Exec(cmd, func(err error) tea.Msg {
+				return terminalDoneMsg{err: err}
+			})
+		}
+		m.errorMsg = "Keine aktive Verbindung"
 
 	case "x":
 		m.sshManager.Disconnect(m.activeID)
@@ -82,5 +95,5 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 
 	s.WriteString(infoBoxStyle.Render(info.String()))
 
-	s.WriteString(helpStyle.Render("\n\n  x:Trennen  Esc:Zurück"))
+	s.WriteString(helpStyle.Render("\n\n  t:Terminal  x:Trennen  Esc:Zurück"))
 }

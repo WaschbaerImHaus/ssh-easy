@@ -108,6 +108,12 @@ type keygenResultMsg struct {
 	err    error
 }
 
+// terminalDoneMsg wird gesendet wenn die interaktive SSH-Terminal-Session endet.
+// err ist nil bei normalem Ende (Nutzer schreibt "exit"), sonst Fehlerbeschreibung.
+type terminalDoneMsg struct {
+	err error
+}
+
 // --- Styles ---
 var (
 	titleStyle = lipgloss.NewStyle().
@@ -191,6 +197,10 @@ type AppModel struct {
 	hostKeyPassword string
 	// Ob beim Host-Key-Dialog Passwort-Auth verwendet werden soll
 	hostKeyWasPassword bool
+	// Aktuelle Terminalbreite in Zeichen (aus WindowSizeMsg)
+	termWidth int
+	// Aktuelle Terminalhöhe in Zeilen (aus WindowSizeMsg)
+	termHeight int
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -308,6 +318,22 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		return m.handleKeyPress(msg)
+
+	case tea.WindowSizeMsg:
+		// Terminalgroeße merken für SSH-PTY-Sessions
+		m.termWidth = msg.Width
+		m.termHeight = msg.Height
+		return m, nil
+
+	case terminalDoneMsg:
+		// Interaktive Terminal-Session beendet, zurück zur Statusansicht
+		if msg.err != nil {
+			m.errorMsg = "Terminal-Fehler: " + msg.err.Error()
+		} else {
+			m.successMsg = "Terminal-Session beendet"
+		}
+		m.state = ViewStatus
+		return m, nil
 
 	case sshConnectedMsg:
 		m.successMsg = "Verbindung hergestellt!"
