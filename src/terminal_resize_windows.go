@@ -28,8 +28,9 @@ import (
 // @date   2026-03-08 00:00
 func waitForResizeSignal(stop <-chan struct{}) {
 	select {
-	case <-time.After(250 * time.Millisecond):
-		// Nach 250ms zurückkehren damit watchTerminalResize die Größe prüft
+	case <-time.After(100 * time.Millisecond):
+		// Nach 100ms zurückkehren damit watchTerminalResize die Größe prüft.
+		// Kürzeres Intervall = schnellere Reaktion auf Fenstergrößenänderung.
 	case <-stop:
 		// Session beendet → Goroutine beenden
 	}

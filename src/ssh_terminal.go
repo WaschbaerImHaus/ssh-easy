@@ -70,8 +70,11 @@ func (t *sshTerminalCmd) SetStderr(w io.Writer) { t.stderr = w }
 // @return error - Fehler beim Starten der Session oder nil bei normalem Ende
 // @date   2026-03-08 00:00
 func (t *sshTerminalCmd) Run() error {
-	// Terminal-Dateideskriptor (für Raw-Modus und Größenabfrage)
-	fd := int(os.Stdin.Fd())
+	// Zwei getrennte Dateideskriptoren:
+	// stdinFd  → Raw-Modus (Tastatureingabe ungepuffert)
+	// stdoutFd → Terminalgröße (Windows: GetConsoleScreenBufferInfo braucht Output-Handle)
+	stdinFd := int(os.Stdin.Fd())
+	stdoutFd := int(os.Stdout.Fd())
 
 	// Windows: Virtual-Terminal-Verarbeitung aktivieren damit ANSI/VT-Escape-Sequenzen
 	// (Farben, Cursorbewegungen) korrekt dargestellt werden statt als Rohtext.
@@ -82,7 +85,7 @@ func (t *sshTerminalCmd) Run() error {
 	// Raw-Modus aktivieren: Tastendrücke werden sofort weitergeleitet (kein Zeilenpuffer).
 	// Wichtig für interaktive Programme wie mc, vim, bash etc.
 	// Auch nach Alt-Tab (Windows) stellt dies den korrekten Modus sicher.
-	oldState, err := term.MakeRaw(fd)
+	oldState, err := term.MakeRaw(stdinFd)
 	if err != nil {
 		// Warnung: kein Raw-Modus möglich (z.B. kein echtes Terminal).
 		// Trotzdem fortfahren – einfache Befehle funktionieren noch.
@@ -91,7 +94,7 @@ func (t *sshTerminalCmd) Run() error {
 	// Terminal-Zustand beim Beenden immer wiederherstellen
 	defer func() {
 		if oldState != nil {
-			term.Restore(fd, oldState)
+			term.Restore(stdinFd, oldState)
 		}
 	}()
 
@@ -115,10 +118,10 @@ func (t *sshTerminalCmd) Run() error {
 		ssh.TTY_OP_OSPEED: 38400, // Ausgabe-Baudrate
 	}
 
-	// Terminalgröße ermitteln: zuerst live vom OS, dann Fallback aus WindowSizeMsg
-	width, height, sizeErr := term.GetSize(fd)
+	// Terminalgröße vom stdout-Handle ermitteln (auf Windows zwingend Output-Handle nötig).
+	// Fallback auf die zuletzt bekannte Größe aus Bubbleteas WindowSizeMsg.
+	width, height, sizeErr := term.GetSize(stdoutFd)
 	if sizeErr != nil || width <= 0 || height <= 0 {
-		// Fallback auf zuletzt bekannte Größe aus Bubbletea
 		width, height = t.width, t.height
 	}
 	if width <= 0 {
@@ -145,7 +148,8 @@ func (t *sshTerminalCmd) Run() error {
 	resizeWg.Add(1)
 	go func() {
 		defer resizeWg.Done()
-		watchTerminalResize(session, fd, width, height, stopResize)
+		// stdoutFd übergeben – Größenabfrage muss auf Output-Handle erfolgen (Windows!)
+		watchTerminalResize(session, stdoutFd, width, height, stopResize)
 	}()
 
 	// Warten bis der Nutzer die Session beendet (z.B. mit "exit" oder Ctrl+D)
