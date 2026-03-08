@@ -212,6 +212,110 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 	return pubKeyStr, nil
 }
 
+// removeKnownHost entfernt einen Host-Eintrag aus der known_hosts-Datei.
+// Unterstuetzt unhashed Eintraege (hostname keytype key).
+// Wird benoetigt wenn ein Host-Key sich geaendert hat und der Nutzer
+// den alten Key bewusst loeschen moechte.
+//
+// @param knownHostsPath - Pfad zur known_hosts-Datei
+// @param hostname - Hostname dessen Eintrag entfernt werden soll
+// @return error - Fehler beim Lesen/Schreiben
+// @date   2026-03-08 00:00
+func removeKnownHost(knownHostsPath, hostname string) error {
+	data, err := os.ReadFile(knownHostsPath)
+	if err != nil {
+		return fmt.Errorf("known_hosts konnte nicht gelesen werden: %w", err)
+	}
+
+	lines := strings.Split(string(data), "\n")
+	var kept []string
+	removed := false
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Kommentare und Leerzeilen behalten
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			kept = append(kept, line)
+			continue
+		}
+
+		// Hostnamen im ersten Feld pruefen (kommagetrennte Liste moeglich)
+		fields := strings.Fields(trimmed)
+		shouldSkip := false
+		if len(fields) >= 2 {
+			hosts := strings.Split(fields[0], ",")
+			for _, h := range hosts {
+				if h == hostname {
+					shouldSkip = true
+					removed = true
+					break
+				}
+			}
+		}
+
+		if !shouldSkip {
+			kept = append(kept, line)
+		}
+	}
+
+	if !removed {
+		// Nicht gefunden - kein Fehler (bereits entfernt oder gehasht)
+		return nil
+	}
+
+	return os.WriteFile(knownHostsPath, []byte(strings.Join(kept, "\n")), 0600)
+}
+
+// getKnownHostsPath gibt den Pfad zur known_hosts-Datei zurueck.
+//
+// @return string - Absoluter Pfad zur known_hosts-Datei
+// @return error - Fehler wenn Home-Verzeichnis nicht ermittelbar
+// @date   2026-03-08 00:00
+func getKnownHostsPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("Home-Verzeichnis nicht ermittelbar: %w", err)
+	}
+	return filepath.Join(home, ".ssh", "known_hosts"), nil
+}
+
+// parseHostKeyChangedHostname extrahiert den Hostname aus einer
+// "HOST-KEY GEAENDERT fuer HOSTNAME!"-Fehlermeldung.
+//
+// @param err - Fehler der geparst werden soll
+// @return string - Hostname oder leer wenn kein Match
+// @date   2026-03-08 00:00
+func parseHostKeyChangedHostname(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	marker := "HOST-KEY GEAENDERT fuer "
+	idx := strings.Index(msg, marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := msg[idx+len(marker):]
+	end := strings.Index(rest, "!")
+	if end < 0 {
+		return strings.TrimSpace(rest)
+	}
+	return strings.TrimSpace(rest[:end])
+}
+
+// IsHostKeyChangedError prueft ob ein Fehler ein Host-Key-Aenderungsfehler ist.
+//
+// @param err - Zu pruefender Fehler
+// @return bool - Ob der Host-Key sich geaendert hat
+// @date   2026-03-08 00:00
+func IsHostKeyChangedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "HOST-KEY GEAENDERT")
+}
+
 // deployPublicKey fuegt einen oeffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.
 // Uebertraegt den Key sicher ueber stdin (kein Shell-Escaping noetig).
 //

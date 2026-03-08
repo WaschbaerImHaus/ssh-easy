@@ -33,6 +33,8 @@ const (
 	ViewConnecting
 	// ViewConnect - Passwort-Eingabe (Auto-Auth fehlgeschlagen)
 	ViewConnect
+	// ViewHostKeyChanged - Host-Key hat sich geaendert: Nutzer befragt
+	ViewHostKeyChanged
 	// ViewStatus - Statusanzeige einer aktiven Verbindung
 	ViewStatus
 	// ViewKeygen - Formular zur SSH-Key-Generierung
@@ -83,6 +85,15 @@ type sshKeyDeployedMsg struct {
 	connID  string
 	keyPath string
 	err     error
+}
+
+// sshHostKeyChangedMsg wird gesendet wenn sich der Host-Key geaendert hat.
+// Zeigt einen Dialog mit der Frage ob der alte Key entfernt werden soll.
+type sshHostKeyChangedMsg struct {
+	connID      string
+	hostname    string
+	wasPassword bool   // War gerade Passwort-Auth im Gange?
+	password    string // Gespeichertes Passwort fuer Retry
 }
 
 // sshErrorMsg wird gesendet bei SSH-Verbindungsfehlern
@@ -175,6 +186,12 @@ type AppModel struct {
 	keygenFocused int
 	// Generierter Public Key (fuer Ergebnisanzeige)
 	generatedPubKey string
+	// Hostname bei dem sich der Host-Key geaendert hat (fuer Dialog)
+	hostKeyHostname string
+	// Passwort das beim Host-Key-Dialog-Retry verwendet werden soll
+	hostKeyPassword string
+	// Ob beim Host-Key-Dialog Passwort-Auth verwendet werden soll
+	hostKeyWasPassword bool
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -325,6 +342,17 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.successMsg = ""
 		return m, textinput.Blink
 
+	case sshHostKeyChangedMsg:
+		// Host-Key hat sich geaendert - Dialog anzeigen
+		m.state = ViewHostKeyChanged
+		m.hostKeyHostname = msg.hostname
+		m.hostKeyPassword = msg.password
+		m.hostKeyWasPassword = msg.wasPassword
+		m.activeID = msg.connID
+		m.errorMsg = ""
+		m.successMsg = ""
+		return m, nil
+
 	case sshKeyDeployedMsg:
 		// Key-Deployment abgeschlossen
 		if msg.err != nil {
@@ -387,6 +415,8 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ViewConnecting:
 		// Waehrend Auto-Connect laeuft: keine Tastenverarbeitung (nur Ctrl+C oben)
 		return m, nil
+	case ViewHostKeyChanged:
+		return m.handleHostKeyChangedKeys(msg)
 	case ViewConnect:
 		return m.handleConnectKeys(msg)
 	case ViewStatus:
@@ -439,6 +469,8 @@ func (m AppModel) View() string {
 		m.renderDeleteConfirm(&s)
 	case ViewConnecting:
 		m.renderConnecting(&s)
+	case ViewHostKeyChanged:
+		m.renderHostKeyChanged(&s)
 	case ViewConnect:
 		m.renderConnect(&s)
 	case ViewStatus:

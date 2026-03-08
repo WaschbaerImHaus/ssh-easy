@@ -93,6 +93,15 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, func() tea.Msg {
 					status, err := manager.ConnectAuto(connCopy)
 					if err != nil {
+						// Host-Key hat sich geaendert: Dialog anzeigen
+						if IsHostKeyChangedError(err) {
+							hostname := parseHostKeyChangedHostname(err)
+							return sshHostKeyChangedMsg{
+								connID:      connCopy.ID,
+								hostname:    hostname,
+								wasPassword: false,
+							}
+						}
 						// Netzwerkfehler: direkt melden
 						if IsNetworkError(err) {
 							return sshErrorMsg{id: connCopy.ID, err: err}

@@ -108,11 +108,22 @@ func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 		// Passwort-Verbindung im Hintergrund aufbauen
 		connCopy := *conn
+		pwCopy := password
 		manager := m.sshManager
 		return m, func() tea.Msg {
-			status, err := manager.ConnectWithPassword(connCopy, password)
+			status, err := manager.ConnectWithPassword(connCopy, pwCopy)
 			if err != nil {
-				// Fehler -> in ViewConnect bleiben fuer erneuten Versuch
+				// Host-Key hat sich geaendert: Dialog anzeigen
+				if IsHostKeyChangedError(err) {
+					hostname := parseHostKeyChangedHostname(err)
+					return sshHostKeyChangedMsg{
+						connID:      connID,
+						hostname:    hostname,
+						wasPassword: true,
+						password:    pwCopy,
+					}
+				}
+				// Anderer Fehler -> in ViewConnect bleiben
 				return sshErrorMsg{id: connID, err: err, returnToConnect: true}
 			}
 			// Verbunden: Key wird automatisch in Update() deployed
