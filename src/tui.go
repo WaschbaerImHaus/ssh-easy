@@ -255,6 +255,7 @@ func createFormInputs() []textinput.Model {
 	inputs[fieldPort] = textinput.New()
 	inputs[fieldPort].Placeholder = "22"
 	inputs[fieldPort].CharLimit = 5
+	inputs[fieldPort].SetValue("22") // Default-Wert direkt setzen, Placeholder wäre im fokussierten Feld unsichtbar
 
 	inputs[fieldUser] = textinput.New()
 	inputs[fieldUser].Placeholder = "root"

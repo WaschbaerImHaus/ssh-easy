@@ -32,7 +32,12 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.errorMsg = ""
 		return m, nil
 
-	case "tab", "down":
+	case "tab", "down", "enter":
+		// Enter und Tab: zum nächsten Feld springen; beim letzten Feld speichern
+		if msg.String() == "enter" && m.focusedInput == fieldCount-1 {
+			// Letztes Feld + Enter → speichern (weiter unten)
+			break
+		}
 		m.inputs[m.focusedInput].Blur()
 		m.focusedInput = (m.focusedInput + 1) % fieldCount
 		m.inputs[m.focusedInput].Focus()
@@ -43,8 +48,10 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focusedInput = (m.focusedInput - 1 + fieldCount) % fieldCount
 		m.inputs[m.focusedInput].Focus()
 		return m, textinput.Blink
+	}
 
-	case "enter":
+	// Enter im letzten Feld oder separater Speichern-Pfad
+	if msg.String() == "enter" {
 		conn, err := m.buildConnectionFromForm()
 		if err != nil {
 			m.errorMsg = err.Error()
