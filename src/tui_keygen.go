@@ -44,7 +44,7 @@ func (m AppModel) handleKeygenKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		passphrase := m.keygenInputs[keygenFieldPassphrase].Value()
 
 		if keyPath == "" {
-			m.errorMsg = "Dateipfad darf nicht leer sein"
+			m.errorMsg = m.lang.KeyPathRequired
 			return m, nil
 		}
 
@@ -78,12 +78,12 @@ func (m AppModel) handleKeygenResultKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderKeygen(s *strings.Builder) {
-	s.WriteString(titleStyle.Render("  SSH-Key generieren (Ed25519)"))
+	s.WriteString(titleStyle.Render(m.lang.KeygenTitle))
 	s.WriteString("\n\n")
 
 	labels := []string{
-		"Dateipfad:",
-		"Passphrase (optional):",
+		m.lang.LabelKeyPath,
+		m.lang.LabelPassphrase,
 	}
 
 	for i, label := range labels {
@@ -98,10 +98,10 @@ func (m AppModel) renderKeygen(s *strings.Builder) {
 	}
 
 	if m.errorMsg != "" {
-		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
+		s.WriteString("\n" + errorStyle.Render(m.lang.ErrPrefix+m.errorMsg))
 	}
 
-	s.WriteString(helpStyle.Render("\n  Tab:Nächstes Feld  Enter:Generieren  Esc:Abbrechen"))
+	s.WriteString(helpStyle.Render("\n" + m.lang.KeygenHelp))
 }
 
 // renderKeygenResult rendert den generierten Public Key.
@@ -109,18 +109,18 @@ func (m AppModel) renderKeygen(s *strings.Builder) {
 // @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderKeygenResult(s *strings.Builder) {
-	s.WriteString(titleStyle.Render("  SSH-Key generiert!"))
+	s.WriteString(titleStyle.Render(m.lang.KeygenDoneTitle))
 	s.WriteString("\n\n")
 
-	s.WriteString(successStyle.Render("  Schlüssel erfolgreich erstellt."))
+	s.WriteString(successStyle.Render(m.lang.KeyCreated))
 	s.WriteString("\n\n")
 
-	s.WriteString("  " + labelStyle.Render("Public Key:"))
+	s.WriteString("  " + labelStyle.Render(m.lang.LabelPublicKey))
 	s.WriteString("\n\n")
 
 	s.WriteString(infoBoxStyle.Render(strings.TrimSpace(m.generatedPubKey)))
 	s.WriteString("\n\n")
 
-	s.WriteString(helpStyle.Render("  Diesen Public Key auf dem Zielserver in ~/.ssh/authorized_keys eintragen."))
-	s.WriteString(helpStyle.Render("\n  Enter/Esc:Zurück"))
+	s.WriteString(helpStyle.Render(m.lang.KeyAddToAuth))
+	s.WriteString(helpStyle.Render("\n" + m.lang.BackHelp))
 }

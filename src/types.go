@@ -68,6 +68,8 @@ type Connection struct {
 type AppConfig struct {
 	// Schema-Version für zukünftige Migrationen
 	Version int `json:"version"`
+	// Gewählte UI-Sprache (ISO 639-1 Code, z.B. "de", "en")
+	Language Language `json:"language,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

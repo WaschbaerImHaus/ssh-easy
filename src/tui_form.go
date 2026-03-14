@@ -73,7 +73,7 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.configCache.Invalidate()
 		m.reloadConfig()
 		m.state = ViewList
-		m.successMsg = "Verbindung gespeichert!"
+		m.successMsg = m.lang.SavedMsg
 		m.errorMsg = ""
 		return m, nil
 	}
@@ -108,7 +108,7 @@ func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		if conn == nil {
-			m.errorMsg = "Verbindung nicht gefunden"
+			m.errorMsg = m.lang.ConnNotFound
 			m.state = ViewList
 			return m, nil
 		}
@@ -158,11 +158,11 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 	s.WriteString("\n\n")
 
 	labels := []string{
-		"Name:",
-		"Host:",
-		"Port:",
-		"Benutzer:",
-		"Tunnel-Ports (kommagetrennt):",
+		m.lang.LabelName,
+		m.lang.LabelHost,
+		m.lang.LabelPort,
+		m.lang.LabelUser,
+		m.lang.LabelTunnels,
 	}
 
 	for i, label := range labels {
@@ -177,10 +177,10 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 	}
 
 	if m.errorMsg != "" {
-		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
+		s.WriteString("\n" + errorStyle.Render(m.lang.ErrPrefix+m.errorMsg))
 	}
 
-	s.WriteString(helpStyle.Render("\n  Tab:Nächstes Feld  Enter:Speichern  Esc:Abbrechen"))
+	s.WriteString(helpStyle.Render("\n" + m.lang.FormHelp))
 }
 
 // renderConnect rendert die Passwort-Eingabe.
@@ -199,19 +199,19 @@ func (m AppModel) renderConnect(s *strings.Builder) {
 		}
 	}
 
-	s.WriteString(titleStyle.Render(fmt.Sprintf("  Verbinde mit: %s", name)))
+	s.WriteString(titleStyle.Render(fmt.Sprintf(m.lang.ConnectingTitle, name)))
 	s.WriteString("\n\n")
-	s.WriteString("  Kein passender SSH-Key gefunden. Bitte Passwort eingeben:\n")
+	s.WriteString(m.lang.NoKeyFound + "\n")
 	s.WriteString("  " + m.passwordInput.View())
 	s.WriteString("\n")
 
 	if m.errorMsg != "" {
-		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
+		s.WriteString("\n" + errorStyle.Render(m.lang.ErrPrefix+m.errorMsg))
 		s.WriteString("\n")
 	}
 
-	s.WriteString(helpStyle.Render("\n  Nach erfolgreicher Anmeldung wird automatisch ein SSH-Schlüssel erstellt."))
-	s.WriteString(helpStyle.Render("\n  Enter:Verbinden  Esc:Abbrechen"))
+	s.WriteString(helpStyle.Render("\n" + m.lang.AfterPWHint))
+	s.WriteString(helpStyle.Render("\n" + m.lang.ConnectHelp))
 }
 
 // fillFormFromConnection befüllt die Formularfelder mit Daten einer Verbindung.
@@ -248,7 +248,7 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 		var err error
 		port, err = strconv.Atoi(portStr)
 		if err != nil {
-			return Connection{}, fmt.Errorf("Port muss eine Zahl sein")
+			return Connection{}, fmt.Errorf("%s", m.lang.ErrPortMustBeNum)
 		}
 	}
 
@@ -265,7 +265,7 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 			}
 			tunnelPort, err := strconv.Atoi(p)
 			if err != nil {
-				return Connection{}, fmt.Errorf("Tunnel-Port '%s' ist keine gültige Zahl", p)
+				return Connection{}, fmt.Errorf(m.lang.ErrTunnelPort, p)
 			}
 			conn.Tunnels = append(conn.Tunnels, TunnelConfig{
 				LocalPort:  tunnelPort,

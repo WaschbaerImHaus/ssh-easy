@@ -35,11 +35,11 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return terminalDoneMsg{err: err}
 			})
 		}
-		m.errorMsg = "Keine aktive Verbindung"
+		m.errorMsg = m.lang.NoActiveConn
 
 	case "x":
 		m.sshManager.Disconnect(m.activeID)
-		m.successMsg = "Verbindung getrennt"
+		m.successMsg = m.lang.DiscoMsg
 		m.state = ViewList
 	}
 
@@ -59,34 +59,34 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 		}
 	}
 	if conn == nil {
-		s.WriteString("Verbindung nicht gefunden")
+		s.WriteString(m.lang.ConnNotFound)
 		return
 	}
 
 	status, _ := m.sshManager.GetStatus(m.activeID)
 
-	s.WriteString(titleStyle.Render(fmt.Sprintf("  Status: %s", conn.Name)))
+	s.WriteString(titleStyle.Render(fmt.Sprintf(m.lang.StatusTitle, conn.Name)))
 	s.WriteString("\n\n")
 
 	var info strings.Builder
-	info.WriteString(fmt.Sprintf("Server:  %s@%s:%d\n", conn.User, conn.Host, conn.Port))
-	info.WriteString(fmt.Sprintf("Auth:    %s\n", conn.AuthType))
+	info.WriteString(fmt.Sprintf("%s%s@%s:%d\n", m.lang.LabelServer, conn.User, conn.Host, conn.Port))
+	info.WriteString(fmt.Sprintf("%s%s\n", m.lang.LabelAuth, conn.AuthType))
 
 	if status != nil && status.Connected {
-		info.WriteString(fmt.Sprintf("Status:  %s\n", connectedStyle.Render("Verbunden")))
+		info.WriteString(fmt.Sprintf("%s%s\n", m.lang.LabelStatus, connectedStyle.Render(m.lang.StatusConn)))
 	} else {
-		info.WriteString(fmt.Sprintf("Status:  %s\n", disconnectedStyle.Render("Getrennt")))
+		info.WriteString(fmt.Sprintf("%s%s\n", m.lang.LabelStatus, disconnectedStyle.Render(m.lang.StatusDisconn)))
 	}
 
-	info.WriteString("\nTunnel:\n")
+	info.WriteString(fmt.Sprintf("\n%s\n", m.lang.LabelTunnel))
 	for _, t := range conn.Tunnels {
 		if !t.Enabled {
 			continue
 		}
-		tunnelStatus := connectedStyle.Render("aktiv")
+		tunnelStatus := connectedStyle.Render(m.lang.TunnelActive)
 		if status != nil {
 			if errMsg, ok := status.TunnelErrors[t.LocalPort]; ok {
-				tunnelStatus = errorStyle.Render("Fehler: " + errMsg)
+				tunnelStatus = errorStyle.Render(m.lang.TunnelErrPrefix + errMsg)
 			}
 		}
 		info.WriteString(fmt.Sprintf("  localhost:%d -> remote:%d  %s\n",
@@ -95,5 +95,5 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 
 	s.WriteString(infoBoxStyle.Render(info.String()))
 
-	s.WriteString(helpStyle.Render("\n\n  t:Terminal  x:Trennen  Esc:Zurück"))
+	s.WriteString(helpStyle.Render("\n\n" + m.lang.StatusHelp))
 }

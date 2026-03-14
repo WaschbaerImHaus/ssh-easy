@@ -41,7 +41,7 @@ func (m AppModel) handleHostKeyChangedKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 			}
 		}
 		if conn == nil {
-			m.errorMsg = "Verbindung nicht gefunden"
+			m.errorMsg = m.lang.ConnNotFound
 			m.state = ViewList
 			return m, nil
 		}
@@ -103,27 +103,22 @@ func (m AppModel) handleHostKeyChangedKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) 
 // @param s - String-Builder fuer die Ausgabe
 // @date   2026-03-08 00:00
 func (m AppModel) renderHostKeyChanged(s *strings.Builder) {
-	s.WriteString(errorStyle.Render("  SICHERHEITSWARNUNG: SSH HOST-KEY GEÄNDERT!"))
+	s.WriteString(errorStyle.Render(m.lang.HostKeyWarning))
 	s.WriteString("\n\n")
 
 	hostname := m.hostKeyHostname
 	if hostname == "" {
-		hostname = "(unbekannt)"
+		hostname = m.lang.UnknownHost
 	}
 
-	// Warnungsbox
+	// Warnungsbox mit übersetzten Texten
 	var warn strings.Builder
-	warn.WriteString(fmt.Sprintf("Der SSH-Schlüssel des Servers hat sich geändert!\n\n"))
-	warn.WriteString(fmt.Sprintf("Host: %s\n\n", hostname))
-	warn.WriteString("MÖGLICHE URSACHEN:\n")
-	warn.WriteString("  - Server wurde neu installiert (legitim)\n")
-	warn.WriteString("  - Server-Key wurde erneuert (legitim)\n")
-	warn.WriteString("  - Man-in-the-Middle-Angriff (GEFÄHRLICH!)\n\n")
-	warn.WriteString("Nur fortfahren wenn du weißt dass sich\n")
-	warn.WriteString("der Server-Key geändert hat!")
+	warn.WriteString(m.lang.HostKeyBoxTitle)
+	warn.WriteString(fmt.Sprintf(m.lang.HostKeyBoxHost, hostname))
+	warn.WriteString(m.lang.HostKeyReasons)
+	warn.WriteString(m.lang.HostKeyCaution)
 	s.WriteString(infoBoxStyle.Render(warn.String()))
 	s.WriteString("\n\n")
 
-	s.WriteString("  Alten Host-Key entfernen und neu verbinden?\n\n")
-	s.WriteString("  [j/y] Ja, ich weiss was ich tue   [n/Esc] Nein, abbrechen")
+	s.WriteString(m.lang.HostKeyAskYesNo)
 }

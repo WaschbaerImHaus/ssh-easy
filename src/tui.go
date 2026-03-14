@@ -10,6 +10,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -41,6 +42,8 @@ const (
 	ViewKeygen
 	// ViewKeygenResult - Anzeige des generierten Public Keys
 	ViewKeygenResult
+	// ViewLanguage - Sprachauswahl (beim ersten Start und über 'l' erreichbar)
+	ViewLanguage
 )
 
 // Eingabefeld-Indizes für das Verbindungsformular.
@@ -201,6 +204,12 @@ type AppModel struct {
 	termWidth int
 	// Aktuelle Terminalhöhe in Zeilen (aus WindowSizeMsg)
 	termHeight int
+	// Aktuell gewählte Sprache (ISO 639-1 Code)
+	language Language
+	// Alle UI-Texte der gewählten Sprache
+	lang Translations
+	// Cursor-Position in der Sprachauswahl-Liste
+	langCursor int
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -214,7 +223,6 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	cache := NewConfigCache(configPath)
 
 	m := AppModel{
-		state:       ViewList,
 		sshManager:  sshManager,
 		configCache: cache,
 		configPath:  configPath,
@@ -224,14 +232,39 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	// Konfiguration über Cache laden
 	cfg, err := cache.Get()
 	if err != nil {
-		m.errorMsg = "Fehler beim Laden: " + err.Error()
+		// Fallback auf Englisch bei Ladefehler
+		m.lang = GetTranslations(LangEnglish)
+		m.language = LangEnglish
+		m.errorMsg = m.lang.ErrLoading + err.Error()
 		m.connections = []Connection{}
 	} else {
 		m.connections = cfg.Connections
+		m.language = cfg.Language
 	}
 
+	// Sprache initialisieren
+	if m.language == "" {
+		// Erster Start: Sprachauswahl zeigen (Default Englisch für das Auswahlmenü)
+		m.lang = GetTranslations(LangEnglish)
+		m.state = ViewLanguage
+		m.langCursor = 0
+	} else {
+		m.lang = GetTranslations(m.language)
+		m.state = ViewList
+		// Cursor auf aktuell gewählte Sprache vorbelegen
+		for i, opt := range AvailableLanguages {
+			if opt.Code == m.language {
+				m.langCursor = i
+				break
+			}
+		}
+	}
+
+	// Eingabefelder mit sprachspezifischen Platzhaltern erstellen
 	m.inputs = createFormInputs()
+	m.inputs[fieldName].Placeholder = m.lang.PlaceholderName
 	m.passwordInput = createPasswordInput()
+	m.passwordInput.Placeholder = m.lang.PlaceholderPW
 
 	return m
 }
@@ -329,15 +362,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case terminalDoneMsg:
 		// Interaktive Terminal-Session beendet, zurück zur Statusansicht
 		if msg.err != nil {
-			m.errorMsg = "Terminal-Fehler: " + msg.err.Error()
+			m.errorMsg = m.lang.ErrTerminal + msg.err.Error()
 		} else {
-			m.successMsg = "Terminal-Session beendet"
+			m.successMsg = m.lang.TerminalDone
 		}
 		m.state = ViewStatus
 		return m, nil
 
 	case sshConnectedMsg:
-		m.successMsg = "Verbindung hergestellt!"
+		m.successMsg = m.lang.ConnectedMsg
 		m.errorMsg = ""
 		m.state = ViewList
 		// Bei Passwort-Auth: automatisch SSH-Key generieren und deployen
@@ -375,9 +408,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sshKeyDeployedMsg:
 		// Key-Deployment abgeschlossen
 		if msg.err != nil {
-			m.errorMsg = "Key-Deployment fehlgeschlagen: " + msg.err.Error()
+			m.errorMsg = m.lang.KeyDeployFailed + msg.err.Error()
 		} else {
-			m.successMsg = "SSH-Key deployed! Nächste Verbindung ohne Passwort: " + msg.keyPath
+			m.successMsg = fmt.Sprintf(m.lang.KeyDeployedMsg, msg.keyPath)
 			// Konfiguration neu laden (Key-Pfad wurde gespeichert)
 			m.configCache.Invalidate()
 			m.reloadConfig()
@@ -385,7 +418,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case sshErrorMsg:
-		m.errorMsg = "Verbindungsfehler: " + msg.err.Error()
+		m.errorMsg = m.lang.ConnErrPrefix + msg.err.Error()
 		// Bei Passwort-Fehler: in ViewConnect bleiben statt zur Liste zurück
 		if msg.returnToConnect {
 			m.state = ViewConnect
@@ -425,6 +458,8 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// Dispatch an View-spezifische Handler
 	switch m.state {
+	case ViewLanguage:
+		return m.handleLanguageKeys(msg)
 	case ViewList:
 		return m.handleListKeys(msg)
 	case ViewCreate, ViewEdit:
@@ -478,12 +513,14 @@ func (m AppModel) View() string {
 	var s strings.Builder
 
 	switch m.state {
+	case ViewLanguage:
+		m.renderLanguage(&s)
 	case ViewList:
 		m.renderList(&s)
 	case ViewCreate:
-		m.renderForm(&s, "Neue Verbindung erstellen")
+		m.renderForm(&s, m.lang.FormTitleNew)
 	case ViewEdit:
-		m.renderForm(&s, "Verbindung bearbeiten")
+		m.renderForm(&s, m.lang.FormTitleEdit)
 	case ViewDelete:
 		m.renderDeleteConfirm(&s)
 	case ViewConnecting:

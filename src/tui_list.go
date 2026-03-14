@@ -124,7 +124,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			conn := m.connections[m.cursor]
 			if m.sshManager.IsConnected(conn.ID) {
 				m.sshManager.Disconnect(conn.ID)
-				m.successMsg = "Verbindung getrennt: " + conn.Name
+				m.successMsg = m.lang.DisconnectedMsg + conn.Name
 			}
 		}
 
@@ -134,9 +134,17 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.keygenInputs = createKeygenInputs()
 		m.keygenFocused = 0
 		m.keygenInputs[0].Focus()
+		// Passphrase-Platzhalter in aktueller Sprache setzen
+		m.keygenInputs[keygenFieldPassphrase].Placeholder = m.lang.PlaceholderPass
 		m.errorMsg = ""
 		m.successMsg = ""
 		return m, textinput.Blink
+
+	case "l":
+		// Sprache wechseln
+		m.state = ViewLanguage
+		m.errorMsg = ""
+		m.successMsg = ""
 	}
 
 	return m, nil
@@ -151,8 +159,8 @@ func (m AppModel) renderList(s *strings.Builder) {
 	s.WriteString("\n\n")
 
 	if len(m.connections) == 0 {
-		s.WriteString("  Keine Verbindungen gespeichert.\n")
-		s.WriteString("  Drücke 'n' um eine neue Verbindung anzulegen.\n")
+		s.WriteString(m.lang.NoConnections + "\n")
+		s.WriteString(m.lang.PressNToAdd + "\n")
 	} else {
 		for i, conn := range m.connections {
 			// Status-Indikator
@@ -196,14 +204,14 @@ func (m AppModel) renderList(s *strings.Builder) {
 
 	// Meldungen anzeigen
 	if m.errorMsg != "" {
-		s.WriteString("\n" + errorStyle.Render("  Fehler: "+m.errorMsg))
+		s.WriteString("\n" + errorStyle.Render(m.lang.ErrPrefix+m.errorMsg))
 	}
 	if m.successMsg != "" {
 		s.WriteString("\n" + successStyle.Render("  "+m.successMsg))
 	}
 
 	// Hilfe
-	s.WriteString(helpStyle.Render("\n  n:Neu  e:Bearbeiten  d:Löschen  Enter:Verbinden  x:Trennen  g:Key-Gen  q:Beenden"))
+	s.WriteString(helpStyle.Render("\n" + m.lang.HelpList))
 }
 
 // renderConnecting rendert den Verbindungsaufbau-Bildschirm (Auto-Auth läuft).
@@ -219,10 +227,10 @@ func (m AppModel) renderConnecting(s *strings.Builder) {
 		}
 	}
 
-	s.WriteString(titleStyle.Render(fmt.Sprintf("  Verbinde mit: %s", name)))
+	s.WriteString(titleStyle.Render(fmt.Sprintf(m.lang.ConnectingTitle, name)))
 	s.WriteString("\n\n")
-	s.WriteString("  Probiere SSH-Agent und verfügbare Schlüssel...\n\n")
-	s.WriteString(helpStyle.Render("  Bitte warten"))
+	s.WriteString(m.lang.TryingAutoAuth + "\n\n")
+	s.WriteString(helpStyle.Render(m.lang.PleaseWait))
 }
 
 // renderDeleteConfirm rendert die Löschbestätigung.
@@ -230,7 +238,7 @@ func (m AppModel) renderConnecting(s *strings.Builder) {
 // @param s - String-Builder für die Ausgabe
 // @date   2026-03-07 21:00
 func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
-	s.WriteString(titleStyle.Render("  Verbindung löschen?"))
+	s.WriteString(titleStyle.Render(m.lang.DeleteTitle))
 	s.WriteString("\n\n")
 
 	name := m.activeID
@@ -241,8 +249,8 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 		}
 	}
 
-	s.WriteString(fmt.Sprintf("  Soll die Verbindung '%s' wirklich gelöscht werden?\n\n", name))
-	s.WriteString("  [j/y] Ja   [n/Esc] Nein")
+	s.WriteString(fmt.Sprintf(m.lang.DeleteConfirm, name))
+	s.WriteString(m.lang.DeleteYesNo)
 }
 
 // handleDeleteKeys verarbeitet Tasten in der Löschbestätigung.
@@ -262,7 +270,7 @@ func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			m.errorMsg = err.Error()
 		} else {
-			m.successMsg = "Verbindung gelöscht!"
+			m.successMsg = m.lang.DeletedMsg
 		}
 		m.configCache.Invalidate()
 		m.reloadConfig()
