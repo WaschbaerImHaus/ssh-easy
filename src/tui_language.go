@@ -80,30 +80,65 @@ func (m *AppModel) persistLanguage(lang Language) {
 	m.configCache.Invalidate()
 }
 
+// langPageSize legt fest, wie viele Sprachen gleichzeitig sichtbar sind.
+const langPageSize = 8
+
 // renderLanguage rendert die Sprachauswahl-Ansicht.
-// Zeigt alle verfügbaren Sprachen als zweispaltige Tabelle:
-// "EnglishName   NativeName" – ausgerichtet am längsten englischen Namen (10 Zeichen).
+// Zeigt genau langPageSize Einträge als zweispaltige Tabelle mit Scroll-Pfeilen:
+//   ↑  – es gibt weitere Einträge oberhalb des sichtbaren Bereichs
+//   ↓  – es gibt weitere Einträge unterhalb des sichtbaren Bereichs
+//
+// Das sichtbare Fenster scrollt automatisch mit dem Cursor mit.
 //
 // @param s - String-Builder für die Ausgabe
 // @date   2026-03-14
 func (m AppModel) renderLanguage(s *strings.Builder) {
+	total := len(AvailableLanguages)
+
+	// Startindex des sichtbaren Fensters berechnen:
+	// Der Cursor soll stets mittig im Fenster bleiben, soweit möglich.
+	winStart := m.langCursor - langPageSize/2
+	if winStart < 0 {
+		winStart = 0
+	}
+	if winStart+langPageSize > total {
+		winStart = total - langPageSize
+	}
+	winEnd := winStart + langPageSize
+
 	s.WriteString(titleStyle.Render(m.lang.LangSelectTitle))
 	s.WriteString("\n\n")
 	s.WriteString(m.lang.LangSelectPrompt)
 	s.WriteString("\n\n")
 
-	// Sprachenliste als zweispaltige Tabelle – englischer Name linksbündig auf 10 Zeichen
-	for i, opt := range AvailableLanguages {
-		// Englischer Name mit fixer Breite, dann nativer Name (UTF-8)
+	// Pfeil oben: zeigt an dass es weitere Einträge oberhalb gibt
+	if winStart > 0 {
+		s.WriteString(helpStyle.Render("  ↑ more"))
+	} else {
+		s.WriteString("        ") // gleich viel Platz damit Layout stabil bleibt
+	}
+	s.WriteString("\n")
+
+	// Sichtbaren Ausschnitt der Sprachenliste rendern
+	for i := winStart; i < winEnd; i++ {
+		opt := AvailableLanguages[i]
+		// Englischer Name auf 10 Zeichen aufgefüllt, dann nativer Name (UTF-8)
 		line := fmt.Sprintf("%-10s  %s", opt.English, opt.Name)
 		if i == m.langCursor {
-			// Aktuell ausgewählte Sprache hervorheben
 			s.WriteString(selectedStyle.Render("> " + line))
 		} else {
 			s.WriteString(normalStyle.Render("  " + line))
 		}
 		s.WriteString("\n")
 	}
+
+	// Pfeil unten: zeigt an dass es weitere Einträge unterhalb gibt
+	if winEnd < total {
+		s.WriteString(helpStyle.Render("  ↓ more"))
+	} else {
+		s.WriteString("        ")
+	}
+	s.WriteString("\n")
 
 	s.WriteString(helpStyle.Render("\n" + m.lang.LangSelectHelp))
 }
