@@ -1,8 +1,5 @@
 # Build-Artefakte
-build/ssh-easy
-build/ssh-easy-linux-arm64
-build/ssh-easy-windows-amd64.exe
-build/ssh-easy-windows-arm64.exe
+build/
 
 # Go-spezifisch
 src/*.test
