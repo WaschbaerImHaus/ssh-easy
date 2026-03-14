@@ -244,10 +244,15 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 
 	// Sprache initialisieren
 	if m.language == "" {
-		// Erster Start: Sprachauswahl zeigen (Default Englisch für das Auswahlmenü)
+		// Erster Start: Sprachauswahl zeigen, Cursor auf Englisch vorbelegen
 		m.lang = GetTranslations(LangEnglish)
 		m.state = ViewLanguage
-		m.langCursor = 0
+		for i, opt := range AvailableLanguages {
+			if opt.Code == LangEnglish {
+				m.langCursor = i
+				break
+			}
+		}
 	} else {
 		m.lang = GetTranslations(m.language)
 		m.state = ViewList

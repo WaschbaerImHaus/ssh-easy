@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // handleLanguageKeys verarbeitet Tasten in der Sprachauswahl-Ansicht.
@@ -111,9 +112,12 @@ func (m AppModel) renderLanguage(s *strings.Builder) {
 	s.WriteString(m.lang.LangSelectPrompt)
 	s.WriteString("\n\n")
 
+	// arrowStyle: wie helpStyle aber ohne MarginTop, damit keine Leerzeile entsteht
+	arrowStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("241"))
+
 	// Pfeil oben: zeigt an dass es weitere Einträge oberhalb gibt
 	if winStart > 0 {
-		s.WriteString(helpStyle.Render("  ↑ more"))
+		s.WriteString(arrowStyle.Render("  ↑ more"))
 	} else {
 		s.WriteString("        ") // gleich viel Platz damit Layout stabil bleibt
 	}
@@ -134,7 +138,7 @@ func (m AppModel) renderLanguage(s *strings.Builder) {
 
 	// Pfeil unten: zeigt an dass es weitere Einträge unterhalb gibt
 	if winEnd < total {
-		s.WriteString(helpStyle.Render("  ↓ more"))
+		s.WriteString(arrowStyle.Render("  ↓ more"))
 	} else {
 		s.WriteString("        ")
 	}
