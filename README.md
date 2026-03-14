@@ -1,109 +1,142 @@
 # ssh-easy
 
-Ein einfacher SSH-Verbindungsmanager mit Terminal-UI (TUI) zum Verwalten und Aufbauen von SSH-Verbindungen mit Local-Port-Forwarding-Tunneln.
+A simple SSH connection manager with Terminal UI (TUI) for managing and establishing SSH connections with local port forwarding tunnels.
+
+> Also available in: [Deutsch](README.de.md)
 
 ## Features
 
-- SSH-Verbindungen speichern und verwalten (Name, Host, Port, User)
-- Passwort-, SSH-Key- und SSH-Agent-Authentifizierung
-- Local Port Forwarding (localhost:port -> remote:port)
-- SSH-Key-Generierung (Ed25519) direkt aus der TUI
-- Automatischer Reconnect bei Verbindungsabbruch (max. 5 Versuche)
-- SSH-Keepalive (alle 30 Sekunden)
-- Farbige TUI mit Statusanzeige
-- Logging nach ~/.ssh-easy/ssh-easy.log
-- Cross-Platform: Linux (x86/ARM), Windows (x86/ARM)
+- Save and manage SSH connections (name, host, port, user)
+- Password, SSH key, and SSH agent authentication
+- Local port forwarding (localhost:port -> remote:port)
+- SSH key generation (Ed25519) directly from the TUI
+- Automatic reconnect on connection loss (max. 5 attempts)
+- SSH keepalive (every 30 seconds)
+- Colored TUI with status display
+- Logging to `~/.ssh-easy/ssh-easy.log`
+- Cross-platform: Linux (x86/ARM), Windows (x86/ARM)
 
 ## Installation
 
-Die kompilierten Dateien befinden sich im `build/`-Verzeichnis:
+Pre-compiled binaries are available in the `build/` directory:
 
-| Datei | Plattform |
-|-------|-----------|
+| File | Platform |
+|------|----------|
 | `ssh-easy` | Linux x86_64 |
 | `ssh-easy-linux-arm64` | Linux ARM64 |
 | `ssh-easy-windows-amd64.exe` | Windows x86_64 |
 | `ssh-easy-windows-arm64.exe` | Windows ARM64 |
 
-## Benutzung
+### Windows
 
-Programm starten:
+Run the installer `ssh-easy-setup.exe` — it will create a Start Menu entry and optionally a Desktop shortcut.
+
+### Linux
+
+```bash
+chmod +x build/ssh-easy
+./build/ssh-easy
+```
+
+## Usage
+
+Start the program:
 ```bash
 ./build/ssh-easy
 ```
 
-### Tastenbelegung
+### Key Bindings
 
-| Taste | Aktion |
-|-------|--------|
-| `n` | Neue Verbindung anlegen |
-| `e` | Verbindung bearbeiten |
-| `d` | Verbindung loeschen |
-| `Enter` | Verbindung herstellen / Status anzeigen |
-| `x` | Verbindung trennen |
-| `g` | SSH-Key generieren (Ed25519) |
-| `j/k` oder Pfeiltasten | Navigation |
-| `Tab` | Naechstes Formularfeld |
-| `Esc` | Zurueck / Abbrechen |
-| `q` / `Ctrl+C` | Beenden |
+| Key | Action |
+|-----|--------|
+| `n` | Add new connection |
+| `e` | Edit connection |
+| `d` | Delete connection |
+| `Enter` | Connect / show status |
+| `x` | Disconnect |
+| `g` | Generate SSH key (Ed25519) |
+| `j/k` or arrow keys | Navigate |
+| `Tab` | Next form field |
+| `Esc` | Back / Cancel |
+| `q` / `Ctrl+C` | Quit |
 
-### Verbindung anlegen
+### Adding a Connection
 
-1. `n` druecken
-2. Felder ausfuellen:
-   - **Name**: Anzeigename (z.B. "Webserver")
-   - **Host**: IP oder Hostname
-   - **Port**: SSH-Port (Standard: 22)
-   - **Benutzer**: SSH-Benutzername
-   - **Auth**: `password`, `key` oder `agent`
-   - **Key-Pfad**: Pfad zum SSH-Schluessel (nur bei `key`)
-   - **Tunnel-Ports**: Kommagetrennte Portliste (z.B. `3306,8080,5432`)
-3. `Enter` zum Speichern
+1. Press `n`
+2. Fill in the fields:
+   - **Name**: Display name (e.g. "Webserver")
+   - **Host**: IP address or hostname
+   - **Port**: SSH port (default: 22)
+   - **User**: SSH username
+   - **Auth**: `password`, `key`, or `agent`
+   - **Key path**: Path to SSH key file (only for `key`)
+   - **Tunnel ports**: Comma-separated port list (e.g. `3306,8080,5432`)
+3. Press `Enter` to save
 
-### Authentifizierung
+### Authentication
 
-- **password**: Passwort wird bei jeder Verbindung abgefragt (nicht gespeichert)
-- **key**: SSH-Schluessel mit optionaler Passphrase
-- **agent**: SSH-Agent wird verwendet (Schluessel muessen vorher geladen sein)
+- **password**: Password is requested on each connect (never stored)
+- **key**: SSH key with optional passphrase
+- **agent**: Uses SSH agent (keys must be loaded beforehand)
 
-### Tunnel
+### Tunnels
 
-Tunnel-Ports werden als kommagetrennte Liste angegeben. Jeder Port wird als Local-Port-Forward eingerichtet:
+Tunnel ports are specified as a comma-separated list. Each port is set up as a local port forward:
 
 ```
 localhost:3306 -> remote:3306
 localhost:8080 -> remote:8080
 ```
 
-### SSH-Key generieren
+### Generating an SSH Key
 
-1. `g` druecken
-2. **Dateipfad** eingeben (z.B. `~/.ssh/id_ed25519_myserver`)
-3. Optional eine **Passphrase** eingeben
-4. `Enter` zum Generieren
-5. Der Public Key wird angezeigt und kann auf dem Zielserver in `~/.ssh/authorized_keys` eingetragen werden
+1. Press `g`
+2. Enter a **file path** (e.g. `~/.ssh/id_ed25519_myserver`)
+3. Optionally enter a **passphrase**
+4. Press `Enter` to generate
+5. The public key is displayed and can be added to `~/.ssh/authorized_keys` on the target server
 
 ### Auto-Reconnect
 
-Bei einem Verbindungsabbruch versucht ssh-easy automatisch, die Verbindung wiederherzustellen (max. 5 Versuche mit 3 Sekunden Abstand).
+On connection loss, ssh-easy automatically attempts to reconnect (max. 5 attempts, 3 seconds apart).
 
-## Konfiguration
+## Configuration
 
-Verbindungen werden gespeichert unter:
+Connections are stored at:
 - Linux: `~/.ssh-easy/connections.json`
 - Windows: `%USERPROFILE%\.ssh-easy\connections.json`
 
-Log-Datei:
+Log file:
 - `~/.ssh-easy/ssh-easy.log`
 
-Passwoerter werden **nicht** gespeichert und muessen bei jedem Verbindungsaufbau eingegeben werden.
+Passwords are **never** stored and must be entered on each connection attempt.
 
-## Sicherheit
+## Security
 
-- Passwoerter werden nur zur Laufzeit im Speicher gehalten
-- Tunnel binden ausschliesslich auf 127.0.0.1
-- Host-Keys werden gegen `~/.ssh/known_hosts` geprueft (kein InsecureIgnoreHostKey)
-- Unbekannte Hosts werden nach Bestaetigung zur known_hosts hinzugefuegt
-- Geaenderte Host-Keys werden mit MITM-Warnung abgelehnt
-- Konfigurationsdatei hat Berechtigung 0600
-- Atomares Schreiben der Konfiguration
+- Passwords are only held in memory at runtime
+- Tunnels bind exclusively to `127.0.0.1`
+- Host keys are verified against `~/.ssh/known_hosts` (no InsecureIgnoreHostKey)
+- Unknown hosts are added to known_hosts after confirmation
+- Changed host keys are rejected with a MITM warning
+- Configuration file permissions are set to `0600`
+- Atomic config file writes
+
+## Building from Source
+
+Requirements: Go 1.23+
+
+```bash
+cd src
+go build -o ../build/ssh-easy .
+```
+
+Cross-compilation:
+```bash
+GOOS=linux  GOARCH=arm64 go build -o ../build/ssh-easy-linux-arm64 .
+GOOS=windows GOARCH=amd64 go build -o ../build/ssh-easy-windows-amd64.exe .
+GOOS=windows GOARCH=arm64 go build -o ../build/ssh-easy-windows-arm64.exe .
+```
+
+## License
+
+MIT
