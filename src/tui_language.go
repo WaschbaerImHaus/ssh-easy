@@ -81,7 +81,8 @@ func (m *AppModel) persistLanguage(lang Language) {
 }
 
 // renderLanguage rendert die Sprachauswahl-Ansicht.
-// Zeigt alle verfügbaren Sprachen in ihren Muttersprachen-Namen (UTF-8).
+// Zeigt alle verfügbaren Sprachen als zweispaltige Tabelle:
+// "EnglishName   NativeName" – ausgerichtet am längsten englischen Namen (10 Zeichen).
 //
 // @param s - String-Builder für die Ausgabe
 // @date   2026-03-14
@@ -91,9 +92,10 @@ func (m AppModel) renderLanguage(s *strings.Builder) {
 	s.WriteString(m.lang.LangSelectPrompt)
 	s.WriteString("\n\n")
 
-	// Sprachenliste mit Cursor
+	// Sprachenliste als zweispaltige Tabelle – englischer Name linksbündig auf 10 Zeichen
 	for i, opt := range AvailableLanguages {
-		line := fmt.Sprintf("  %s", opt.Name)
+		// Englischer Name mit fixer Breite, dann nativer Name (UTF-8)
+		line := fmt.Sprintf("%-10s  %s", opt.English, opt.Name)
 		if i == m.langCursor {
 			// Aktuell ausgewählte Sprache hervorheben
 			s.WriteString(selectedStyle.Render("> " + line))
