@@ -278,7 +278,6 @@ func createFormInputs() []textinput.Model {
 	inputs := make([]textinput.Model, fieldCount)
 
 	inputs[fieldName] = textinput.New()
-	inputs[fieldName].Placeholder = "Mein Server"
 	inputs[fieldName].CharLimit = 50
 
 	inputs[fieldHost] = textinput.New()
@@ -307,7 +306,6 @@ func createFormInputs() []textinput.Model {
 // @date   2026-03-07 21:00
 func createPasswordInput() textinput.Model {
 	pw := textinput.New()
-	pw.Placeholder = "Passwort/Passphrase eingeben"
 	pw.EchoMode = textinput.EchoPassword
 	pw.EchoCharacter = '*'
 	pw.CharLimit = 255
@@ -326,7 +324,6 @@ func createKeygenInputs() []textinput.Model {
 	inputs[keygenFieldPath].CharLimit = 255
 
 	inputs[keygenFieldPassphrase] = textinput.New()
-	inputs[keygenFieldPassphrase].Placeholder = "leer = ohne Passphrase"
 	inputs[keygenFieldPassphrase].EchoMode = textinput.EchoPassword
 	inputs[keygenFieldPassphrase].EchoCharacter = '*'
 	inputs[keygenFieldPassphrase].CharLimit = 255
@@ -389,6 +386,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Auto-Auth fehlgeschlagen - Passwort abfragen
 		m.state = ViewConnect
 		m.passwordInput = createPasswordInput()
+		m.passwordInput.Placeholder = m.lang.PlaceholderPW
 		m.passwordInput.Focus()
 		m.errorMsg = ""
 		m.successMsg = ""
@@ -423,6 +421,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.returnToConnect {
 			m.state = ViewConnect
 			m.passwordInput = createPasswordInput()
+			m.passwordInput.Placeholder = m.lang.PlaceholderPW
 			m.passwordInput.Focus()
 			return m, textinput.Blink
 		}

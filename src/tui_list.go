@@ -44,6 +44,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Neue Verbindung - Formular zurücksetzen
 		m.state = ViewCreate
 		m.inputs = createFormInputs()
+		m.inputs[fieldName].Placeholder = m.lang.PlaceholderName
 		m.focusedInput = 0
 		m.inputs[0].Focus()
 		m.errorMsg = ""
@@ -57,6 +58,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.state = ViewEdit
 			m.activeID = conn.ID
 			m.inputs = createFormInputs()
+			m.inputs[fieldName].Placeholder = m.lang.PlaceholderName
 			m.fillFormFromConnection(conn)
 			m.focusedInput = 0
 			m.inputs[0].Focus()
@@ -179,7 +181,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 					}
 				}
 				if len(ports) > 0 {
-					tunnelInfo = fmt.Sprintf(" [Tunnel: %s]", strings.Join(ports, ","))
+					tunnelInfo = fmt.Sprintf(m.lang.TunnelInfo, strings.Join(ports, ","))
 				}
 			}
 

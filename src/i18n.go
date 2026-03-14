@@ -134,6 +134,9 @@ type Translations struct {
 	HostKeyAskYesNo string // Bestätigungsfrage + Tastenbelegung
 	UnknownHost     string // Fallback wenn Hostname unbekannt
 
+	// TunnelInfo ist der Format-String für die Tunnel-Anzeige in der Liste, enthält %s für die Ports
+	TunnelInfo string
+
 	// --- Laufzeit-Fehlermeldungen ---
 	ErrPrefix        string // Präfix "  Fehler: " vor errorMsg in der Anzeige
 	ErrLoading       string // Präfix beim Lade-Fehler
@@ -241,6 +244,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Key-Deployment fehlgeschlagen: ",
 		KeyDeployedMsg:   "SSH-Key deployed! Nächste Verbindung ohne Passwort: %s",
 		ConnErrPrefix:    "Verbindungsfehler: ",
+		TunnelInfo:       " [Tunnel: %s]",
 		ErrPortMustBeNum: "Port muss eine Zahl sein",
 		ErrTunnelPort:    "Tunnel-Port '%s' ist keine gültige Zahl",
 	},
@@ -323,6 +327,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Key deployment failed: ",
 		KeyDeployedMsg:   "SSH key deployed! Next connection without password: %s",
 		ConnErrPrefix:    "Connection error: ",
+		TunnelInfo:       " [Tunnel: %s]",
 		ErrPortMustBeNum: "Port must be a number",
 		ErrTunnelPort:    "Tunnel port '%s' is not a valid number",
 	},
@@ -405,6 +410,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Déploiement de clé échoué : ",
 		KeyDeployedMsg:   "Clé SSH déployée ! Prochaine connexion sans mot de passe : %s",
 		ConnErrPrefix:    "Erreur de connexion : ",
+		TunnelInfo:       " [Tunnel : %s]",
 		ErrPortMustBeNum: "Le port doit être un nombre",
 		ErrTunnelPort:    "Le port tunnel '%s' n'est pas un nombre valide",
 	},
@@ -487,6 +493,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Despliegue de clave fallido: ",
 		KeyDeployedMsg:   "¡Clave SSH desplegada! Próxima conexión sin contraseña: %s",
 		ConnErrPrefix:    "Error de conexión: ",
+		TunnelInfo:       " [Túnel: %s]",
 		ErrPortMustBeNum: "El puerto debe ser un número",
 		ErrTunnelPort:    "El puerto de túnel '%s' no es un número válido",
 	},
@@ -569,6 +576,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Distribuzione chiave fallita: ",
 		KeyDeployedMsg:   "Chiave SSH distribuita! Prossima connessione senza password: %s",
 		ConnErrPrefix:    "Errore di connessione: ",
+		TunnelInfo:       " [Tunnel: %s]",
 		ErrPortMustBeNum: "La porta deve essere un numero",
 		ErrTunnelPort:    "La porta tunnel '%s' non è un numero valido",
 	},
@@ -651,6 +659,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "鍵のデプロイに失敗しました：",
 		KeyDeployedMsg:   "SSH鍵をデプロイしました！次回からパスワードなしで接続：%s",
 		ConnErrPrefix:    "接続エラー：",
+		TunnelInfo:       " [トンネル: %s]",
 		ErrPortMustBeNum: "ポートは数字でなければなりません",
 		ErrTunnelPort:    "トンネルポート '%s' は有効な数字ではありません",
 	},
@@ -733,6 +742,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "密钥部署失败：",
 		KeyDeployedMsg:   "SSH 密钥已部署！下次连接无需密码：%s",
 		ConnErrPrefix:    "连接错误：",
+		TunnelInfo:       " [隧道: %s]",
 		ErrPortMustBeNum: "端口必须是数字",
 		ErrTunnelPort:    "隧道端口 '%s' 不是有效数字",
 	},
@@ -815,6 +825,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Implantação de chave falhou: ",
 		KeyDeployedMsg:   "Chave SSH implantada! Próxima conexão sem senha: %s",
 		ConnErrPrefix:    "Erro de conexão: ",
+		TunnelInfo:       " [Túnel: %s]",
 		ErrPortMustBeNum: "A porta deve ser um número",
 		ErrTunnelPort:    "A porta de túnel '%s' não é um número válido",
 	},
@@ -897,6 +908,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Развёртывание ключа не удалось: ",
 		KeyDeployedMsg:   "SSH-ключ развёрнут! Следующее подключение без пароля: %s",
 		ConnErrPrefix:    "Ошибка подключения: ",
+		TunnelInfo:       " [Туннель: %s]",
 		ErrPortMustBeNum: "Порт должен быть числом",
 		ErrTunnelPort:    "Порт туннеля '%s' не является допустимым числом",
 	},
@@ -979,6 +991,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "Penerapan kunci gagal: ",
 		KeyDeployedMsg:   "Kunci SSH diterapkan! Koneksi berikutnya tanpa kata sandi: %s",
 		ConnErrPrefix:    "Kesalahan koneksi: ",
+		TunnelInfo:       " [Terowongan: %s]",
 		ErrPortMustBeNum: "Port harus berupa angka",
 		ErrTunnelPort:    "Port terowongan '%s' bukan angka yang valid",
 	},
@@ -1061,6 +1074,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "कुंजी तैनाती विफल: ",
 		KeyDeployedMsg:   "SSH कुंजी तैनात! अगला कनेक्शन बिना पासवर्ड के: %s",
 		ConnErrPrefix:    "कनेक्शन त्रुटि: ",
+		TunnelInfo:       " [टनल: %s]",
 		ErrPortMustBeNum: "पोर्ट एक संख्या होनी चाहिए",
 		ErrTunnelPort:    "टनल पोर्ट '%s' एक वैध संख्या नहीं है",
 	},
@@ -1143,6 +1157,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "কী স্থাপনা ব্যর্থ: ",
 		KeyDeployedMsg:   "SSH কী স্থাপিত! পরবর্তী সংযোগ পাসওয়ার্ড ছাড়া: %s",
 		ConnErrPrefix:    "সংযোগ ত্রুটি: ",
+		TunnelInfo:       " [টানেল: %s]",
 		ErrPortMustBeNum: "পোর্ট একটি সংখ্যা হতে হবে",
 		ErrTunnelPort:    "টানেল পোর্ট '%s' একটি বৈধ সংখ্যা নয়",
 	},
@@ -1225,6 +1240,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "کلید تعیناتی ناکام: ",
 		KeyDeployedMsg:   "SSH کلید تعینات! اگلا کنکشن بغیر پاس ورڈ: %s",
 		ConnErrPrefix:    "کنکشن خطا: ",
+		TunnelInfo:       " [ٹنل: %s]",
 		ErrPortMustBeNum: "پورٹ ایک عدد ہونا چاہیے",
 		ErrTunnelPort:    "ٹنل پورٹ '%s' ایک درست عدد نہیں ہے",
 	},
@@ -1307,6 +1323,7 @@ var allTranslations = map[Language]Translations{
 		KeyDeployFailed:  "فشل نشر المفتاح: ",
 		KeyDeployedMsg:   "تم نشر مفتاح SSH! الاتصال التالي بدون كلمة مرور: %s",
 		ConnErrPrefix:    "خطأ في الاتصال: ",
+		TunnelInfo:       " [نفق: %s]",
 		ErrPortMustBeNum: "يجب أن يكون المنفذ رقماً",
 		ErrTunnelPort:    "منفذ النفق '%s' ليس رقماً صالحاً",
 	},
