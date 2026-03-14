@@ -118,11 +118,15 @@ FunctionEnd
 ;----------------------------------------------------------------------
 
 Function .onInit
-  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" "UninstallString"
-  ${If} $0 != ""
-    ; Run existing uninstaller silently (/S) before installing new version
-    ExecWait '"$0" /S _?=$INSTDIR'
-    Sleep 500
+  ; $R0 = UninstallString aus der Registry (bereits gequotet: "C:\...\Uninstall.exe")
+  ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" "UninstallString"
+  ${If} $R0 != ""
+    ; WICHTIG: $R0 ist bereits mit Anführungszeichen gespeichert, daher KEINE
+    ; zusätzlichen Quotes und kein _?= (Pfad könnte von $INSTDIR abweichen).
+    ; /S = silent, NSIS kopiert den Deinstaller selbst in ein Temp-Verzeichnis.
+    ExecWait '$R0 /S'
+    ; Warten bis der Deinstaller vollständig abgeschlossen ist
+    Sleep 1500
   ${EndIf}
 FunctionEnd
 
@@ -135,7 +139,12 @@ Section "ssh-easy (required)" SecMain
 
   SetOutPath "$INSTDIR"
 
-  ; Copy binary and rename to ssh-easy.exe
+  ; Alte Programmdatei entfernen bevor die neue kopiert wird (Fallback falls
+  ; der Deinstaller in .onInit die Datei nicht entfernt hat, z.B. wenn das
+  ; Programm noch läuft und die EXE gesperrt ist).
+  Delete "$INSTDIR\ssh-easy.exe"
+
+  ; Binärdatei installieren und umbenennen
   File "${BINARY_FILE}"
   !if "${ARCH}" == "arm64"
     Rename "$INSTDIR\ssh-easy-windows-arm64.exe" "$INSTDIR\ssh-easy.exe"
