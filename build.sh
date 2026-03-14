@@ -1,81 +1,82 @@
 #!/usr/bin/env bash
-# build.sh - Vollständiger Build-Prozess für ssh-easy
+# build.sh - Complete build pipeline for ssh-easy
 #
-# Führt Tests durch, kompiliert für alle Plattformen und erstellt
-# den Windows-Installer mit NSIS.
+# Runs tests, compiles for all 4 platforms and builds both Windows
+# installers (x64 + ARM64) using NSIS.
 #
-# Verwendung: ./build.sh
+# Usage: ./build.sh
 #
 # @author Kurt Ingwer
-# @date   2026-03-08
+# @date   2026-03-14
 
-set -e  # Bei Fehler abbrechen
+set -e  # Abort on any error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/src"
 BUILD_DIR="$SCRIPT_DIR/build"
-ASSETS_DIR="$SCRIPT_DIR/assets"
 GO=/usr/local/go/bin/go
-GOVERSIONINFO=/home/claude-code/go/bin/goversioninfo
 
 echo "=== ssh-easy Build ==="
 echo ""
 
-# Verzeichnisse sicherstellen
+# Sicherstellen dass das build-Verzeichnis existiert
 mkdir -p "$BUILD_DIR"
 
-# In src-Verzeichnis wechseln
+# In das src-Verzeichnis wechseln
 cd "$SRC_DIR"
 
-# Build-Nummer lesen
+# Build-Nummer aus build.txt lesen
 BUILD=$(cat build.txt | tr -d '[:space:]')
-echo "Build: $BUILD"
+# Versions-String aus der Buildnummer ableiten (z.B. Build 15 → v0.15.0)
+MINOR=$(echo "$BUILD" | sed 's/^0*//')
+VERSION="0.${MINOR}.0"
+
+echo "Build : $BUILD"
+echo "Version: $VERSION"
 echo ""
 
 # --- Tests ---
-echo ">>> Tests..."
-$GO test ./... 2>&1
+echo ">>> Running tests..."
+$GO test ./...
 echo ""
 
-# --- Windows-Ressourcen (Icon + Versioninfo) ---
-echo ">>> Windows-Ressourcen generieren..."
-$GOVERSIONINFO -platform-specific=true -o resource.syso
-echo "    resource_windows_*.syso erstellt"
-echo ""
-
-# --- Linux amd64 ---
+# --- Linux x64 ---
 echo ">>> Linux amd64..."
 $GO build -o "$BUILD_DIR/ssh-easy" .
-echo "    build/ssh-easy"
+echo "    OK: build/ssh-easy"
 
-# --- Linux arm64 ---
+# --- Linux ARM64 ---
 echo ">>> Linux arm64..."
 GOOS=linux GOARCH=arm64 $GO build -o "$BUILD_DIR/ssh-easy-linux-arm64" .
-echo "    build/ssh-easy-linux-arm64"
+echo "    OK: build/ssh-easy-linux-arm64"
 
-# --- Windows amd64 ---
+# --- Windows x64 ---
 echo ">>> Windows amd64..."
 GOOS=windows GOARCH=amd64 $GO build -o "$BUILD_DIR/ssh-easy-windows-amd64.exe" .
-echo "    build/ssh-easy-windows-amd64.exe"
+echo "    OK: build/ssh-easy-windows-amd64.exe"
 
-# --- Windows arm64 ---
+# --- Windows ARM64 ---
 echo ">>> Windows arm64..."
 GOOS=windows GOARCH=arm64 $GO build -o "$BUILD_DIR/ssh-easy-windows-arm64.exe" .
-echo "    build/ssh-easy-windows-arm64.exe"
-
+echo "    OK: build/ssh-easy-windows-arm64.exe"
 echo ""
 
-# --- NSIS Windows Installer ---
+# --- Windows Installer (NSIS) ---
+cd "$SCRIPT_DIR"
 if command -v makensis &>/dev/null; then
-    echo ">>> Windows Installer (NSIS)..."
-    cd "$SCRIPT_DIR"
-    makensis ssh-easy-setup.nsi 2>&1 | grep -E "^Output:|^Total size:|Error"
-    echo "    build/ssh-easy-setup-amd64.exe"
+    echo ">>> Windows Installer x64 (NSIS)..."
+    makensis -DARCH=amd64 -DVERSION="$VERSION" -DBUILD="$BUILD" ssh-easy-setup.nsi \
+        2>&1 | grep -E "Output:|Total size:|Error" || true
+    echo "    OK: build/ssh-easy-setup-amd64.exe"
+
+    echo ">>> Windows Installer ARM64 (NSIS)..."
+    makensis -DARCH=arm64 -DVERSION="$VERSION" -DBUILD="$BUILD" ssh-easy-setup.nsi \
+        2>&1 | grep -E "Output:|Total size:|Error" || true
+    echo "    OK: build/ssh-easy-setup-arm64.exe"
 else
-    echo ">>> NSIS nicht installiert – Installer übersprungen"
-    echo "    apt-get install nsis"
+    echo ">>> NSIS not found – installer skipped (apt-get install nsis)"
 fi
 
 echo ""
-echo "=== Build abgeschlossen ==="
+echo "=== Build complete ==="
 ls -lh "$BUILD_DIR"/
