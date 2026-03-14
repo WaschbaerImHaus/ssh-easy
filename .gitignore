@@ -23,7 +23,8 @@ Thumbs.db
 *~
 
 # Claude-interne Dateien
-.claude/.claude-open
+.claude/
+claude.sh
 
 # Laufzeit
 *.pid
