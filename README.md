@@ -7,7 +7,7 @@ A simple SSH connection manager with Terminal UI (TUI) for managing and establis
 ## Features
 
 - Save and manage SSH connections (name, host, port, user)
-- Password, SSH key, and SSH agent authentication
+- Automatic authentication: SSH agent, all keys in `~/.ssh/`, password fallback
 - Local port forwarding (localhost:port -> remote:port)
 - SSH key generation (Ed25519) directly from the TUI
 - Automatic reconnect on connection loss (max. 5 attempts)
@@ -68,16 +68,18 @@ Start the program:
    - **Host**: IP address or hostname
    - **Port**: SSH port (default: 22)
    - **User**: SSH username
-   - **Auth**: `password`, `key`, or `agent`
-   - **Key path**: Path to SSH key file (only for `key`)
    - **Tunnel ports**: Comma-separated port list (e.g. `3306,8080,5432`)
 3. Press `Enter` to save
 
 ### Authentication
 
-- **password**: Password is requested on each connect (never stored)
-- **key**: SSH key with optional passphrase
-- **agent**: Uses SSH agent (keys must be loaded beforehand)
+Authentication is fully automatic — no need to choose a method:
+
+1. **SSH agent** — checked first if a running agent is available
+2. **SSH keys** — all keys in `~/.ssh/` are tried automatically
+3. **Password** — requested as a fallback if the above fail (never stored)
+
+After a successful password login, ssh-easy can automatically generate and deploy an Ed25519 key so future logins are passwordless.
 
 ### Tunnels
 
@@ -123,7 +125,7 @@ Passwords are **never** stored and must be entered on each connection attempt.
 
 ## Building from Source
 
-Requirements: Go 1.23+
+Requirements: Go 1.26+
 
 ```bash
 cd src

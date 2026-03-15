@@ -5,7 +5,7 @@ Ein einfacher SSH-Verbindungsmanager mit Terminal-UI (TUI) zum Verwalten und Auf
 ## Features
 
 - SSH-Verbindungen speichern und verwalten (Name, Host, Port, User)
-- Passwort-, SSH-Key- und SSH-Agent-Authentifizierung
+- Automatische Authentifizierung: SSH-Agent, alle Keys in `~/.ssh/`, Passwort-Fallback
 - Local Port Forwarding (localhost:port -> remote:port)
 - SSH-Key-Generierung (Ed25519) direkt aus der TUI
 - Automatischer Reconnect bei Verbindungsabbruch (max. 5 Versuche)
@@ -55,16 +55,18 @@ Programm starten:
    - **Host**: IP oder Hostname
    - **Port**: SSH-Port (Standard: 22)
    - **Benutzer**: SSH-Benutzername
-   - **Auth**: `password`, `key` oder `agent`
-   - **Key-Pfad**: Pfad zum SSH-Schluessel (nur bei `key`)
    - **Tunnel-Ports**: Kommagetrennte Portliste (z.B. `3306,8080,5432`)
 3. `Enter` zum Speichern
 
 ### Authentifizierung
 
-- **password**: Passwort wird bei jeder Verbindung abgefragt (nicht gespeichert)
-- **key**: SSH-Schluessel mit optionaler Passphrase
-- **agent**: SSH-Agent wird verwendet (Schluessel muessen vorher geladen sein)
+Die Authentifizierung laeuft vollautomatisch – keine manuelle Auswahl noetig:
+
+1. **SSH-Agent** – wird zuerst geprueft, falls ein laufender Agent vorhanden ist
+2. **SSH-Keys** – alle Keys in `~/.ssh/` werden automatisch ausprobiert
+3. **Passwort** – wird als Fallback abgefragt, falls alles andere scheitert (nie gespeichert)
+
+Nach einem erfolgreichen Passwort-Login kann ssh-easy automatisch einen Ed25519-Key generieren und deployen, damit zukuenftige Logins passwortlos funktionieren.
 
 ### Tunnel
 
