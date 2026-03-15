@@ -4,7 +4,7 @@
 // automatisches Key-Deployment auf Remote-Server.
 //
 // @author Kurt Ingwer
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 package main
 
 import (
@@ -222,7 +222,7 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 // @param hashField - Erstes Feld einer known_hosts-Zeile (z.B. "|1|abc...|xyz...")
 // @param hostname - Zu prüfender Hostname oder IP
 // @return bool - true wenn der Eintrag zu diesem Hostname gehört
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func matchesHashedKnownHost(hashField, hostname string) bool {
 	// Nur Format-Version 1 wird unterstützt (|1|...)
 	if !strings.HasPrefix(hashField, "|1|") {
@@ -266,7 +266,7 @@ func matchesHashedKnownHost(hashField, hostname string) bool {
 // @param knownHostsPath - Pfad zur known_hosts-Datei
 // @param hostname - Hostname/IP dessen Eintrag entfernt werden soll
 // @return error - Fehler beim Lesen/Schreiben
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func removeKnownHost(knownHostsPath, hostname string) error {
 	bakPath := knownHostsPath + ".bak"
 
@@ -339,7 +339,7 @@ func removeKnownHost(knownHostsPath, hostname string) error {
 //
 // @return string - Absoluter Pfad zur known_hosts-Datei
 // @return error - Fehler wenn Home-Verzeichnis nicht ermittelbar
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func getKnownHostsPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -353,13 +353,13 @@ func getKnownHostsPath() (string, error) {
 //
 // @param err - Fehler der geparst werden soll
 // @return string - Hostname oder leer wenn kein Match
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func parseHostKeyChangedHostname(err error) string {
 	if err == nil {
 		return ""
 	}
 	msg := err.Error()
-	marker := "HOST-KEY GEAENDERT fuer "
+	marker := "HOST-KEY GEÄNDERT für "
 	idx := strings.Index(msg, marker)
 	if idx < 0 {
 		return ""
@@ -376,12 +376,12 @@ func parseHostKeyChangedHostname(err error) string {
 //
 // @param err - Zu prüfender Fehler
 // @return bool - Ob der Host-Key sich geändert hat
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func IsHostKeyChangedError(err error) bool {
 	if err == nil {
 		return false
 	}
-	return strings.Contains(err.Error(), "HOST-KEY GEAENDERT")
+	return strings.Contains(err.Error(), "HOST-KEY GEÄNDERT")
 }
 
 // deployPublicKey fügt einen öffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.
@@ -390,7 +390,7 @@ func IsHostKeyChangedError(err error) bool {
 // @param client - Aktiver SSH-Client
 // @param pubKeyStr - Öffentlicher Schlüssel im OpenSSH-Format
 // @return error - Fehler beim Deployment
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
 	session, err := client.NewSession()
 	if err != nil {
@@ -415,7 +415,7 @@ func deployPublicKey(client *ssh.Client, pubKeyStr string) error {
 //
 // @param s - Eingabestring
 // @return string - Bereinigter Dateiname
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func sanitizeFilename(s string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == '.' {
@@ -434,7 +434,7 @@ func sanitizeFilename(s string) string {
 // @param configPath - Pfad zur Konfigurationsdatei für Update
 // @return string - Pfad zum generierten Key (~/.ssh/...)
 // @return error - Fehler bei Generierung oder Deployment
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func AutoDeployKey(conn Connection, client *ssh.Client, configPath string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
