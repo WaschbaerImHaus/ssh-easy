@@ -260,15 +260,26 @@ func matchesHashedKnownHost(hashField, hostname string) bool {
 // Unterstützt sowohl unhashed (hostname keytype key) als auch gehashte
 // Einträge (|1|SALT|HASH keytype key) wie sie neuere OpenSSH-Versionen erzeugen.
 //
+// Der hostname-Parameter wird vor dem Vergleich normalisiert:
+// Port 22 wird weggelassen ("host:22" → "host"), andere Ports werden
+// in eckige Klammern gesetzt ("[host]:port"). So stimmt der Vergleich
+// mit dem von OpenSSH geschriebenen Format in known_hosts überein.
+//
 // Verwendet das Umbenennen-Filtern-Zurückbenennen-Muster für Atomarität:
 // known_hosts → known_hosts.bak → gefiltert nach known_hosts → .bak löschen
 //
 // @param knownHostsPath - Pfad zur known_hosts-Datei
-// @param hostname - Hostname/IP dessen Eintrag entfernt werden soll
+// @param hostname - Hostname/IP:Port dessen Eintrag entfernt werden soll
 // @return error - Fehler beim Lesen/Schreiben
-// @date   2026-03-15 00:00
+// @date   2026-03-15 02:00
 func removeKnownHost(knownHostsPath, hostname string) error {
 	bakPath := knownHostsPath + ".bak"
+
+	// Hostname normalisieren: OpenSSH schreibt Port 22 ohne ":22" in known_hosts.
+	// knownhosts.Normalize("192.168.1.1:22") → "192.168.1.1"
+	// knownhosts.Normalize("192.168.1.1:2222") → "[192.168.1.1]:2222"
+	// Nur so stimmt der Vergleich mit dem gespeicherten Eintrag überein.
+	normalizedHostname := knownhosts.Normalize(hostname)
 
 	// Datei umbenennen für sicheres atomares Update
 	// (bei Absturz bleibt .bak erhalten, original ist weg - wird beim nächsten SSH neu erstellt)
@@ -306,12 +317,13 @@ func removeKnownHost(knownHostsPath, hostname string) error {
 		shouldRemove := false
 
 		if strings.HasPrefix(hostField, "|1|") {
-			// Gehashter Eintrag: HMAC-SHA1-Vergleich durchführen
-			shouldRemove = matchesHashedKnownHost(hostField, hostname)
+			// Gehashter Eintrag: HMAC-SHA1-Vergleich gegen normalisierten Hostname
+			shouldRemove = matchesHashedKnownHost(hostField, normalizedHostname)
 		} else {
-			// Ungehashter Eintrag: direkte Zeichenkettensuche (kommagetrennte Hosts möglich)
+			// Ungehashter Eintrag: Vergleich gegen normalisierten Hostname
+			// (kommagetrennte Hosts möglich, z.B. "hostname,192.168.1.1")
 			for _, h := range strings.Split(hostField, ",") {
-				if h == hostname {
+				if h == normalizedHostname {
 					shouldRemove = true
 					break
 				}
