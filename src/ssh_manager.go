@@ -45,6 +45,8 @@ type SSHManager struct {
 	connections map[string]*ManagedConnection
 	// Logger-Instanz
 	logger *Logger
+	// done wird beim Shutdown geschlossen, damit Reconnect-Goroutinen sauber beenden
+	done chan struct{}
 }
 
 // ManagedConnection erweitert ConnectionStatus um Reconnect-Informationen.
@@ -65,11 +67,25 @@ type ManagedConnection struct {
 //
 // @param logger - Logger-Instanz für Protokollierung
 // @return *SSHManager - Neuer Manager
-// @date   2026-03-08 00:00
+// @date   2026-03-15 00:00
 func NewSSHManager(logger *Logger) *SSHManager {
 	return &SSHManager{
 		connections: make(map[string]*ManagedConnection),
 		logger:      logger,
+		done:        make(chan struct{}),
+	}
+}
+
+// Shutdown signalisiert allen laufenden Reconnect-Goroutinen das saubere Beenden.
+// Sollte beim Programmende aufgerufen werden.
+//
+// @date   2026-03-15 00:00
+func (m *SSHManager) Shutdown() {
+	select {
+	case <-m.done:
+		// Bereits geschlossen – nichts tun
+	default:
+		close(m.done)
 	}
 }
 
@@ -677,7 +693,13 @@ func (m *SSHManager) reconnect(connID string) {
 		m.logger.Info("Reconnect-Versuch %d/%d fuer %s",
 			i+1, ReconnectMaxRetries, managed.Config.Name)
 
-		time.Sleep(ReconnectDelay)
+		// Abbrechbares Warten: endet entweder nach ReconnectDelay oder beim Shutdown
+		select {
+		case <-time.After(ReconnectDelay):
+		case <-m.done:
+			m.logger.Info("Reconnect für %s durch Shutdown abgebrochen", managed.Config.Name)
+			return
+		}
 
 		// Auto-Auth versuchen (Agent + alle Schlüssel)
 		autoMethods := m.buildAutoAuthMethods(managed.Config)
