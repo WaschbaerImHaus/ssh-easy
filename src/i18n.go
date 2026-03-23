@@ -269,7 +269,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktiv",
 		TunnelErrPrefix: "Fehler: ",
-		StatusHelp:      "  t:Terminal  x:Trennen  Esc:Zurück",
+		StatusHelp:      "  t:Terminal  x/Esc:Trennen  q:Zurück",
 		NoActiveConn:    "Keine aktive Verbindung",
 		DiscoMsg:        "Verbindung getrennt",
 
@@ -352,7 +352,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "active",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x:Disconnect  Esc:Back",
+		StatusHelp:      "  t:Terminal  x/Esc:Disconnect  q:Back",
 		NoActiveConn:    "No active connection",
 		DiscoMsg:        "Disconnected",
 
@@ -435,7 +435,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel :",
 		TunnelActive:    "actif",
 		TunnelErrPrefix: "Erreur : ",
-		StatusHelp:      "  t:Terminal  x:Déconnecter  Éch:Retour",
+		StatusHelp:      "  t:Terminal  x/Esc:Déconnecter  q:Retour",
 		NoActiveConn:    "Aucune connexion active",
 		DiscoMsg:        "Déconnecté",
 
@@ -518,7 +518,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Túnel:",
 		TunnelActive:    "activo",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x:Desconectar  Esc:Volver",
+		StatusHelp:      "  t:Terminal  x/Esc:Desconectar  q:Volver",
 		NoActiveConn:    "Sin conexión activa",
 		DiscoMsg:        "Desconectado",
 
@@ -601,7 +601,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "attivo",
 		TunnelErrPrefix: "Errore: ",
-		StatusHelp:      "  t:Terminale  x:Disconnetti  Esc:Indietro",
+		StatusHelp:      "  t:Terminale  x/Esc:Disconnetti  q:Indietro",
 		NoActiveConn:    "Nessuna connessione attiva",
 		DiscoMsg:        "Disconnesso",
 
@@ -684,7 +684,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "トンネル：",
 		TunnelActive:    "有効",
 		TunnelErrPrefix: "エラー：",
-		StatusHelp:      "  t:ターミナル  x:切断  Esc:戻る",
+		StatusHelp:      "  t:ターミナル  x/Esc:切断  q:戻る",
 		NoActiveConn:    "アクティブな接続がありません",
 		DiscoMsg:        "切断しました",
 
@@ -767,7 +767,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "隧道：",
 		TunnelActive:    "活跃",
 		TunnelErrPrefix: "错误：",
-		StatusHelp:      "  t:终端  x:断开  Esc:返回",
+		StatusHelp:      "  t:终端  x/Esc:断开  q:返回",
 		NoActiveConn:    "没有活跃连接",
 		DiscoMsg:        "已断开",
 
@@ -850,7 +850,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Túnel:",
 		TunnelActive:    "ativo",
 		TunnelErrPrefix: "Erro: ",
-		StatusHelp:      "  t:Terminal  x:Desconectar  Esc:Voltar",
+		StatusHelp:      "  t:Terminal  x/Esc:Desconectar  q:Voltar",
 		NoActiveConn:    "Sem conexão ativa",
 		DiscoMsg:        "Desconectado",
 
@@ -933,7 +933,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Туннель:",
 		TunnelActive:    "активен",
 		TunnelErrPrefix: "Ошибка: ",
-		StatusHelp:      "  t:Терминал  x:Отключить  Esc:Назад",
+		StatusHelp:      "  t:Терминал  x/Esc:Отключить  q:Назад",
 		NoActiveConn:    "Нет активного подключения",
 		DiscoMsg:        "Отключено",
 
@@ -1016,7 +1016,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Terowongan:",
 		TunnelActive:    "aktif",
 		TunnelErrPrefix: "Kesalahan: ",
-		StatusHelp:      "  t:Terminal  x:Putuskan  Esc:Kembali",
+		StatusHelp:      "  t:Terminal  x/Esc:Putuskan  q:Kembali",
 		NoActiveConn:    "Tidak ada koneksi aktif",
 		DiscoMsg:        "Terputus",
 
@@ -1099,7 +1099,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "टनल:",
 		TunnelActive:    "सक्रिय",
 		TunnelErrPrefix: "त्रुटि: ",
-		StatusHelp:      "  t:टर्मिनल  x:डिस्कनेक्ट  Esc:वापस",
+		StatusHelp:      "  t:टर्मिनल  x/Esc:डिस्कनेक्ट  q:वापस",
 		NoActiveConn:    "कोई सक्रिय कनेक्शन नहीं",
 		DiscoMsg:        "डिस्कनेक्ट हो गया",
 
@@ -1265,7 +1265,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ٹنل:",
 		TunnelActive:    "فعال",
 		TunnelErrPrefix: "خطا: ",
-		StatusHelp:      "  t:ٹرمینل  x:منقطع  Esc:واپس",
+		StatusHelp:      "  t:ٹرمینل  x/Esc:منقطع  q:واپس",
 		NoActiveConn:    "کوئی فعال کنکشن نہیں",
 		DiscoMsg:        "منقطع ہو گیا",
 
@@ -1348,7 +1348,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "النفق:",
 		TunnelActive:    "نشط",
 		TunnelErrPrefix: "خطأ: ",
-		StatusHelp:      "  t:طرفية  x:قطع  Esc:رجوع",
+		StatusHelp:      "  t:طرفية  x/Esc:قطع  q:رجوع",
 		NoActiveConn:    "لا يوجد اتصال نشط",
 		DiscoMsg:        "تم القطع",
 
@@ -1431,7 +1431,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ቱኔል:",
 		TunnelActive:    "ንቁ",
 		TunnelErrPrefix: "ስህተት: ",
-		StatusHelp:      "  t:ተርሚናል  x:ዘጋ  Esc:ተመለስ",
+		StatusHelp:      "  t:ተርሚናል  x/Esc:ዘጋ  q:ተመለስ",
 		NoActiveConn:    "ንቁ ግንኙነት የለም",
 		DiscoMsg:        "ተቋርጧል",
 
@@ -1514,7 +1514,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Тунел:",
 		TunnelActive:    "активен",
 		TunnelErrPrefix: "Грешка: ",
-		StatusHelp:      "  t:Терминал  x:Прекъсни  Esc:Назад",
+		StatusHelp:      "  t:Терминал  x/Esc:Прекъсни  q:Назад",
 		NoActiveConn:    "Няма активна връзка",
 		DiscoMsg:        "Прекъснато",
 
@@ -1597,7 +1597,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "aktivní",
 		TunnelErrPrefix: "Chyba: ",
-		StatusHelp:      "  t:Terminál  x:Odpojit  Esc:Zpět",
+		StatusHelp:      "  t:Terminál  x/Esc:Odpojit  q:Zpět",
 		NoActiveConn:    "Žádné aktivní připojení",
 		DiscoMsg:        "Odpojeno",
 
@@ -1680,7 +1680,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktibo",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x:Idiskonekta  Esc:Bumalik",
+		StatusHelp:      "  t:Terminal  x/Esc:Idiskonekta  q:Bumalik",
 		NoActiveConn:    "Walang aktibong koneksyon",
 		DiscoMsg:        "Nadiskonekta",
 
@@ -1763,7 +1763,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "გვირაბი:",
 		TunnelActive:    "აქტიური",
 		TunnelErrPrefix: "შეცდომა: ",
-		StatusHelp:      "  t:ტერმინალი  x:გათიშვა  Esc:უკან",
+		StatusHelp:      "  t:ტერმინალი  x/Esc:გათიშვა  q:უკან",
 		NoActiveConn:    "აქტიური კავშირი არ არის",
 		DiscoMsg:        "გათიშულია",
 
@@ -1846,7 +1846,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Τούνελ:",
 		TunnelActive:    "ενεργό",
 		TunnelErrPrefix: "Σφάλμα: ",
-		StatusHelp:      "  t:Τερματικό  x:Αποσύνδεση  Esc:Πίσω",
+		StatusHelp:      "  t:Τερματικό  x/Esc:Αποσύνδεση  q:Πίσω",
 		NoActiveConn:    "Δεν υπάρχει ενεργή σύνδεση",
 		DiscoMsg:        "Αποσυνδέθηκε",
 
@@ -1929,7 +1929,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ટનલ:",
 		TunnelActive:    "સક્રિય",
 		TunnelErrPrefix: "ભૂલ: ",
-		StatusHelp:      "  t:ટર્મિનલ  x:ડિસ્કનેક્ટ  Esc:પાછળ",
+		StatusHelp:      "  t:ટર્મિનલ  x/Esc:ડિસ્કનેક્ટ  q:પાછળ",
 		NoActiveConn:    "કોઈ સક્રિય જોડાણ નથી",
 		DiscoMsg:        "ડિસ્કનેક્ટ",
 
@@ -2012,7 +2012,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Rami:",
 		TunnelActive:    "aiki",
 		TunnelErrPrefix: "Kuskure: ",
-		StatusHelp:      "  t:Terminal  x:Yanke  Esc:Koma",
+		StatusHelp:      "  t:Terminal  x/Esc:Yanke  q:Koma",
 		NoActiveConn:    "Babu aiki haɗin",
 		DiscoMsg:        "An yanke",
 
@@ -2095,7 +2095,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Ọwa:",
 		TunnelActive:    "na-arụ ọrụ",
 		TunnelErrPrefix: "Njehie: ",
-		StatusHelp:      "  t:Terminal  x:Kewapụ  Esc:Laghachi",
+		StatusHelp:      "  t:Terminal  x/Esc:Kewapụ  q:Laghachi",
 		NoActiveConn:    "Ọ dịghị njikọ na-arụ ọrụ",
 		DiscoMsg:        "Ekewapụla",
 
@@ -2178,7 +2178,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ಟನಲ್:",
 		TunnelActive:    "ಸಕ್ರಿಯ",
 		TunnelErrPrefix: "ದೋಷ: ",
-		StatusHelp:      "  t:ಟರ್ಮಿನಲ್  x:ಡಿಸ್‌ಕನೆಕ್ಟ್  Esc:ಹಿಂದೆ",
+		StatusHelp:      "  t:ಟರ್ಮಿನಲ್  x/Esc:ಡಿಸ್‌ಕನೆಕ್ಟ್  q:ಹಿಂದೆ",
 		NoActiveConn:    "ಸಕ್ರಿಯ ಸಂಪರ್ಕವಿಲ್ಲ",
 		DiscoMsg:        "ಡಿಸ್‌ಕನೆಕ್ಟ್",
 
@@ -2261,7 +2261,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "터널:",
 		TunnelActive:    "활성",
 		TunnelErrPrefix: "오류: ",
-		StatusHelp:      "  t:터미널  x:연결끊기  Esc:뒤로",
+		StatusHelp:      "  t:터미널  x/Esc:연결끊기  q:뒤로",
 		NoActiveConn:    "활성 연결 없음",
 		DiscoMsg:        "연결 끊김",
 
@@ -2344,7 +2344,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "टनेल:",
 		TunnelActive:    "सक्रिय",
 		TunnelErrPrefix: "त्रुटी: ",
-		StatusHelp:      "  t:टर्मिनल  x:डिस्कनेक्ट  Esc:मागे",
+		StatusHelp:      "  t:टर्मिनल  x/Esc:डिस्कनेक्ट  q:मागे",
 		NoActiveConn:    "कोणतेही सक्रिय कनेक्शन नाही",
 		DiscoMsg:        "डिस्कनेक्ट झाले",
 
@@ -2427,7 +2427,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "actief",
 		TunnelErrPrefix: "Fout: ",
-		StatusHelp:      "  t:Terminal  x:Verbreken  Esc:Terug",
+		StatusHelp:      "  t:Terminal  x/Esc:Verbreken  q:Terug",
 		NoActiveConn:    "Geen actieve verbinding",
 		DiscoMsg:        "Verbinding verbroken",
 
@@ -2510,7 +2510,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tuuneelii:",
 		TunnelActive:    "hojjechaa",
 		TunnelErrPrefix: "Dogoggora: ",
-		StatusHelp:      "  t:Terminal  x:Citi  Esc:Deebi'i",
+		StatusHelp:      "  t:Terminal  x/Esc:Citi  q:Deebi'i",
 		NoActiveConn:    "Walitti dhufeenya hojjetaa hin jiru",
 		DiscoMsg:        "Citame",
 
@@ -2593,7 +2593,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "تونل:",
 		TunnelActive:    "فعال",
 		TunnelErrPrefix: "خطا: ",
-		StatusHelp:      "  t:ترمینال  x:قطع  Esc:بازگشت",
+		StatusHelp:      "  t:ترمینال  x/Esc:قطع  q:بازگشت",
 		NoActiveConn:    "هیچ اتصال فعالی وجود ندارد",
 		DiscoMsg:        "قطع شد",
 
@@ -2676,7 +2676,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "aktywny",
 		TunnelErrPrefix: "Błąd: ",
-		StatusHelp:      "  t:Terminal  x:Rozłącz  Esc:Wstecz",
+		StatusHelp:      "  t:Terminal  x/Esc:Rozłącz  q:Wstecz",
 		NoActiveConn:    "Brak aktywnego połączenia",
 		DiscoMsg:        "Rozłączono",
 
@@ -2759,7 +2759,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ਟਨਲ:",
 		TunnelActive:    "ਸਰਗਰਮ",
 		TunnelErrPrefix: "ਗਲਤੀ: ",
-		StatusHelp:      "  t:ਟਰਮੀਨਲ  x:ਡਿਸਕਨੈਕਟ  Esc:ਪਿੱਛੇ",
+		StatusHelp:      "  t:ਟਰਮੀਨਲ  x/Esc:ਡਿਸਕਨੈਕਟ  q:ਪਿੱਛੇ",
 		NoActiveConn:    "ਕੋਈ ਸਰਗਰਮ ਕੁਨੈਕਸ਼ਨ ਨਹੀਂ",
 		DiscoMsg:        "ਡਿਸਕਨੈਕਟ",
 
@@ -2842,7 +2842,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "activ",
 		TunnelErrPrefix: "Eroare: ",
-		StatusHelp:      "  t:Terminal  x:Deconectează  Esc:Înapoi",
+		StatusHelp:      "  t:Terminal  x/Esc:Deconectează  q:Înapoi",
 		NoActiveConn:    "Nicio conexiune activă",
 		DiscoMsg:        "Deconectat",
 
@@ -2925,7 +2925,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Handaki:",
 		TunnelActive:    "inafanya kazi",
 		TunnelErrPrefix: "Hitilafu: ",
-		StatusHelp:      "  t:Terminali  x:Kata  Esc:Rudi",
+		StatusHelp:      "  t:Terminali  x/Esc:Kata  q:Rudi",
 		NoActiveConn:    "Hakuna muunganiko unaofanya kazi",
 		DiscoMsg:        "Imekatwa",
 
@@ -3091,7 +3091,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "டன்னல்:",
 		TunnelActive:    "செயலில்",
 		TunnelErrPrefix: "பிழை: ",
-		StatusHelp:      "  t:டெர்மினல்  x:துண்டிக்கு  Esc:திரும்பு",
+		StatusHelp:      "  t:டெர்மினல்  x/Esc:துண்டிக்கு  q:திரும்பு",
 		NoActiveConn:    "செயலில் இணைப்பு இல்லை",
 		DiscoMsg:        "துண்டிக்கப்பட்டது",
 
@@ -3174,7 +3174,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "టన్నెల్:",
 		TunnelActive:    "చురుకుగా",
 		TunnelErrPrefix: "లోపం: ",
-		StatusHelp:      "  t:టెర్మినల్  x:డిస్‌కనెక్ట్  Esc:వెనుకకు",
+		StatusHelp:      "  t:టెర్మినల్  x/Esc:డిస్‌కనెక్ట్  q:వెనుకకు",
 		NoActiveConn:    "చురుకైన కనెక్షన్ లేదు",
 		DiscoMsg:        "డిస్‌కనెక్ట్",
 
@@ -3257,7 +3257,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "อุโมงค์:",
 		TunnelActive:    "ใช้งาน",
 		TunnelErrPrefix: "ข้อผิดพลาด: ",
-		StatusHelp:      "  t:เทอร์มินัล  x:ตัดการเชื่อมต่อ  Esc:ย้อนกลับ",
+		StatusHelp:      "  t:เทอร์มินัล  x/Esc:ตัดการเชื่อมต่อ  q:ย้อนกลับ",
 		NoActiveConn:    "ไม่มีการเชื่อมต่อที่ใช้งานอยู่",
 		DiscoMsg:        "ตัดการเชื่อมต่อ",
 
@@ -3423,7 +3423,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Тунель:",
 		TunnelActive:    "активний",
 		TunnelErrPrefix: "Помилка: ",
-		StatusHelp:      "  t:Термінал  x:Відключити  Esc:Назад",
+		StatusHelp:      "  t:Термінал  x/Esc:Відключити  q:Назад",
 		NoActiveConn:    "Немає активного підключення",
 		DiscoMsg:        "Відключено",
 
@@ -3589,7 +3589,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Ìmọ̀:",
 		TunnelActive:    "n ṣiṣẹ",
 		TunnelErrPrefix: "Aṣiṣe: ",
-		StatusHelp:      "  t:Terminal  x:Yọọkuro  Esc:Pada",
+		StatusHelp:      "  t:Terminal  x/Esc:Yọọkuro  q:Pada",
 		NoActiveConn:    "Ko si asopọ ti nṣiṣẹ",
 		DiscoMsg:        "Ti yọọkuro",
 

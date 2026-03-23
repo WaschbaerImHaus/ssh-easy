@@ -238,7 +238,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		m.errorMsg = m.lang.ErrLoading + err.Error()
 		m.connections = []Connection{}
 	} else {
-		m.connections = cfg.Connections
+		m.connections = sortConnectionsByName(cfg.Connections)
 		m.language = cfg.Language
 	}
 
@@ -545,13 +545,14 @@ func (m AppModel) View() string {
 }
 
 // reloadConfig lädt die Konfiguration über den Cache neu.
+// Verbindungen werden alphabetisch nach Name sortiert.
 //
-// @date   2026-03-07 21:00
+// @date   2026-03-23 11:00
 func (m *AppModel) reloadConfig() {
 	cfg, err := m.configCache.Get()
 	if err != nil {
 		m.errorMsg = "Fehler beim Laden: " + err.Error()
 		return
 	}
-	m.connections = cfg.Connections
+	m.connections = sortConnectionsByName(cfg.Connections)
 }

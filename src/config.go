@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -316,4 +317,25 @@ func UpdateConnection(path string, conn Connection) error {
 	}
 
 	return SaveConfig(path, cfg)
+}
+
+// sortConnectionsByName sortiert eine Verbindungsliste alphabetisch nach Name (case-insensitiv).
+//
+// @param connections - Unsortierte Liste der Verbindungen
+// @return []Connection - Alphabetisch sortierte Kopie der Liste
+// @date   2026-03-23 11:00
+func sortConnectionsByName(connections []Connection) []Connection {
+	sorted := make([]Connection, len(connections))
+	copy(sorted, connections)
+	// Einfaches Insertion-Sort – Listen sind typischerweise klein
+	for i := 1; i < len(sorted); i++ {
+		key := sorted[i]
+		j := i - 1
+		for j >= 0 && strings.ToLower(sorted[j].Name) > strings.ToLower(key.Name) {
+			sorted[j+1] = sorted[j]
+			j--
+		}
+		sorted[j+1] = key
+	}
+	return sorted
 }

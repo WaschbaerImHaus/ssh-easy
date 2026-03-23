@@ -15,14 +15,17 @@ import (
 )
 
 // handleStatusKeys verarbeitet Tasten in der Statusansicht.
+// ESC und x trennen die Verbindung und kehren zur Liste zurück.
+// q kehrt ohne Trennen zurück.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-03-07 21:00
+// @date   2026-03-23 11:00
 func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "esc", "q":
+	case "q":
+		// Zurück zur Liste ohne zu trennen
 		m.state = ViewList
 
 	case "t":
@@ -37,7 +40,8 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.errorMsg = m.lang.NoActiveConn
 
-	case "x":
+	case "x", "esc":
+		// Verbindung trennen und zur Liste zurück
 		m.sshManager.Disconnect(m.activeID)
 		m.successMsg = m.lang.DiscoMsg
 		m.state = ViewList
