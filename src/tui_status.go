@@ -40,6 +40,12 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.errorMsg = m.lang.NoActiveConn
 
+	case "r":
+		// Gecachten Auth-Schlüssel für diese Verbindung löschen,
+		// damit beim nächsten Connect alle Methoden neu durchprobiert werden.
+		m.sshManager.ClearAuthCache(m.activeID)
+		m.successMsg = m.lang.KeyCacheCleared
+
 	case "x", "esc":
 		// Verbindung trennen und zur Liste zurück
 		m.sshManager.Disconnect(m.activeID)

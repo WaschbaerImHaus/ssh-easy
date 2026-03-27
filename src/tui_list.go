@@ -264,8 +264,9 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "j":
-		// Verbindung trennen falls aktiv
+		// Verbindung trennen falls aktiv und Auth-Cache-Eintrag löschen
 		m.sshManager.Disconnect(m.activeID)
+		m.sshManager.ClearAuthCache(m.activeID)
 
 		// Verbindung löschen
 		err := DeleteConnection(m.configPath, m.activeID)

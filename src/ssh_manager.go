@@ -47,6 +47,8 @@ type SSHManager struct {
 	logger *Logger
 	// done wird beim Shutdown geschlossen, damit Reconnect-Goroutinen sauber beenden
 	done chan struct{}
+	// authCache merkt sich welche Auth-Methode zuletzt für welche Verbindung klappte
+	authCache *AuthCache
 }
 
 // ManagedConnection erweitert ConnectionStatus um Reconnect-Informationen.
@@ -64,15 +66,23 @@ type ManagedConnection struct {
 }
 
 // NewSSHManager erstellt einen neuen SSH-Manager.
+// Lädt beim Start den Auth-Cache aus ~/.ssh-easy/auth-cache.json.
 //
 // @param logger - Logger-Instanz für Protokollierung
 // @return *SSHManager - Neuer Manager
-// @date   2026-03-15 00:00
+// @date   2026-03-23 12:00
 func NewSSHManager(logger *Logger) *SSHManager {
+	// Auth-Cache-Pfad bestimmen (neben der connections.json)
+	cachePath := ""
+	if dir, err := GetConfigDir(); err == nil {
+		cachePath = filepath.Join(dir, "auth-cache.json")
+	}
+
 	return &SSHManager{
 		connections: make(map[string]*ManagedConnection),
 		logger:      logger,
 		done:        make(chan struct{}),
+		authCache:   NewAuthCache(cachePath),
 	}
 }
 
@@ -89,32 +99,164 @@ func (m *SSHManager) Shutdown() {
 	}
 }
 
-// ConnectAuto verbindet automatisch: probiert SSH-Agent und alle verfügbaren
-// Keys aus ~/.ssh/ ohne den Benutzer zu fragen. Gibt einen Fehler zurück
-// wenn keine Methode funktioniert (dann sollte Passwort versucht werden).
+// ConnectAuto verbindet automatisch mit Auth-Cache-Unterstützung:
+//  1. Zuerst wird die zuletzt erfolgreiche Methode aus dem Cache probiert (1 Versuch)
+//  2. Schlägt diese fehl oder ist kein Eintrag vorhanden: Agent + Keys einzeln durchprobieren
+//  3. Die erste funktionierende Methode wird im Cache gespeichert
+//  4. Nach 2 aufeinanderfolgenden Cache-Fehlern wird der Eintrag gelöscht
 //
 // @param conn - Die Verbindungskonfiguration
 // @return *ConnectionStatus - Status der aufgebauten Verbindung
-// @return error - Fehler beim Verbindungsaufbau
-// @date   2026-03-15 00:00
+// @return error - Fehler wenn keine Methode funktioniert
+// @date   2026-03-23 12:00
 func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
-	m.logger.Info("Auto-Verbindung zu %s@%s:%d (Agent + Keys)...", conn.User, conn.Host, conn.Port)
+	m.logger.Info("Auto-Verbindung zu %s@%s:%d...", conn.User, conn.Host, conn.Port)
 
-	// Auth-Methoden sammeln: Agent + alle unverschlüsselten Keys
-	methods := m.buildAutoAuthMethods(conn)
-	if len(methods) == 0 {
-		return nil, fmt.Errorf("keine SSH-Schlüssel oder Agent verfügbar")
+	// 1. Gecachte Methode als erstes probieren (spart unnötige Versuche)
+	if entry := m.authCache.Get(conn.ID); entry != nil {
+		m.logger.Info("Probiere gecachte Auth-Methode für %s: %s", conn.Name, entry.Method)
+		if method := m.buildMethodFromCache(conn, entry.Method); method != nil {
+			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{method})
+			if err == nil {
+				m.logger.Info("Gecachte Methode erfolgreich für %s", conn.Name)
+				m.authCache.RecordSuccess(conn.ID, entry.Method)
+				m.registerConnection(conn, status, "", ctx)
+				return status, nil
+			}
+			// Gecachte Methode fehlgeschlagen – Fehlerzähler erhöhen
+			m.logger.Info("Gecachte Methode fehlgeschlagen für %s: %v", conn.Name, err)
+			m.authCache.RecordFailure(conn.ID)
+		}
 	}
 
-	ctx, status, err := m.dialSSH(conn, methods)
+	// 2. Alle Methoden einzeln durchprobieren und die funktionierende cachen
+	ctx, status, successMethod, err := m.connectAutoDiscover(conn)
 	if err != nil {
 		m.logger.Info("Auto-Verbindung fehlgeschlagen für %s: %v", conn.Name, err)
 		return nil, err
 	}
 
-	m.logger.Info("Auto-Verbindung zu %s hergestellt", conn.Name)
+	// Erfolgreiche Methode für zukünftige Verbindungen merken
+	m.authCache.RecordSuccess(conn.ID, successMethod)
+	m.logger.Info("Auto-Verbindung zu %s hergestellt (%s)", conn.Name, successMethod)
 	m.registerConnection(conn, status, "", ctx)
 	return status, nil
+}
+
+// connectAutoDiscover probiert Auth-Methoden einzeln durch (Agent → konfigurierter Key
+// → alle Keys aus ~/.ssh/) und gibt die erste erfolgreiche zurück.
+// Liefert auch den Cache-Schlüssel der erfolgreichen Methode.
+//
+// @param conn - Verbindungskonfiguration
+// @return context.Context - Kontext der neuen Verbindung
+// @return *ConnectionStatus - Verbindungsstatus
+// @return string - Cache-Schlüssel der erfolgreichen Methode
+// @return error - Fehler wenn keine Methode funktioniert
+// @date   2026-03-23 12:00
+func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *ConnectionStatus, string, error) {
+	// 1. SSH-Agent versuchen
+	if agentAuth, err := m.getAgentAuth(); err == nil {
+		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{agentAuth})
+		if err == nil {
+			m.logger.Info("SSH-Agent erfolgreich für %s", conn.Name)
+			return ctx, status, authCacheMethodAgent, nil
+		}
+		m.logger.Info("SSH-Agent fehlgeschlagen: %v", err)
+	}
+
+	// 2. Explizit konfigurierten Key zuerst probieren
+	if conn.KeyPath != "" {
+		absPath := expandTilde(conn.KeyPath)
+		if signers := m.loadKeysFromPaths([]string{absPath}); len(signers) > 0 {
+			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
+			if err == nil {
+				m.logger.Info("Konfigurierter Key %s erfolgreich für %s", conn.KeyPath, conn.Name)
+				return ctx, status, authCacheKeyPrefix + absPath, nil
+			}
+			m.logger.Info("Konfigurierter Key %s fehlgeschlagen: %v", conn.KeyPath, err)
+		}
+	}
+
+	// 3. Alle anderen Keys aus ~/.ssh/ einzeln durchprobieren
+	home, err := os.UserHomeDir()
+	if err == nil {
+		sshDir := filepath.Join(home, ".ssh")
+		entries, err := os.ReadDir(sshDir)
+		if err == nil {
+			skipFiles := map[string]bool{
+				"known_hosts": true, "config": true, "authorized_keys": true,
+				"known_hosts.old": true, "environment": true,
+			}
+			absExclude := expandTilde(conn.KeyPath)
+
+			for _, entry := range entries {
+				if entry.IsDir() {
+					continue
+				}
+				name := entry.Name()
+				if strings.HasSuffix(name, ".pub") || skipFiles[name] {
+					continue
+				}
+				absPath := filepath.Join(sshDir, name)
+				if absPath == absExclude {
+					continue // bereits unter Schritt 2 probiert
+				}
+
+				signers := m.loadKeysFromPaths([]string{absPath})
+				if len(signers) == 0 {
+					continue
+				}
+				ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
+				if err == nil {
+					m.logger.Info("Key %s erfolgreich für %s", absPath, conn.Name)
+					return ctx, status, authCacheKeyPrefix + absPath, nil
+				}
+				m.logger.Info("Key %s fehlgeschlagen: %v", absPath, err)
+			}
+		}
+	}
+
+	return nil, nil, "", fmt.Errorf("keine SSH-Schlüssel oder Agent verfügbar")
+}
+
+// buildMethodFromCache erstellt eine ssh.AuthMethod aus einem Cache-Eintrag.
+// Gibt nil zurück wenn die Methode nicht mehr verfügbar ist (z.B. Key-Datei gelöscht).
+//
+// @param conn   - Verbindungskonfiguration (für Agent-Auth nicht benötigt)
+// @param method - Cache-Schlüssel ("agent" oder "key:/pfad")
+// @return ssh.AuthMethod - Bereitgestellte Auth-Methode oder nil
+// @date   2026-03-23 12:00
+func (m *SSHManager) buildMethodFromCache(conn Connection, method string) ssh.AuthMethod {
+	switch {
+	case method == authCacheMethodAgent:
+		// SSH-Agent erneut verbinden (Socket-Verbindung ist kurzlebig)
+		auth, err := m.getAgentAuth()
+		if err != nil {
+			return nil
+		}
+		return auth
+
+	case strings.HasPrefix(method, authCacheKeyPrefix):
+		// Schlüsseldatei laden (Pfad steht nach dem Präfix)
+		keyPath := method[len(authCacheKeyPrefix):]
+		signers := m.loadKeysFromPaths([]string{keyPath})
+		if len(signers) == 0 {
+			return nil // Datei fehlt oder verschlüsselt
+		}
+		return ssh.PublicKeys(signers...)
+	}
+
+	return nil
+}
+
+// ClearAuthCache löscht den Auth-Cache-Eintrag für eine Verbindung manuell.
+// Nützlich wenn der Nutzer den gespeicherten Schlüssel zurücksetzen möchte.
+//
+// @param connID - Connection.ID der betroffenen Verbindung
+// @date   2026-03-23 12:00
+func (m *SSHManager) ClearAuthCache(connID string) {
+	m.authCache.Remove(connID)
+	m.logger.Info("Auth-Cache für Verbindung %s gelöscht", connID)
 }
 
 // ConnectWithPassword verbindet mit Passwort-Authentifizierung.
