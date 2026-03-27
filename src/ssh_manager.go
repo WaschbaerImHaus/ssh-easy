@@ -123,9 +123,13 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 				m.registerConnection(conn, status, "", ctx)
 				return status, nil
 			}
-			// Gecachte Methode fehlgeschlagen – Fehlerzähler erhöhen
+			// Fehlerzähler nur bei echten Auth-Fehlern erhöhen (falscher Schlüssel).
+			// Netzwerkfehler (Timeout, refused, …) lassen den Cache unberührt –
+			// der Schlüssel ist weiterhin gültig, der Server war nur nicht erreichbar.
 			m.logger.Info("Gecachte Methode fehlgeschlagen für %s: %v", conn.Name, err)
-			m.authCache.RecordFailure(conn.ID)
+			if IsSSHAuthError(err) {
+				m.authCache.RecordFailure(conn.ID)
+			}
 		}
 	}
 

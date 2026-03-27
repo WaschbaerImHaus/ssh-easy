@@ -27,8 +27,11 @@ const authCacheMethodAgent = "agent"
 // Format: "key:/absoluter/pfad/zum/schluessel"
 const authCacheKeyPrefix = "key:"
 
-// maxAuthFailures ist die Anzahl aufeinanderfolgender Fehlversuche,
-// nach der ein Cache-Eintrag als ungültig gilt und gelöscht wird.
+// maxAuthFailures ist die Anzahl aufeinanderfolgender echter Auth-Fehler
+// (falscher Schlüssel / abgelehnte Authentifizierung), nach der ein Cache-Eintrag
+// als ungültig gilt und gelöscht wird.
+// Netzwerkfehler (Timeout, Connection refused usw.) zählen NICHT dazu –
+// sie sagen nichts darüber aus, ob der Schlüssel korrekt ist.
 const maxAuthFailures = 2
 
 // AuthCacheEntry speichert die zuletzt erfolgreiche Auth-Methode einer Verbindung.
