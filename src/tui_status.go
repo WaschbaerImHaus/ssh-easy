@@ -123,12 +123,13 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 		}
 		var tunnelStatus string
 		if status != nil {
-			if errMsg, ok := status.TunnelErrors[t.LocalPort]; ok {
-				// Tunnel-Startfehler aus diesem Verbindungsversuch
-				tunnelStatus = errorStyle.Render(m.lang.TunnelErrPrefix + errMsg)
-			} else if otherConn, conflict := usedPorts[t.LocalPort]; conflict {
-				// Port wird von einer anderen aktiven Verbindung verwendet
+			if otherConn, conflict := usedPorts[t.LocalPort]; conflict {
+				// Port wird von einer anderen aktiven Verbindung verwendet –
+				// Konflikt hat Vorrang vor dem raw listen-Fehler
 				tunnelStatus = errorStyle.Render(fmt.Sprintf(m.lang.TunnelPortConflict, otherConn))
+			} else if errMsg, ok := status.TunnelErrors[t.LocalPort]; ok {
+				// Sonstiger Tunnel-Startfehler (kein Konflikt mit bekannter Verbindung)
+				tunnelStatus = errorStyle.Render(m.lang.TunnelErrPrefix + errMsg)
 			} else {
 				tunnelStatus = connectedStyle.Render(m.lang.TunnelActive)
 			}
