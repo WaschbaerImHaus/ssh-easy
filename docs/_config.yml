@@ -1,7 +1,7 @@
 title: ssh-easy
 description: A simple SSH connection manager with Terminal UI for Linux and Windows
 theme: minima
-url: "https://waschbaerimlhaus.github.io"
+url: "https://waschbaerimhaus.github.io"
 baseurl: "/ssh-easy"
 
 author:
