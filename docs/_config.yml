@@ -1,0 +1,30 @@
+title: ssh-easy
+description: A simple SSH connection manager with Terminal UI for Linux and Windows
+theme: minima
+url: "https://waschbaerimlhaus.github.io"
+baseurl: "/ssh-easy"
+
+author:
+  name: Kurt Ingwer
+
+# Navigation
+header_pages:
+  - index.md
+  - changelog.md
+  - download.md
+
+# Markdown settings
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+plugins:
+  - jekyll-seo-tag
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
