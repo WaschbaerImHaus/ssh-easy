@@ -153,8 +153,8 @@ func (m AppModel) renderList(s *strings.Builder) {
 		s.WriteString(m.lang.PressNToAdd + "\n")
 	} else {
 		for i, conn := range m.connections {
-			// Status-Indikator: grüner Punkt wenn verbunden, grauer Strich wenn getrennt
-			statusIcon := disconnectedStyle.Render("- ")
+			// Status-Indikator: grüner Punkt wenn verbunden, sonst kein Symbol
+			statusIcon := "  " // zwei Leerzeichen als Platzhalter für den Punkt
 			if m.sshManager.IsConnected(conn.ID) {
 				statusIcon = connectedStyle.Render("● ")
 			}
@@ -173,14 +173,14 @@ func (m AppModel) renderList(s *strings.Builder) {
 				}
 			}
 
-			// Zeile: nur Name und Tunnel-Ports – Details stehen in der Statusansicht
-			line := fmt.Sprintf("%s %s%s",
+			// Zeile: beide Varianten mit gleichem "  "-Präfix für saubere Ausrichtung
+			line := fmt.Sprintf("  %s%s%s",
 				statusIcon, conn.Name, tunnelInfo)
 
 			if i == m.cursor {
 				s.WriteString(selectedStyle.Render(line))
 			} else {
-				s.WriteString(normalStyle.Render("  " + line))
+				s.WriteString(normalStyle.Render(line))
 			}
 			s.WriteString("\n")
 		}
