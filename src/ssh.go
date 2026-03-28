@@ -494,3 +494,67 @@ func AutoDeployKey(conn Connection, client *ssh.Client, configPath string) (stri
 
 	return keyPathTilde, nil
 }
+
+// RemoveDeployedKey entfernt einen SSH-Key vollständig:
+//  1. Public Key aus ~/.ssh/authorized_keys auf dem Remote-Server
+//  2. Lokale Private-Key-Datei
+//  3. Lokale Public-Key-Datei (.pub)
+//  4. Verbindungs-Config zurück auf Passwort-Auth (KeyPath geleert)
+//
+// Wird über stdin übergeben um Shell-Escaping von Key-Daten zu vermeiden.
+// Fehler beim Löschen lokaler Dateien werden ignoriert (Key könnte schon fehlen).
+//
+// @param conn       - Verbindungskonfiguration mit KeyPath
+// @param client     - Aktiver SSH-Client für Remote-Befehl (nil = nur lokal)
+// @param configPath - Pfad zur Konfigurationsdatei
+// @return error     - Fehler beim Remote-Befehl oder Config-Update
+// @date   2026-03-28 12:00
+func RemoveDeployedKey(conn Connection, client *ssh.Client, configPath string) error {
+	keyPath := expandTilde(conn.KeyPath)
+	pubKeyPath := keyPath + ".pub"
+
+	// Public Key lesen – nötig für den Remote-Abgleich
+	pubKeyData, err := os.ReadFile(pubKeyPath)
+	if err != nil {
+		return fmt.Errorf("Public Key nicht lesbar (%s): %w", pubKeyPath, err)
+	}
+
+	// Zweites Feld der pub-Key-Zeile = reiner Base64-Key ohne Typ und Kommentar.
+	// grep -vF matcht als fester String (kein Regex) – sicher für beliebige Key-Daten.
+	parts := strings.Fields(string(pubKeyData))
+	if len(parts) < 2 {
+		return fmt.Errorf("ungültiges Public-Key-Format in %s", pubKeyPath)
+	}
+	keyData := parts[1] // nur Base64-Teil – eindeutig und regex-sicher
+
+	// Key vom Server entfernen (über bestehende SSH-Verbindung)
+	if client != nil {
+		session, err := client.NewSession()
+		if err != nil {
+			return fmt.Errorf("SSH-Session für Key-Entfernung nicht möglich: %w", err)
+		}
+		defer session.Close()
+
+		// grep -vF filtert die Zeile mit dem Key heraus.
+		// Temp-Datei verhindert dass authorized_keys bei grep-Fehler geleert wird.
+		session.Stdin = strings.NewReader(keyData)
+		cmd := "KEY=$(cat); grep -vF \"$KEY\" ~/.ssh/authorized_keys > ~/.ssh/.authorized_keys_tmp && mv ~/.ssh/.authorized_keys_tmp ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+		if err := session.Run(cmd); err != nil {
+			return fmt.Errorf("Key konnte nicht vom Server entfernt werden: %w", err)
+		}
+	}
+
+	// Lokale Key-Dateien löschen (Fehler ignorieren – könnten schon fehlen)
+	_ = os.Remove(keyPath)
+	_ = os.Remove(pubKeyPath)
+
+	// Verbindungs-Config zurücksetzen: AuthType=Password, KeyPath leer
+	conn.AuthType = AuthPassword
+	conn.KeyPath = ""
+	conn.UpdatedAt = time.Now().Format(time.RFC3339)
+	if err := UpdateConnection(configPath, conn); err != nil {
+		return fmt.Errorf("Key entfernt, Config-Update fehlgeschlagen: %w", err)
+	}
+
+	return nil
+}

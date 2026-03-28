@@ -172,6 +172,8 @@ type Translations struct {
 	NoActiveConn    string // Meldung wenn kein aktiver Client
 	DiscoMsg        string // Kurz-Meldung nach Trennung
 	KeyCacheCleared string // Meldung nach dem Löschen des gecachten Auth-Schlüssels
+	KeyRemovedMsg   string // Erfolg: Key vom Server und lokal entfernt, Verbindung getrennt
+	NoKeyMsg        string // Fehler: keine Key-Auth konfiguriert, nichts zu entfernen
 
 	// --- Key-Generierung ---
 	KeygenTitle     string // Formular-Titel
@@ -274,10 +276,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktiv",
 		TunnelErrPrefix: "Fehler: ",
-		StatusHelp:      "  t:Terminal  x:Trennen  r:Schlüssel  q:Zurück",
+		StatusHelp:      "  t:Terminal  x:Trennen  r:Schlüssel entfernen  q:Zurück",
 		NoActiveConn:    "Keine aktive Verbindung",
 		DiscoMsg:        "Verbindung getrennt",
 		KeyCacheCleared: "Gespeicherter Schlüssel zurückgesetzt",
+		KeyRemovedMsg:   "Schlüssel entfernt · Verbindung getrennt",
+		NoKeyMsg:        "Kein SSH-Schlüssel konfiguriert",
 
 		KeygenTitle:     "  SSH-Key generieren (Ed25519)",
 		LabelKeyPath:    "Dateipfad:",
@@ -359,10 +363,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "active",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x:Disconnect  r:Reset key  q:Back",
+		StatusHelp:      "  t:Terminal  x:Disconnect  r:Remove key  q:Back",
 		NoActiveConn:    "No active connection",
 		DiscoMsg:        "Disconnected",
 		KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generate SSH Key (Ed25519)",
 		LabelKeyPath:    "File path:",
@@ -448,6 +454,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Aucune connexion active",
 		DiscoMsg:        "Déconnecté",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Générer une clé SSH (Ed25519)",
 		LabelKeyPath:    "Chemin du fichier :",
@@ -533,6 +541,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Sin conexión activa",
 		DiscoMsg:        "Desconectado",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generar clave SSH (Ed25519)",
 		LabelKeyPath:    "Ruta del archivo:",
@@ -618,6 +628,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Nessuna connessione attiva",
 		DiscoMsg:        "Disconnesso",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Genera chiave SSH (Ed25519)",
 		LabelKeyPath:    "Percorso file:",
@@ -703,6 +715,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "アクティブな接続がありません",
 		DiscoMsg:        "切断しました",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH鍵を生成（Ed25519）",
 		LabelKeyPath:    "ファイルパス：",
@@ -788,6 +802,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "没有活跃连接",
 		DiscoMsg:        "已断开",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  生成 SSH 密钥（Ed25519）",
 		LabelKeyPath:    "文件路径：",
@@ -873,6 +889,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Sem conexão ativa",
 		DiscoMsg:        "Desconectado",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Gerar chave SSH (Ed25519)",
 		LabelKeyPath:    "Caminho do arquivo:",
@@ -958,6 +976,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Нет активного подключения",
 		DiscoMsg:        "Отключено",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Создать SSH-ключ (Ed25519)",
 		LabelKeyPath:    "Путь к файлу:",
@@ -1043,6 +1063,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Tidak ada koneksi aktif",
 		DiscoMsg:        "Terputus",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Buat Kunci SSH (Ed25519)",
 		LabelKeyPath:    "Jalur file:",
@@ -1128,6 +1150,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "कोई सक्रिय कनेक्शन नहीं",
 		DiscoMsg:        "डिस्कनेक्ट हो गया",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH कुंजी बनाएँ (Ed25519)",
 		LabelKeyPath:    "फ़ाइल पथ:",
@@ -1209,10 +1233,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "টানেল:",
 		TunnelActive:    "সক্রিয়",
 		TunnelErrPrefix: "ত্রুটি: ",
-		StatusHelp:      "  t:টার্মিনাল  x:বিচ্ছিন্ন  r:Reset key  q:ফিরে যান",
+		StatusHelp:      "  t:টার্মিনাল  x:বিচ্ছিন্ন  r:Remove key  q:ফিরে যান",
 		NoActiveConn:    "কোনো সক্রিয় সংযোগ নেই",
 		DiscoMsg:        "বিচ্ছিন্ন হয়েছে",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH কী তৈরি করুন (Ed25519)",
 		LabelKeyPath:    "ফাইলের পথ:",
@@ -1298,6 +1324,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "کوئی فعال کنکشن نہیں",
 		DiscoMsg:        "منقطع ہو گیا",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH کلید بنائیں (Ed25519)",
 		LabelKeyPath:    "فائل کا راستہ:",
@@ -1383,6 +1411,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "لا يوجد اتصال نشط",
 		DiscoMsg:        "تم القطع",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  إنشاء مفتاح SSH (Ed25519)",
 		LabelKeyPath:    "مسار الملف:",
@@ -1468,6 +1498,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "ንቁ ግንኙነት የለም",
 		DiscoMsg:        "ተቋርጧል",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH ቁልፍ ፍጠር (Ed25519)",
 		LabelKeyPath:    "የፋይል ዱካ:",
@@ -1553,6 +1585,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Няма активна връзка",
 		DiscoMsg:        "Прекъснато",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Генериране на SSH ключ (Ed25519)",
 		LabelKeyPath:    "Път до файл:",
@@ -1638,6 +1672,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Žádné aktivní připojení",
 		DiscoMsg:        "Odpojeno",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generovat SSH klíč (Ed25519)",
 		LabelKeyPath:    "Cesta k souboru:",
@@ -1723,6 +1759,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Walang aktibong koneksyon",
 		DiscoMsg:        "Nadiskonekta",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Gumawa ng SSH Key (Ed25519)",
 		LabelKeyPath:    "Path ng file:",
@@ -1808,6 +1846,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "აქტიური კავშირი არ არის",
 		DiscoMsg:        "გათიშულია",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH გასაღების გენერაცია (Ed25519)",
 		LabelKeyPath:    "ფაილის გზა:",
@@ -1893,6 +1933,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Δεν υπάρχει ενεργή σύνδεση",
 		DiscoMsg:        "Αποσυνδέθηκε",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Δημιουργία κλειδιού SSH (Ed25519)",
 		LabelKeyPath:    "Διαδρομή αρχείου:",
@@ -1978,6 +2020,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "કોઈ સક્રિય જોડાણ નથી",
 		DiscoMsg:        "ડિસ્કનેક્ટ",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH ચાવી બનાવો (Ed25519)",
 		LabelKeyPath:    "ફાઈલ પાથ:",
@@ -2063,6 +2107,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Babu aiki haɗin",
 		DiscoMsg:        "An yanke",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Ƙirƙiri Maɓallin SSH (Ed25519)",
 		LabelKeyPath:    "Hanyar fayil:",
@@ -2148,6 +2194,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Ọ dịghị njikọ na-arụ ọrụ",
 		DiscoMsg:        "Ekewapụla",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Mepụta Igodo SSH (Ed25519)",
 		LabelKeyPath:    "Ụzọ faịlụ:",
@@ -2233,6 +2281,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "ಸಕ್ರಿಯ ಸಂಪರ್ಕವಿಲ್ಲ",
 		DiscoMsg:        "ಡಿಸ್‌ಕನೆಕ್ಟ್",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH ಕೀ ರಚಿಸಿ (Ed25519)",
 		LabelKeyPath:    "ಫೈಲ್ ಮಾರ್ಗ:",
@@ -2318,6 +2368,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "활성 연결 없음",
 		DiscoMsg:        "연결 끊김",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH 키 생성 (Ed25519)",
 		LabelKeyPath:    "파일 경로:",
@@ -2403,6 +2455,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "कोणतेही सक्रिय कनेक्शन नाही",
 		DiscoMsg:        "डिस्कनेक्ट झाले",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH की तयार करा (Ed25519)",
 		LabelKeyPath:    "फाइल पथ:",
@@ -2488,6 +2542,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Geen actieve verbinding",
 		DiscoMsg:        "Verbinding verbroken",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH-sleutel genereren (Ed25519)",
 		LabelKeyPath:    "Bestandspad:",
@@ -2573,6 +2629,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Walitti dhufeenya hojjetaa hin jiru",
 		DiscoMsg:        "Citame",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Furtuu SSH Uumi (Ed25519)",
 		LabelKeyPath:    "Karaa faayilii:",
@@ -2658,6 +2716,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "هیچ اتصال فعالی وجود ندارد",
 		DiscoMsg:        "قطع شد",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  ایجاد کلید SSH (Ed25519)",
 		LabelKeyPath:    "مسیر فایل:",
@@ -2743,6 +2803,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Brak aktywnego połączenia",
 		DiscoMsg:        "Rozłączono",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generuj klucz SSH (Ed25519)",
 		LabelKeyPath:    "Ścieżka pliku:",
@@ -2828,6 +2890,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "ਕੋਈ ਸਰਗਰਮ ਕੁਨੈਕਸ਼ਨ ਨਹੀਂ",
 		DiscoMsg:        "ਡਿਸਕਨੈਕਟ",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH ਕੁੰਜੀ ਬਣਾਓ (Ed25519)",
 		LabelKeyPath:    "ਫਾਈਲ ਮਾਰਗ:",
@@ -2913,6 +2977,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Nicio conexiune activă",
 		DiscoMsg:        "Deconectat",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generare cheie SSH (Ed25519)",
 		LabelKeyPath:    "Cale fișier:",
@@ -2998,6 +3064,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Hakuna muunganiko unaofanya kazi",
 		DiscoMsg:        "Imekatwa",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Unda Ufunguo wa SSH (Ed25519)",
 		LabelKeyPath:    "Njia ya faili:",
@@ -3079,10 +3147,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktiv",
 		TunnelErrPrefix: "Fel: ",
-		StatusHelp:      "  t:Terminal  x:Koppla från  r:Reset key  q:Tillbaka",
+		StatusHelp:      "  t:Terminal  x:Koppla från  r:Remove key  q:Tillbaka",
 		NoActiveConn:    "Ingen aktiv anslutning",
 		DiscoMsg:        "Frånkopplad",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Generera SSH-nyckel (Ed25519)",
 		LabelKeyPath:    "Filsökväg:",
@@ -3168,6 +3238,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "செயலில் இணைப்பு இல்லை",
 		DiscoMsg:        "துண்டிக்கப்பட்டது",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH விசை உருவாக்கு (Ed25519)",
 		LabelKeyPath:    "கோப்பு பாதை:",
@@ -3253,6 +3325,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "చురుకైన కనెక్షన్ లేదు",
 		DiscoMsg:        "డిస్‌కనెక్ట్",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH కీ సృష్టించు (Ed25519)",
 		LabelKeyPath:    "ఫైల్ మార్గం:",
@@ -3338,6 +3412,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "ไม่มีการเชื่อมต่อที่ใช้งานอยู่",
 		DiscoMsg:        "ตัดการเชื่อมต่อ",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  สร้าง SSH Key (Ed25519)",
 		LabelKeyPath:    "เส้นทางไฟล์:",
@@ -3419,10 +3495,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tünel:",
 		TunnelActive:    "aktif",
 		TunnelErrPrefix: "Hata: ",
-		StatusHelp:      "  t:Terminal  x:Bağlantıyı Kes  r:Reset key  q:Geri",
+		StatusHelp:      "  t:Terminal  x:Bağlantıyı Kes  r:Remove key  q:Geri",
 		NoActiveConn:    "Aktif bağlantı yok",
 		DiscoMsg:        "Bağlantı kesildi",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  SSH Anahtarı Oluştur (Ed25519)",
 		LabelKeyPath:    "Dosya yolu:",
@@ -3508,6 +3586,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Немає активного підключення",
 		DiscoMsg:        "Відключено",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Створити SSH-ключ (Ed25519)",
 		LabelKeyPath:    "Шлях до файлу:",
@@ -3589,10 +3669,12 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Đường hầm:",
 		TunnelActive:    "hoạt động",
 		TunnelErrPrefix: "Lỗi: ",
-		StatusHelp:      "  t:Terminal  x:Ngắt kết nối  r:Reset key  q:Quay lại",
+		StatusHelp:      "  t:Terminal  x:Ngắt kết nối  r:Remove key  q:Quay lại",
 		NoActiveConn:    "Không có kết nối hoạt động",
 		DiscoMsg:        "Đã ngắt kết nối",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Tạo khóa SSH (Ed25519)",
 		LabelKeyPath:    "Đường dẫn tệp:",
@@ -3678,6 +3760,8 @@ var allTranslations = map[Language]Translations{
 		NoActiveConn:    "Ko si asopọ ti nṣiṣẹ",
 		DiscoMsg:        "Ti yọọkuro",
   KeyCacheCleared: "Cached key cleared",
+		KeyRemovedMsg:   "Key removed · Connection closed",
+		NoKeyMsg:        "No SSH key configured",
 
 		KeygenTitle:     "  Ṣẹda Kọkọrọ SSH (Ed25519)",
 		LabelKeyPath:    "Ọna faili:",

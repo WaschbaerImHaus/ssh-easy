@@ -111,6 +111,12 @@ type keygenResultMsg struct {
 	err    error
 }
 
+// sshKeyRemovedMsg wird gesendet wenn RemoveDeployedKey abgeschlossen ist.
+type sshKeyRemovedMsg struct {
+	connID string
+	err    error
+}
+
 // terminalDoneMsg wird gesendet wenn die interaktive SSH-Terminal-Session endet.
 // err ist nil bei normalem Ende (Nutzer schreibt "exit"), sonst Fehlerbeschreibung.
 type terminalDoneMsg struct {
@@ -369,6 +375,20 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.successMsg = m.lang.TerminalDone
 		}
 		m.state = ViewStatus
+		return m, nil
+
+	case sshKeyRemovedMsg:
+		// Auth-Cache leeren, Verbindung trennen, zurück zur Liste
+		m.sshManager.ClearAuthCache(msg.connID)
+		m.sshManager.Disconnect(msg.connID)
+		m.configCache.Invalidate()
+		m.reloadConfig()
+		m.state = ViewList
+		if msg.err != nil {
+			m.errorMsg = m.lang.ErrPrefix + msg.err.Error()
+		} else {
+			m.successMsg = m.lang.KeyRemovedMsg
+		}
 		return m, nil
 
 	case sshConnectedMsg:

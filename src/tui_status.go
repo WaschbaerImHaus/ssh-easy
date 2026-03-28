@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	cryptossh "golang.org/x/crypto/ssh"
 )
 
 // handleStatusKeys verarbeitet Tasten in der Statusansicht.
@@ -41,10 +42,34 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.errorMsg = m.lang.NoActiveConn
 
 	case "r":
-		// Gecachten Auth-Schlüssel für diese Verbindung löschen,
-		// damit beim nächsten Connect alle Methoden neu durchprobiert werden.
-		m.sshManager.ClearAuthCache(m.activeID)
-		m.successMsg = m.lang.KeyCacheCleared
+		// SSH-Key vollständig entfernen: vom Server (authorized_keys),
+		// lokal (Datei löschen), Config zurücksetzen, Verbindung trennen.
+		var conn *Connection
+		for i := range m.connections {
+			if m.connections[i].ID == m.activeID {
+				conn = &m.connections[i]
+				break
+			}
+		}
+		if conn == nil || conn.KeyPath == "" {
+			// Keine Key-Auth konfiguriert – nichts zu entfernen
+			m.errorMsg = m.lang.NoKeyMsg
+			return m, nil
+		}
+		// SSH-Client aus aktiver Verbindung holen
+		status, _ := m.sshManager.GetStatus(m.activeID)
+		var sshClient *cryptossh.Client
+		if status != nil {
+			sshClient = status.SSHClient
+		}
+		// Async ausführen – SSH-Befehl kann kurz dauern
+		connCopy := *conn
+		client := sshClient
+		configPath := m.configPath
+		return m, func() tea.Msg {
+			err := RemoveDeployedKey(connCopy, client, configPath)
+			return sshKeyRemovedMsg{connID: connCopy.ID, err: err}
+		}
 
 	case "x":
 		// Verbindung trennen und zur Liste zurück
