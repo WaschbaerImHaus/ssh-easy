@@ -165,10 +165,10 @@ func (m AppModel) renderList(s *strings.Builder) {
 		s.WriteString(m.lang.PressNToAdd + "\n")
 	} else {
 		for i, conn := range m.connections {
-			// Status-Indikator
-			statusIcon := disconnectedStyle.Render("  ")
+			// Status-Indikator: grüner Punkt wenn verbunden, grauer Strich wenn getrennt
+			statusIcon := disconnectedStyle.Render("- ")
 			if m.sshManager.IsConnected(conn.ID) {
-				statusIcon = connectedStyle.Render("  ")
+				statusIcon = connectedStyle.Render("● ")
 			}
 
 			// Tunnel-Info

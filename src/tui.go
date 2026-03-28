@@ -374,7 +374,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sshConnectedMsg:
 		m.successMsg = m.lang.ConnectedMsg
 		m.errorMsg = ""
-		m.state = ViewList
+		// Direkt zur Statusansicht – Nutzer kann sofort 't' für Terminal drücken
+		m.activeID = msg.id
+		m.state = ViewStatus
 		// Bei Passwort-Auth: automatisch SSH-Key generieren und deployen
 		if msg.wasPassword {
 			connCopy := msg.conn
