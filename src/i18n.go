@@ -148,8 +148,11 @@ type Translations struct {
 	FormHelp        string // Hilfezeile im Formular
 	SavedMsg        string // Erfolgs-Meldung nach dem Speichern
 
+	// --- Formular-Validierung ---
+	ErrDuplicateName string // Fehler wenn ein Verbindungsname bereits vergeben ist
+
 	// --- Passwort-Eingabe ---
-	NoKeyFound   string // Meldung wenn kein SSH-Key gefunden wurde
+	NoKeyFound string // Meldung wenn kein SSH-Key gefunden wurde
 	PlaceholderPW string // Platzhalter für das Passwort-Feld
 	AfterPWHint  string // Hinweis auf automatischen Key-Deploy
 	ConnectHelp  string // Hilfezeile bei Passwort-Eingabe
@@ -254,6 +257,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Mein Server",
 		FormHelp:        "  Tab:Nächstes Feld  Enter:Speichern  Esc:Abbrechen",
 		SavedMsg:        "Verbindung gespeichert!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  Kein passender SSH-Key gefunden. Bitte Passwort eingeben:",
 		PlaceholderPW: "Passwort/Passphrase eingeben",
@@ -338,6 +342,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "My Server",
 		FormHelp:        "  Tab:Next Field  Enter:Save  Esc:Cancel",
 		SavedMsg:        "Connection saved!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  No matching SSH key found. Please enter password:",
 		PlaceholderPW: "Enter password/passphrase",
@@ -422,6 +427,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Mon serveur",
 		FormHelp:        "  Tab:Champ suivant  Entrée:Enregistrer  Éch:Annuler",
 		SavedMsg:        "Connexion enregistrée !",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  Aucune clé SSH correspondante. Veuillez entrer le mot de passe :",
 		PlaceholderPW: "Entrer le mot de passe/la phrase secrète",
@@ -506,6 +512,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Mi servidor",
 		FormHelp:        "  Tab:Siguiente campo  Enter:Guardar  Esc:Cancelar",
 		SavedMsg:        "¡Conexión guardada!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  No se encontró clave SSH. Por favor introduce la contraseña:",
 		PlaceholderPW: "Introducir contraseña/frase de paso",
@@ -590,6 +597,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Il mio server",
 		FormHelp:        "  Tab:Campo successivo  Invio:Salva  Esc:Annulla",
 		SavedMsg:        "Connessione salvata!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  Nessuna chiave SSH trovata. Inserisci la password:",
 		PlaceholderPW: "Inserisci password/frase d'accesso",
@@ -674,6 +682,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "マイサーバー",
 		FormHelp:        "  Tab:次のフィールド  Enter:保存  Esc:キャンセル",
 		SavedMsg:        "接続を保存しました！",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  SSHキーが見つかりません。パスワードを入力してください：",
 		PlaceholderPW: "パスワード/パスフレーズを入力",
@@ -758,6 +767,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "我的服务器",
 		FormHelp:        "  Tab:下一字段  Enter:保存  Esc:取消",
 		SavedMsg:        "连接已保存！",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  未找到匹配的 SSH 密钥。请输入密码：",
 		PlaceholderPW: "输入密码/密钥短语",
@@ -842,6 +852,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Meu servidor",
 		FormHelp:        "  Tab:Próximo campo  Enter:Salvar  Esc:Cancelar",
 		SavedMsg:        "Conexão salva!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:   "  Nenhuma chave SSH encontrada. Por favor insira a senha:",
 		PlaceholderPW: "Inserir senha/frase-senha",
@@ -926,6 +937,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Мой сервер",
 		FormHelp:        "  Tab:Следующее поле  Enter:Сохранить  Esc:Отмена",
 		SavedMsg:        "Подключение сохранено!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH-ключ не найден. Пожалуйста, введите пароль:",
 		PlaceholderPW: "Введите пароль/парольную фразу",
@@ -1010,6 +1022,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Server saya",
 		FormHelp:        "  Tab:Bidang berikutnya  Enter:Simpan  Esc:Batal",
 		SavedMsg:        "Koneksi disimpan!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Kunci SSH tidak ditemukan. Masukkan kata sandi:",
 		PlaceholderPW: "Masukkan kata sandi/frasa sandi",
@@ -1094,6 +1107,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "मेरा सर्वर",
 		FormHelp:        "  Tab:अगला फ़ील्ड  Enter:सहेजें  Esc:रद्द करें",
 		SavedMsg:        "कनेक्शन सहेजा गया!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  कोई SSH कुंजी नहीं मिली। कृपया पासवर्ड दर्ज करें:",
 		PlaceholderPW: "पासवर्ड/पासफ़्रेज़ दर्ज करें",
@@ -1178,6 +1192,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "আমার সার্ভার",
 		FormHelp:        "  Tab:পরবর্তী ক্ষেত্র  Enter:সংরক্ষণ  Esc:বাতিল",
 		SavedMsg:        "সংযোগ সংরক্ষিত হয়েছে!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  কোনো SSH কী পাওয়া যায়নি। পাসওয়ার্ড লিখুন:",
 		PlaceholderPW: "পাসওয়ার্ড/পাসফ্রেজ লিখুন",
@@ -1262,6 +1277,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "میرا سرور",
 		FormHelp:        "  Tab:اگلا خانہ  Enter:محفوظ  Esc:منسوخ",
 		SavedMsg:        "کنکشن محفوظ ہو گیا!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  کوئی SSH کلید نہیں ملی۔ پاس ورڈ درج کریں:",
 		PlaceholderPW: "پاس ورڈ/پاس فریز درج کریں",
@@ -1346,6 +1362,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "خادمي",
 		FormHelp:        "  Tab:الحقل التالي  Enter:حفظ  Esc:إلغاء",
 		SavedMsg:        "تم حفظ الاتصال!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  لم يُعثر على مفتاح SSH. يرجى إدخال كلمة المرور:",
 		PlaceholderPW: "أدخل كلمة المرور/عبارة المرور",
@@ -1430,6 +1447,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "የእኔ አገልጋይ",
 		FormHelp:        "  Tab:ቀጣይ ሜዳ  Enter:አስቀምጥ  Esc:ሰርዝ",
 		SavedMsg:        "ግንኙነት ተቀምጧል!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH ቁልፍ አልተገኘም። እባክዎ የይለፍ ቃል ያስገቡ:",
 		PlaceholderPW: "የይለፍ ቃል/ሐረግ ያስገቡ",
@@ -1514,6 +1532,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Моят сървър",
 		FormHelp:        "  Tab:Следващо поле  Enter:Запази  Esc:Отказ",
 		SavedMsg:        "Връзката е запазена!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Не е намерен SSH ключ. Моля въведете парола:",
 		PlaceholderPW: "Въведете парола/парольна фраза",
@@ -1598,6 +1617,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Můj server",
 		FormHelp:        "  Tab:Další pole  Enter:Uložit  Esc:Zrušit",
 		SavedMsg:        "Připojení uloženo!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Nenalezen žádný SSH klíč. Zadejte prosím heslo:",
 		PlaceholderPW: "Zadejte heslo/heslovou frázi",
@@ -1682,6 +1702,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Ang aking server",
 		FormHelp:        "  Tab:Susunod na field  Enter:I-save  Esc:Kanselahin",
 		SavedMsg:        "Koneksyon na-save!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Walang nahanap na SSH key. Mangyaring maglagay ng password:",
 		PlaceholderPW: "Ilagay ang password/passphrase",
@@ -1766,6 +1787,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "ჩემი სერვერი",
 		FormHelp:        "  Tab:შემდეგი ველი  Enter:შენახვა  Esc:გაუქმება",
 		SavedMsg:        "კავშირი შენახულია!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH გასაღები ვერ მოიძებნა. შეიყვანეთ პაროლი:",
 		PlaceholderPW: "შეიყვანეთ პაროლი/ფრაზა",
@@ -1850,6 +1872,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Ο διακομιστής μου",
 		FormHelp:        "  Tab:Επόμενο πεδίο  Enter:Αποθήκευση  Esc:Ακύρωση",
 		SavedMsg:        "Η σύνδεση αποθηκεύτηκε!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Δεν βρέθηκε κλειδί SSH. Εισαγάγετε κωδικό πρόσβασης:",
 		PlaceholderPW: "Εισαγάγετε κωδικό/φράση πρόσβασης",
@@ -1934,6 +1957,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "મારો સર્વર",
 		FormHelp:        "  Tab:આગળ ફીલ્ડ  Enter:સાચવો  Esc:રદ કરો",
 		SavedMsg:        "જોડાણ સાચવ્યું!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH ચાવી મળી નહીં. પાસવર્ડ દાખલ કરો:",
 		PlaceholderPW: "પાસવર્ડ/પ્રવેશ-વાક્ય દાખલ કરો",
@@ -2018,6 +2042,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Sabar ta",
 		FormHelp:        "  Tab:Filin gaba  Enter:Ajiye  Esc:Soke",
 		SavedMsg:        "An ajiye haɗin!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Ba a sami maɓallin SSH ba. Don Allah shigar da kalmar wucewa:",
 		PlaceholderPW: "Shigar da kalmar wucewa",
@@ -2102,6 +2127,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Sava m",
 		FormHelp:        "  Tab:Ubi ọzọ  Enter:Chekwaa  Esc:Kagbuo",
 		SavedMsg:        "Echekwala njikọ!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Enweghị igodo SSH. Biko tinye okwuntughe:",
 		PlaceholderPW: "Tinye okwuntughe/ikpe okwu",
@@ -2186,6 +2212,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "ನನ್ನ ಸರ್ವರ್",
 		FormHelp:        "  Tab:ಮುಂದಿನ ಕ್ಷೇತ್ರ  Enter:ಉಳಿಸಿ  Esc:ರದ್ದು",
 		SavedMsg:        "ಸಂಪರ್ಕ ಉಳಿಸಲಾಯಿತು!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH ಕೀ ಕಂಡುಬಂದಿಲ್ಲ. ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ:",
 		PlaceholderPW: "ಪಾಸ್‌ವರ್ಡ್/ಪಾಸ್‌ಫ್ರೇಸ್ ನಮೂದಿಸಿ",
@@ -2270,6 +2297,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "내 서버",
 		FormHelp:        "  Tab:다음 필드  Enter:저장  Esc:취소",
 		SavedMsg:        "연결이 저장되었습니다!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH 키를 찾을 수 없습니다. 비밀번호를 입력하세요:",
 		PlaceholderPW: "비밀번호/패스프레이즈 입력",
@@ -2354,6 +2382,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "माझा सर्व्हर",
 		FormHelp:        "  Tab:पुढील फील्ड  Enter:जतन करा  Esc:रद्द",
 		SavedMsg:        "कनेक्शन जतन केले!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH की सापडली नाही. कृपया पासवर्ड टाका:",
 		PlaceholderPW: "पासवर्ड/पासफ्रेज टाका",
@@ -2438,6 +2467,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Mijn server",
 		FormHelp:        "  Tab:Volgend veld  Enter:Opslaan  Esc:Annuleren",
 		SavedMsg:        "Verbinding opgeslagen!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Geen SSH-sleutel gevonden. Voer wachtwoord in:",
 		PlaceholderPW: "Wachtwoord/wachtzin invoeren",
@@ -2522,6 +2552,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Sarvaraa koo",
 		FormHelp:        "  Tab:Dirree itti aantu  Enter:Kuusi  Esc:Dhiisi",
 		SavedMsg:        "Walitti dhufeenya kuufame!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Furtuu SSH hin argamne. Jecha darbii galchi:",
 		PlaceholderPW: "Jecha darbii galchi",
@@ -2606,6 +2637,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "سرور من",
 		FormHelp:        "  Tab:فیلد بعدی  Enter:ذخیره  Esc:لغو",
 		SavedMsg:        "اتصال ذخیره شد!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  کلید SSH یافت نشد. لطفاً رمز عبور وارد کنید:",
 		PlaceholderPW: "رمز عبور/عبارت عبور وارد کنید",
@@ -2690,6 +2722,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Mój serwer",
 		FormHelp:        "  Tab:Następne pole  Enter:Zapisz  Esc:Anuluj",
 		SavedMsg:        "Połączenie zapisane!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Nie znaleziono klucza SSH. Wprowadź hasło:",
 		PlaceholderPW: "Wprowadź hasło/frazę hasłową",
@@ -2774,6 +2807,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "ਮੇਰਾ ਸਰਵਰ",
 		FormHelp:        "  Tab:ਅਗਲਾ ਖੇਤਰ  Enter:ਸੁਰੱਖਿਅਤ  Esc:ਰੱਦ",
 		SavedMsg:        "ਕੁਨੈਕਸ਼ਨ ਸੁਰੱਖਿਅਤ!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH ਕੁੰਜੀ ਨਹੀਂ ਮਿਲੀ। ਪਾਸਵਰਡ ਦਾਖਲ ਕਰੋ:",
 		PlaceholderPW: "ਪਾਸਵਰਡ/ਪਾਸਫ਼੍ਰੇਜ਼ ਦਾਖਲ ਕਰੋ",
@@ -2858,6 +2892,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Serverul meu",
 		FormHelp:        "  Tab:Câmpul următor  Enter:Salvează  Esc:Anulare",
 		SavedMsg:        "Conexiunea a fost salvată!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Nu s-a găsit cheie SSH. Introduceți parola:",
 		PlaceholderPW: "Introduceți parola/fraza de acces",
@@ -2942,6 +2977,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Seva yangu",
 		FormHelp:        "  Tab:Sehemu inayofuata  Enter:Hifadhi  Esc:Ghairi",
 		SavedMsg:        "Muunganiko umehifadhiwa!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Hakuna ufunguo wa SSH. Tafadhali ingiza nenosiri:",
 		PlaceholderPW: "Ingiza nenosiri/msemo wa siri",
@@ -3026,6 +3062,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Min server",
 		FormHelp:        "  Tab:Nästa fält  Enter:Spara  Esc:Avbryt",
 		SavedMsg:        "Anslutning sparad!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Ingen SSH-nyckel hittades. Ange lösenord:",
 		PlaceholderPW: "Ange lösenord/lösenfras",
@@ -3110,6 +3147,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "என் சர்வர்",
 		FormHelp:        "  Tab:அடுத்த புலம்  Enter:சேமி  Esc:ரத்து",
 		SavedMsg:        "இணைப்பு சேமிக்கப்பட்டது!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH விசை கிடைக்கவில்லை. கடவுச்சொல்லை உள்ளிடவும்:",
 		PlaceholderPW: "கடவுச்சொல்/கடவுச்சொற்றொடர் உள்ளிடவும்",
@@ -3194,6 +3232,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "నా సర్వర్",
 		FormHelp:        "  Tab:తదుపరి ఫీల్డ్  Enter:సేవ్  Esc:రద్దు",
 		SavedMsg:        "కనెక్షన్ సేవ్ అయింది!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH కీ కనుగొనబడలేదు. పాస్‌వర్డ్ నమోదు చేయండి:",
 		PlaceholderPW: "పాస్‌వర్డ్/పాస్‌ఫ్రేజ్ నమోదు చేయండి",
@@ -3278,6 +3317,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "เซิร์ฟเวอร์ของฉัน",
 		FormHelp:        "  Tab:ฟิลด์ถัดไป  Enter:บันทึก  Esc:ยกเลิก",
 		SavedMsg:        "บันทึกการเชื่อมต่อแล้ว!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  ไม่พบ SSH key กรุณาใส่รหัสผ่าน:",
 		PlaceholderPW: "ใส่รหัสผ่าน/วลีรหัสผ่าน",
@@ -3362,6 +3402,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Sunucum",
 		FormHelp:        "  Tab:Sonraki alan  Enter:Kaydet  Esc:İptal",
 		SavedMsg:        "Bağlantı kaydedildi!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH anahtarı bulunamadı. Lütfen şifre girin:",
 		PlaceholderPW: "Şifre/parola girin",
@@ -3446,6 +3487,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Мій сервер",
 		FormHelp:        "  Tab:Наступне поле  Enter:Зберегти  Esc:Скасувати",
 		SavedMsg:        "Підключення збережено!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  SSH-ключ не знайдено. Будь ласка, введіть пароль:",
 		PlaceholderPW: "Введіть пароль/ключову фразу",
@@ -3530,6 +3572,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Máy chủ của tôi",
 		FormHelp:        "  Tab:Trường tiếp theo  Enter:Lưu  Esc:Hủy",
 		SavedMsg:        "Đã lưu kết nối!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Không tìm thấy khóa SSH. Vui lòng nhập mật khẩu:",
 		PlaceholderPW: "Nhập mật khẩu/cụm mật khẩu",
@@ -3614,6 +3657,7 @@ var allTranslations = map[Language]Translations{
 		PlaceholderName: "Olupin mi",
 		FormHelp:        "  Tab:Aaye to nbọ  Enter:Fipamọ  Esc:Fagilee",
 		SavedMsg:        "Asopọ ti fipamọ!",
+		ErrDuplicateName: "This name is already in use",
 
 		NoKeyFound:    "  Ko ri kọkọrọ SSH. Jọwọ tẹ ọrọ aṣina:",
 		PlaceholderPW: "Tẹ ọrọ aṣina/gbolohun ọrọ aṣina",

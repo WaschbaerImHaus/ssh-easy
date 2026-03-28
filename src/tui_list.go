@@ -171,7 +171,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 				statusIcon = connectedStyle.Render("● ")
 			}
 
-			// Tunnel-Info
+			// Tunnel-Ports (nur aktive) für die kompakte Anzeige sammeln
 			tunnelInfo := ""
 			if len(conn.Tunnels) > 0 {
 				ports := make([]string, 0, len(conn.Tunnels))
@@ -185,15 +185,9 @@ func (m AppModel) renderList(s *strings.Builder) {
 				}
 			}
 
-			// Auth-Info
-			authInfo := ""
-			if conn.AuthType == AuthAgent {
-				authInfo = " [Agent]"
-			}
-
-			// Zeile formatieren
-			line := fmt.Sprintf("%s %s (%s@%s:%d)%s%s",
-				statusIcon, conn.Name, conn.User, conn.Host, conn.Port, tunnelInfo, authInfo)
+			// Zeile: nur Name und Tunnel-Ports – Details stehen in der Statusansicht
+			line := fmt.Sprintf("%s %s%s",
+				statusIcon, conn.Name, tunnelInfo)
 
 			if i == m.cursor {
 				s.WriteString(selectedStyle.Render(line))

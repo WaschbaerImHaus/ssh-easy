@@ -58,6 +58,17 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Doppelte Namen verbieten: Name muss in der Liste eindeutig sein.
+		// Beim Bearbeiten wird die eigene Verbindung (m.activeID) ausgenommen.
+		for _, existing := range m.connections {
+			if strings.EqualFold(existing.Name, conn.Name) {
+				if m.state == ViewCreate || existing.ID != m.activeID {
+					m.errorMsg = m.lang.ErrDuplicateName
+					return m, nil
+				}
+			}
+		}
+
 		if m.state == ViewCreate {
 			err = AddConnection(m.configPath, conn)
 		} else {
