@@ -235,7 +235,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Keine Verbindungen gespeichert.",
 		PressNToAdd:   "  Drücke 'n' um eine neue Verbindung anzulegen.",
-		HelpList:      "  n:Neu  e:Bearbeiten  d:Löschen  Enter:Verbinden  x:Trennen  g:Key-Gen  l:Sprache  q:Beenden",
+		HelpList:      "  n:Neu  e:Bearbeiten  d:Löschen  Enter:Verbinden  x:Trennen  l:Sprache  q:Beenden",
 
 		ConnectingTitle: "  Verbinde mit: %s",
 		TryingAutoAuth:  "  Probiere SSH-Agent und verfügbare Schlüssel...",
@@ -274,7 +274,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktiv",
 		TunnelErrPrefix: "Fehler: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Trennen  r:Schlüssel  q:Zurück",
+		StatusHelp:      "  t:Terminal  x:Trennen  r:Schlüssel  q:Zurück",
 		NoActiveConn:    "Keine aktive Verbindung",
 		DiscoMsg:        "Verbindung getrennt",
 		KeyCacheCleared: "Gespeicherter Schlüssel zurückgesetzt",
@@ -320,7 +320,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  No connections saved.",
 		PressNToAdd:   "  Press 'n' to add a new connection.",
-		HelpList:      "  n:New  e:Edit  d:Delete  Enter:Connect  x:Disconnect  g:Key-Gen  l:Language  q:Quit",
+		HelpList:      "  n:New  e:Edit  d:Delete  Enter:Connect  x:Disconnect  l:Language  q:Quit",
 
 		ConnectingTitle: "  Connecting to: %s",
 		TryingAutoAuth:  "  Trying SSH agent and available keys...",
@@ -359,7 +359,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "active",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Disconnect  r:Reset key  q:Back",
+		StatusHelp:      "  t:Terminal  x:Disconnect  r:Reset key  q:Back",
 		NoActiveConn:    "No active connection",
 		DiscoMsg:        "Disconnected",
 		KeyCacheCleared: "Cached key cleared",
@@ -405,7 +405,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Aucune connexion enregistrée.",
 		PressNToAdd:   "  Appuyez sur 'n' pour ajouter une connexion.",
-		HelpList:      "  n:Nouveau  e:Modifier  d:Supprimer  Entrée:Connecter  x:Déconnecter  g:Clé SSH  l:Langue  q:Quitter",
+		HelpList:      "  n:Nouveau  e:Modifier  d:Supprimer  Entrée:Connecter  x:Déconnecter SSH  l:Langue  q:Quitter",
 
 		ConnectingTitle: "  Connexion à : %s",
 		TryingAutoAuth:  "  Tentative avec l'agent SSH et les clés disponibles...",
@@ -444,7 +444,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel :",
 		TunnelActive:    "actif",
 		TunnelErrPrefix: "Erreur : ",
-		StatusHelp:      "  t:Terminal  x/Esc:Déconnecter  q:Retour  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Déconnecter  q:Retour  r:Reset key",
 		NoActiveConn:    "Aucune connexion active",
 		DiscoMsg:        "Déconnecté",
   KeyCacheCleared: "Cached key cleared",
@@ -490,7 +490,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  No hay conexiones guardadas.",
 		PressNToAdd:   "  Pulsa 'n' para añadir una nueva conexión.",
-		HelpList:      "  n:Nuevo  e:Editar  d:Eliminar  Enter:Conectar  x:Desconectar  g:Clave SSH  l:Idioma  q:Salir",
+		HelpList:      "  n:Nuevo  e:Editar  d:Eliminar  Enter:Conectar  x:Desconectar SSH  l:Idioma  q:Salir",
 
 		ConnectingTitle: "  Conectando a: %s",
 		TryingAutoAuth:  "  Probando agente SSH y claves disponibles...",
@@ -529,7 +529,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Túnel:",
 		TunnelActive:    "activo",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Desconectar  q:Volver  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Desconectar  q:Volver  r:Reset key",
 		NoActiveConn:    "Sin conexión activa",
 		DiscoMsg:        "Desconectado",
   KeyCacheCleared: "Cached key cleared",
@@ -575,7 +575,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Nessuna connessione salvata.",
 		PressNToAdd:   "  Premi 'n' per aggiungere una nuova connessione.",
-		HelpList:      "  n:Nuovo  e:Modifica  d:Elimina  Invio:Connetti  x:Disconnetti  g:Chiave SSH  l:Lingua  q:Esci",
+		HelpList:      "  n:Nuovo  e:Modifica  d:Elimina  Invio:Connetti  x:Disconnetti SSH  l:Lingua  q:Esci",
 
 		ConnectingTitle: "  Connessione a: %s",
 		TryingAutoAuth:  "  Provo agente SSH e chiavi disponibili...",
@@ -614,7 +614,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "attivo",
 		TunnelErrPrefix: "Errore: ",
-		StatusHelp:      "  t:Terminale  x/Esc:Disconnetti  q:Indietro  r:Reset key",
+		StatusHelp:      "  t:Terminale  x:Disconnetti  q:Indietro  r:Reset key",
 		NoActiveConn:    "Nessuna connessione attiva",
 		DiscoMsg:        "Disconnesso",
   KeyCacheCleared: "Cached key cleared",
@@ -660,7 +660,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  保存済みの接続がありません。",
 		PressNToAdd:   "  'n' を押して新しい接続を追加してください。",
-		HelpList:      "  n:新規  e:編集  d:削除  Enter:接続  x:切断  g:SSH鍵  l:言語  q:終了",
+		HelpList:      "  n:新規  e:編集  d:削除  Enter:接続  x:切断  l:言語  q:終了",
 
 		ConnectingTitle: "  接続中：%s",
 		TryingAutoAuth:  "  SSHエージェントと利用可能な鍵を試行中...",
@@ -699,7 +699,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "トンネル：",
 		TunnelActive:    "有効",
 		TunnelErrPrefix: "エラー：",
-		StatusHelp:      "  t:ターミナル  x/Esc:切断  q:戻る  r:Reset key",
+		StatusHelp:      "  t:ターミナル  x:切断  q:戻る  r:Reset key",
 		NoActiveConn:    "アクティブな接続がありません",
 		DiscoMsg:        "切断しました",
   KeyCacheCleared: "Cached key cleared",
@@ -745,7 +745,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  没有已保存的连接。",
 		PressNToAdd:   "  按 'n' 添加新连接。",
-		HelpList:      "  n:新建  e:编辑  d:删除  Enter:连接  x:断开  g:SSH密钥  l:语言  q:退出",
+		HelpList:      "  n:新建  e:编辑  d:删除  Enter:连接  x:断开  l:语言  q:退出",
 
 		ConnectingTitle: "  正在连接：%s",
 		TryingAutoAuth:  "  正在尝试 SSH 代理和可用密钥...",
@@ -784,7 +784,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "隧道：",
 		TunnelActive:    "活跃",
 		TunnelErrPrefix: "错误：",
-		StatusHelp:      "  t:终端  x/Esc:断开  q:返回  r:Reset key",
+		StatusHelp:      "  t:终端  x:断开  q:返回  r:Reset key",
 		NoActiveConn:    "没有活跃连接",
 		DiscoMsg:        "已断开",
   KeyCacheCleared: "Cached key cleared",
@@ -830,7 +830,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Nenhuma conexão salva.",
 		PressNToAdd:   "  Pressione 'n' para adicionar uma nova conexão.",
-		HelpList:      "  n:Novo  e:Editar  d:Excluir  Enter:Conectar  x:Desconectar  g:Chave SSH  l:Idioma  q:Sair",
+		HelpList:      "  n:Novo  e:Editar  d:Excluir  Enter:Conectar  x:Desconectar SSH  l:Idioma  q:Sair",
 
 		ConnectingTitle: "  Conectando a: %s",
 		TryingAutoAuth:  "  Tentando agente SSH e chaves disponíveis...",
@@ -869,7 +869,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Túnel:",
 		TunnelActive:    "ativo",
 		TunnelErrPrefix: "Erro: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Desconectar  q:Voltar  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Desconectar  q:Voltar  r:Reset key",
 		NoActiveConn:    "Sem conexão ativa",
 		DiscoMsg:        "Desconectado",
   KeyCacheCleared: "Cached key cleared",
@@ -915,7 +915,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Нет сохранённых подключений.",
 		PressNToAdd:   "  Нажмите 'n' чтобы добавить новое подключение.",
-		HelpList:      "  n:Новое  e:Изменить  d:Удалить  Enter:Подключить  x:Отключить  g:SSH-ключ  l:Язык  q:Выход",
+		HelpList:      "  n:Новое  e:Изменить  d:Удалить  Enter:Подключить  x:Отключить  l:Язык  q:Выход",
 
 		ConnectingTitle: "  Подключение к: %s",
 		TryingAutoAuth:  "  Пробуем SSH-агент и доступные ключи...",
@@ -954,7 +954,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Туннель:",
 		TunnelActive:    "активен",
 		TunnelErrPrefix: "Ошибка: ",
-		StatusHelp:      "  t:Терминал  x/Esc:Отключить  q:Назад  r:Reset key",
+		StatusHelp:      "  t:Терминал  x:Отключить  q:Назад  r:Reset key",
 		NoActiveConn:    "Нет активного подключения",
 		DiscoMsg:        "Отключено",
   KeyCacheCleared: "Cached key cleared",
@@ -1000,7 +1000,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Tidak ada koneksi yang tersimpan.",
 		PressNToAdd:   "  Tekan 'n' untuk menambahkan koneksi baru.",
-		HelpList:      "  n:Baru  e:Edit  d:Hapus  Enter:Hubungkan  x:Putuskan  g:Kunci SSH  l:Bahasa  q:Keluar",
+		HelpList:      "  n:Baru  e:Edit  d:Hapus  Enter:Hubungkan  x:Putuskan SSH  l:Bahasa  q:Keluar",
 
 		ConnectingTitle: "  Menghubungkan ke: %s",
 		TryingAutoAuth:  "  Mencoba agen SSH dan kunci yang tersedia...",
@@ -1039,7 +1039,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Terowongan:",
 		TunnelActive:    "aktif",
 		TunnelErrPrefix: "Kesalahan: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Putuskan  q:Kembali  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Putuskan  q:Kembali  r:Reset key",
 		NoActiveConn:    "Tidak ada koneksi aktif",
 		DiscoMsg:        "Terputus",
   KeyCacheCleared: "Cached key cleared",
@@ -1085,7 +1085,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  कोई कनेक्शन सहेजा नहीं गया।",
 		PressNToAdd:   "  नया कनेक्शन जोड़ने के लिए 'n' दबाएँ।",
-		HelpList:      "  n:नया  e:संपादित  d:हटाएँ  Enter:कनेक्ट  x:डिस्कनेक्ट  g:SSH-कुंजी  l:भाषा  q:बाहर",
+		HelpList:      "  n:नया  e:संपादित  d:हटाएँ  Enter:कनेक्ट  x:डिस्कनेक्ट  l:भाषा  q:बाहर",
 
 		ConnectingTitle: "  कनेक्ट हो रहा है: %s",
 		TryingAutoAuth:  "  SSH एजेंट और उपलब्ध कुंजियाँ आज़मा रहे हैं...",
@@ -1124,7 +1124,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "टनल:",
 		TunnelActive:    "सक्रिय",
 		TunnelErrPrefix: "त्रुटि: ",
-		StatusHelp:      "  t:टर्मिनल  x/Esc:डिस्कनेक्ट  q:वापस  r:Reset key",
+		StatusHelp:      "  t:टर्मिनल  x:डिस्कनेक्ट  q:वापस  r:Reset key",
 		NoActiveConn:    "कोई सक्रिय कनेक्शन नहीं",
 		DiscoMsg:        "डिस्कनेक्ट हो गया",
   KeyCacheCleared: "Cached key cleared",
@@ -1170,7 +1170,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  কোনো সংযোগ সংরক্ষিত নেই।",
 		PressNToAdd:   "  নতুন সংযোগ যোগ করতে 'n' চাপুন।",
-		HelpList:      "  n:নতুন  e:সম্পাদনা  d:মুছুন  Enter:সংযুক্ত  x:বিচ্ছিন্ন  g:SSH-কী  l:ভাষা  q:বের হন",
+		HelpList:      "  n:নতুন  e:সম্পাদনা  d:মুছুন  Enter:সংযুক্ত  x:বিচ্ছিন্ন  l:ভাষা  q:বের হন",
 
 		ConnectingTitle: "  সংযোগ হচ্ছে: %s",
 		TryingAutoAuth:  "  SSH এজেন্ট এবং উপলব্ধ কী চেষ্টা করা হচ্ছে...",
@@ -1209,7 +1209,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "টানেল:",
 		TunnelActive:    "সক্রিয়",
 		TunnelErrPrefix: "ত্রুটি: ",
-		StatusHelp:      "  t:টার্মিনাল  x/Esc:বিচ্ছিন্ন  r:Reset key  q:ফিরে যান",
+		StatusHelp:      "  t:টার্মিনাল  x:বিচ্ছিন্ন  r:Reset key  q:ফিরে যান",
 		NoActiveConn:    "কোনো সক্রিয় সংযোগ নেই",
 		DiscoMsg:        "বিচ্ছিন্ন হয়েছে",
   KeyCacheCleared: "Cached key cleared",
@@ -1255,7 +1255,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  کوئی کنکشن محفوظ نہیں۔",
 		PressNToAdd:   "  نیا کنکشن شامل کرنے کے لیے 'n' دبائیں۔",
-		HelpList:      "  n:نیا  e:ترمیم  d:حذف  Enter:کنکٹ  x:منقطع  g:SSH-کلید  l:زبان  q:خروج",
+		HelpList:      "  n:نیا  e:ترمیم  d:حذف  Enter:کنکٹ  x:منقطع  l:زبان  q:خروج",
 
 		ConnectingTitle: "  کنکٹ ہو رہا ہے: %s",
 		TryingAutoAuth:  "  SSH ایجنٹ اور دستیاب کلیدیں آزما رہے ہیں...",
@@ -1294,7 +1294,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ٹنل:",
 		TunnelActive:    "فعال",
 		TunnelErrPrefix: "خطا: ",
-		StatusHelp:      "  t:ٹرمینل  x/Esc:منقطع  q:واپس  r:Reset key",
+		StatusHelp:      "  t:ٹرمینل  x:منقطع  q:واپس  r:Reset key",
 		NoActiveConn:    "کوئی فعال کنکشن نہیں",
 		DiscoMsg:        "منقطع ہو گیا",
   KeyCacheCleared: "Cached key cleared",
@@ -1340,7 +1340,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  لا توجد اتصالات محفوظة.",
 		PressNToAdd:   "  اضغط 'n' لإضافة اتصال جديد.",
-		HelpList:      "  n:جديد  e:تعديل  d:حذف  Enter:اتصال  x:قطع  g:مفتاح SSH  l:لغة  q:خروج",
+		HelpList:      "  n:جديد  e:تعديل  d:حذف  Enter:اتصال  x:قطع SSH  l:لغة  q:خروج",
 
 		ConnectingTitle: "  جارٍ الاتصال بـ: %s",
 		TryingAutoAuth:  "  جارٍ تجربة عميل SSH والمفاتيح المتاحة...",
@@ -1379,7 +1379,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "النفق:",
 		TunnelActive:    "نشط",
 		TunnelErrPrefix: "خطأ: ",
-		StatusHelp:      "  t:طرفية  x/Esc:قطع  q:رجوع  r:Reset key",
+		StatusHelp:      "  t:طرفية  x:قطع  q:رجوع  r:Reset key",
 		NoActiveConn:    "لا يوجد اتصال نشط",
 		DiscoMsg:        "تم القطع",
   KeyCacheCleared: "Cached key cleared",
@@ -1425,7 +1425,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  ምንም ግንኙነት አልተቀመጠም።",
 		PressNToAdd:   "  አዲስ ግንኙነት ለማከል 'n' ይጫኑ።",
-		HelpList:      "  n:አዲስ  e:አርም  d:ሰርዝ  Enter:ግናኝ  x:ዘጋ  g:SSH-ቁልፍ  l:ቋንቋ  q:ውጣ",
+		HelpList:      "  n:አዲስ  e:አርም  d:ሰርዝ  Enter:ግናኝ  x:ዘጋ  l:ቋንቋ  q:ውጣ",
 
 		ConnectingTitle: "  በመገናኘት ላይ: %s",
 		TryingAutoAuth:  "  SSH ወኪልና ቁልፎችን እየሞከርን...",
@@ -1464,7 +1464,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ቱኔል:",
 		TunnelActive:    "ንቁ",
 		TunnelErrPrefix: "ስህተት: ",
-		StatusHelp:      "  t:ተርሚናል  x/Esc:ዘጋ  q:ተመለስ  r:Reset key",
+		StatusHelp:      "  t:ተርሚናል  x:ዘጋ  q:ተመለስ  r:Reset key",
 		NoActiveConn:    "ንቁ ግንኙነት የለም",
 		DiscoMsg:        "ተቋርጧል",
   KeyCacheCleared: "Cached key cleared",
@@ -1510,7 +1510,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Няма запазени връзки.",
 		PressNToAdd:   "  Натиснете 'n' за нова връзка.",
-		HelpList:      "  n:Нова  e:Редактирай  d:Изтрий  Enter:Свържи  x:Прекъсни  g:SSH-Ключ  l:Език  q:Изход",
+		HelpList:      "  n:Нова  e:Редактирай  d:Изтрий  Enter:Свържи  x:Прекъсни  l:Език  q:Изход",
 
 		ConnectingTitle: "  Свързване с: %s",
 		TryingAutoAuth:  "  Опитваме SSH агент и налични ключове...",
@@ -1549,7 +1549,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Тунел:",
 		TunnelActive:    "активен",
 		TunnelErrPrefix: "Грешка: ",
-		StatusHelp:      "  t:Терминал  x/Esc:Прекъсни  q:Назад  r:Reset key",
+		StatusHelp:      "  t:Терминал  x:Прекъсни  q:Назад  r:Reset key",
 		NoActiveConn:    "Няма активна връзка",
 		DiscoMsg:        "Прекъснато",
   KeyCacheCleared: "Cached key cleared",
@@ -1595,7 +1595,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Žádná připojení uložena.",
 		PressNToAdd:   "  Stiskněte 'n' pro přidání nového připojení.",
-		HelpList:      "  n:Nové  e:Upravit  d:Smazat  Enter:Připojit  x:Odpojit  g:SSH-Klíč  l:Jazyk  q:Ukončit",
+		HelpList:      "  n:Nové  e:Upravit  d:Smazat  Enter:Připojit  x:Odpojit  l:Jazyk  q:Ukončit",
 
 		ConnectingTitle: "  Připojování k: %s",
 		TryingAutoAuth:  "  Zkouším SSH agenta a dostupné klíče...",
@@ -1634,7 +1634,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "aktivní",
 		TunnelErrPrefix: "Chyba: ",
-		StatusHelp:      "  t:Terminál  x/Esc:Odpojit  q:Zpět  r:Reset key",
+		StatusHelp:      "  t:Terminál  x:Odpojit  q:Zpět  r:Reset key",
 		NoActiveConn:    "Žádné aktivní připojení",
 		DiscoMsg:        "Odpojeno",
   KeyCacheCleared: "Cached key cleared",
@@ -1680,7 +1680,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Walang naka-save na koneksyon.",
 		PressNToAdd:   "  Pindutin ang 'n' para magdagdag ng bagong koneksyon.",
-		HelpList:      "  n:Bago  e:I-edit  d:Burahin  Enter:Ikonekta  x:Idiskonekta  g:SSH-Susi  l:Wika  q:Lumabas",
+		HelpList:      "  n:Bago  e:I-edit  d:Burahin  Enter:Ikonekta  x:Idiskonekta  l:Wika  q:Lumabas",
 
 		ConnectingTitle: "  Kumokonekta sa: %s",
 		TryingAutoAuth:  "  Sinusubukan ang SSH agent at mga available na susi...",
@@ -1719,7 +1719,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktibo",
 		TunnelErrPrefix: "Error: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Idiskonekta  q:Bumalik  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Idiskonekta  q:Bumalik  r:Reset key",
 		NoActiveConn:    "Walang aktibong koneksyon",
 		DiscoMsg:        "Nadiskonekta",
   KeyCacheCleared: "Cached key cleared",
@@ -1765,7 +1765,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  შენახული კავშირი არ არის.",
 		PressNToAdd:   "  ახალი კავშირის დასამატებლად დააჭირეთ 'n'.",
-		HelpList:      "  n:ახალი  e:რედაქტ.  d:წაშლა  Enter:კავშირი  x:გათიშვა  g:SSH-გასაღ.  l:ენა  q:გასვლა",
+		HelpList:      "  n:ახალი  e:რედაქტ.  d:წაშლა  Enter:კავშირი  x:გათიშვა  l:ენა  q:გასვლა",
 
 		ConnectingTitle: "  კავშირი: %s",
 		TryingAutoAuth:  "  SSH-აგენტი და გასაღებები გამოიცდება...",
@@ -1804,7 +1804,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "გვირაბი:",
 		TunnelActive:    "აქტიური",
 		TunnelErrPrefix: "შეცდომა: ",
-		StatusHelp:      "  t:ტერმინალი  x/Esc:გათიშვა  q:უკან  r:Reset key",
+		StatusHelp:      "  t:ტერმინალი  x:გათიშვა  q:უკან  r:Reset key",
 		NoActiveConn:    "აქტიური კავშირი არ არის",
 		DiscoMsg:        "გათიშულია",
   KeyCacheCleared: "Cached key cleared",
@@ -1850,7 +1850,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Δεν υπάρχουν αποθηκευμένες συνδέσεις.",
 		PressNToAdd:   "  Πατήστε 'n' για νέα σύνδεση.",
-		HelpList:      "  n:Νέα  e:Επεξεργ.  d:Διαγραφή  Enter:Σύνδεση  x:Αποσύνδεση  g:SSH-Κλειδί  l:Γλώσσα  q:Έξοδος",
+		HelpList:      "  n:Νέα  e:Επεξεργ.  d:Διαγραφή  Enter:Σύνδεση  x:Αποσύνδεση  l:Γλώσσα  q:Έξοδος",
 
 		ConnectingTitle: "  Σύνδεση με: %s",
 		TryingAutoAuth:  "  Δοκιμή SSH agent και διαθέσιμων κλειδιών...",
@@ -1889,7 +1889,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Τούνελ:",
 		TunnelActive:    "ενεργό",
 		TunnelErrPrefix: "Σφάλμα: ",
-		StatusHelp:      "  t:Τερματικό  x/Esc:Αποσύνδεση  q:Πίσω  r:Reset key",
+		StatusHelp:      "  t:Τερματικό  x:Αποσύνδεση  q:Πίσω  r:Reset key",
 		NoActiveConn:    "Δεν υπάρχει ενεργή σύνδεση",
 		DiscoMsg:        "Αποσυνδέθηκε",
   KeyCacheCleared: "Cached key cleared",
@@ -1935,7 +1935,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  કોઈ જોડાણ સાચવ્યું નથી.",
 		PressNToAdd:   "  નવું જોડાણ ઉમેરવા 'n' દબાવો.",
-		HelpList:      "  n:નવું  e:સંપાદિત  d:કાઢો  Enter:જોડો  x:ડિસ્કનેક્ટ  g:SSH-કી  l:ભાષા  q:બહાર",
+		HelpList:      "  n:નવું  e:સંપાદિત  d:કાઢો  Enter:જોડો  x:ડિસ્કનેક્ટ  l:ભાષા  q:બહાર",
 
 		ConnectingTitle: "  જોડાઈ રહ્યા છે: %s",
 		TryingAutoAuth:  "  SSH એજન્ટ અને ઉપલબ્ધ ચાવીઓ અજમાવી રહ્યા છે...",
@@ -1974,7 +1974,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ટનલ:",
 		TunnelActive:    "સક્રિય",
 		TunnelErrPrefix: "ભૂલ: ",
-		StatusHelp:      "  t:ટર્મિનલ  x/Esc:ડિસ્કનેક્ટ  q:પાછળ  r:Reset key",
+		StatusHelp:      "  t:ટર્મિનલ  x:ડિસ્કનેક્ટ  q:પાછળ  r:Reset key",
 		NoActiveConn:    "કોઈ સક્રિય જોડાણ નથી",
 		DiscoMsg:        "ડિસ્કનેક્ટ",
   KeyCacheCleared: "Cached key cleared",
@@ -2020,7 +2020,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Babu haɗin da aka adana.",
 		PressNToAdd:   "  Danna 'n' don ƙara sabon haɗin.",
-		HelpList:      "  n:Sabo  e:Gyara  d:Share  Enter:Haɗa  x:Yanke  g:SSH-Maɓalli  l:Harshe  q:Fita",
+		HelpList:      "  n:Sabo  e:Gyara  d:Share  Enter:Haɗa  x:Yanke  l:Harshe  q:Fita",
 
 		ConnectingTitle: "  Yana haɗawa da: %s",
 		TryingAutoAuth:  "  Yana gwada SSH agent da maɓallan da ake da su...",
@@ -2059,7 +2059,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Rami:",
 		TunnelActive:    "aiki",
 		TunnelErrPrefix: "Kuskure: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Yanke  q:Koma  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Yanke  q:Koma  r:Reset key",
 		NoActiveConn:    "Babu aiki haɗin",
 		DiscoMsg:        "An yanke",
   KeyCacheCleared: "Cached key cleared",
@@ -2105,7 +2105,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Ọ dịghị njikọ ezigbara.",
 		PressNToAdd:   "  Pịa 'n' iji tinye njikọ ọhụrụ.",
-		HelpList:      "  n:Ọhụrụ  e:Dezie  d:Hichapụ  Enter:Jikọọ  x:Kewapụ  g:SSH-Igodo  l:Asụsụ  q:Pụọ",
+		HelpList:      "  n:Ọhụrụ  e:Dezie  d:Hichapụ  Enter:Jikọọ  x:Kewapụ  l:Asụsụ  q:Pụọ",
 
 		ConnectingTitle: "  Na-ejikọ: %s",
 		TryingAutoAuth:  "  Na-anwa SSH agent na igodo dị...",
@@ -2144,7 +2144,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Ọwa:",
 		TunnelActive:    "na-arụ ọrụ",
 		TunnelErrPrefix: "Njehie: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Kewapụ  q:Laghachi  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Kewapụ  q:Laghachi  r:Reset key",
 		NoActiveConn:    "Ọ dịghị njikọ na-arụ ọrụ",
 		DiscoMsg:        "Ekewapụla",
   KeyCacheCleared: "Cached key cleared",
@@ -2190,7 +2190,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  ಯಾವುದೇ ಸಂಪರ್ಕ ಉಳಿಸಿಲ್ಲ.",
 		PressNToAdd:   "  ಹೊಸ ಸಂಪರ್ಕ ಸೇರಿಸಲು 'n' ಒತ್ತಿ.",
-		HelpList:      "  n:ಹೊಸ  e:ಸಂಪಾದಿಸಿ  d:ಅಳಿಸಿ  Enter:ಸಂಪರ್ಕ  x:ಡಿಸ್‌ಕನೆಕ್ಟ್  g:SSH-ಕೀ  l:ಭಾಷೆ  q:ನಿರ್ಗಮಿಸಿ",
+		HelpList:      "  n:ಹೊಸ  e:ಸಂಪಾದಿಸಿ  d:ಅಳಿಸಿ  Enter:ಸಂಪರ್ಕ  x:ಡಿಸ್‌ಕನೆಕ್ಟ್  l:ಭಾಷೆ  q:ನಿರ್ಗಮಿಸಿ",
 
 		ConnectingTitle: "  ಸಂಪರ್ಕ ಹೊಂದುತ್ತಿದೆ: %s",
 		TryingAutoAuth:  "  SSH ಏಜೆಂಟ್ ಮತ್ತು ಲಭ್ಯ ಕೀಗಳನ್ನು ಪ್ರಯತ್ನಿಸುತ್ತಿದೆ...",
@@ -2229,7 +2229,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ಟನಲ್:",
 		TunnelActive:    "ಸಕ್ರಿಯ",
 		TunnelErrPrefix: "ದೋಷ: ",
-		StatusHelp:      "  t:ಟರ್ಮಿನಲ್  x/Esc:ಡಿಸ್‌ಕನೆಕ್ಟ್  q:ಹಿಂದೆ  r:Reset key",
+		StatusHelp:      "  t:ಟರ್ಮಿನಲ್  x:ಡಿಸ್‌ಕನೆಕ್ಟ್  q:ಹಿಂದೆ  r:Reset key",
 		NoActiveConn:    "ಸಕ್ರಿಯ ಸಂಪರ್ಕವಿಲ್ಲ",
 		DiscoMsg:        "ಡಿಸ್‌ಕನೆಕ್ಟ್",
   KeyCacheCleared: "Cached key cleared",
@@ -2275,7 +2275,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  저장된 연결이 없습니다.",
 		PressNToAdd:   "  'n'을 눌러 새 연결을 추가하세요.",
-		HelpList:      "  n:새로만들기  e:편집  d:삭제  Enter:연결  x:연결끊기  g:SSH키  l:언어  q:종료",
+		HelpList:      "  n:새로만들기  e:편집  d:삭제  Enter:연결  x:연결끊기  l:언어  q:종료",
 
 		ConnectingTitle: "  연결 중: %s",
 		TryingAutoAuth:  "  SSH 에이전트 및 사용 가능한 키 시도 중...",
@@ -2314,7 +2314,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "터널:",
 		TunnelActive:    "활성",
 		TunnelErrPrefix: "오류: ",
-		StatusHelp:      "  t:터미널  x/Esc:연결끊기  q:뒤로  r:Reset key",
+		StatusHelp:      "  t:터미널  x:연결끊기  q:뒤로  r:Reset key",
 		NoActiveConn:    "활성 연결 없음",
 		DiscoMsg:        "연결 끊김",
   KeyCacheCleared: "Cached key cleared",
@@ -2360,7 +2360,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  कोणतेही कनेक्शन जतन केलेले नाही.",
 		PressNToAdd:   "  नवीन कनेक्शन जोडण्यासाठी 'n' दाबा.",
-		HelpList:      "  n:नवीन  e:संपादित  d:हटवा  Enter:कनेक्ट  x:डिस्कनेक्ट  g:SSH-की  l:भाषा  q:बाहेर",
+		HelpList:      "  n:नवीन  e:संपादित  d:हटवा  Enter:कनेक्ट  x:डिस्कनेक्ट  l:भाषा  q:बाहेर",
 
 		ConnectingTitle: "  कनेक्ट होत आहे: %s",
 		TryingAutoAuth:  "  SSH एजंट आणि उपलब्ध की वापरत आहोत...",
@@ -2399,7 +2399,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "टनेल:",
 		TunnelActive:    "सक्रिय",
 		TunnelErrPrefix: "त्रुटी: ",
-		StatusHelp:      "  t:टर्मिनल  x/Esc:डिस्कनेक्ट  q:मागे  r:Reset key",
+		StatusHelp:      "  t:टर्मिनल  x:डिस्कनेक्ट  q:मागे  r:Reset key",
 		NoActiveConn:    "कोणतेही सक्रिय कनेक्शन नाही",
 		DiscoMsg:        "डिस्कनेक्ट झाले",
   KeyCacheCleared: "Cached key cleared",
@@ -2445,7 +2445,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Geen verbindingen opgeslagen.",
 		PressNToAdd:   "  Druk op 'n' om een nieuwe verbinding toe te voegen.",
-		HelpList:      "  n:Nieuw  e:Bewerken  d:Verwijderen  Enter:Verbinden  x:Verbreken  g:SSH-Sleutel  l:Taal  q:Afsluiten",
+		HelpList:      "  n:Nieuw  e:Bewerken  d:Verwijderen  Enter:Verbinden  x:Verbreken  l:Taal  q:Afsluiten",
 
 		ConnectingTitle: "  Verbinding maken met: %s",
 		TryingAutoAuth:  "  SSH-agent en beschikbare sleutels proberen...",
@@ -2484,7 +2484,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "actief",
 		TunnelErrPrefix: "Fout: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Verbreken  q:Terug  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Verbreken  q:Terug  r:Reset key",
 		NoActiveConn:    "Geen actieve verbinding",
 		DiscoMsg:        "Verbinding verbroken",
   KeyCacheCleared: "Cached key cleared",
@@ -2530,7 +2530,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Walitti dhufeenya hin qabnu.",
 		PressNToAdd:   "  Walitti dhufeenya haaraa dabaluuf 'n' dhiibi.",
-		HelpList:      "  n:Haaraa  e:Gulaali  d:Haqi  Enter:Walqabadhu  x:Citi  g:SSH-Furtuu  l:Afaan  q:Baqi",
+		HelpList:      "  n:Haaraa  e:Gulaali  d:Haqi  Enter:Walqabadhu  x:Citi  l:Afaan  q:Baqi",
 
 		ConnectingTitle: "  Walqabadhaa jira: %s",
 		TryingAutoAuth:  "  SSH agent fi furtuuwwan jiran yaalaa jira...",
@@ -2569,7 +2569,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tuuneelii:",
 		TunnelActive:    "hojjechaa",
 		TunnelErrPrefix: "Dogoggora: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Citi  q:Deebi'i  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Citi  q:Deebi'i  r:Reset key",
 		NoActiveConn:    "Walitti dhufeenya hojjetaa hin jiru",
 		DiscoMsg:        "Citame",
   KeyCacheCleared: "Cached key cleared",
@@ -2615,7 +2615,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  هیچ اتصالی ذخیره نشده است.",
 		PressNToAdd:   "  برای افزودن اتصال جدید 'n' را فشار دهید.",
-		HelpList:      "  n:جدید  e:ویرایش  d:حذف  Enter:اتصال  x:قطع  g:کلید SSH  l:زبان  q:خروج",
+		HelpList:      "  n:جدید  e:ویرایش  d:حذف  Enter:اتصال  x:قطع SSH  l:زبان  q:خروج",
 
 		ConnectingTitle: "  در حال اتصال به: %s",
 		TryingAutoAuth:  "  در حال آزمایش SSH agent و کلیدهای موجود...",
@@ -2654,7 +2654,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "تونل:",
 		TunnelActive:    "فعال",
 		TunnelErrPrefix: "خطا: ",
-		StatusHelp:      "  t:ترمینال  x/Esc:قطع  q:بازگشت  r:Reset key",
+		StatusHelp:      "  t:ترمینال  x:قطع  q:بازگشت  r:Reset key",
 		NoActiveConn:    "هیچ اتصال فعالی وجود ندارد",
 		DiscoMsg:        "قطع شد",
   KeyCacheCleared: "Cached key cleared",
@@ -2700,7 +2700,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Brak zapisanych połączeń.",
 		PressNToAdd:   "  Naciśnij 'n' aby dodać nowe połączenie.",
-		HelpList:      "  n:Nowe  e:Edytuj  d:Usuń  Enter:Połącz  x:Rozłącz  g:Klucz SSH  l:Język  q:Wyjście",
+		HelpList:      "  n:Nowe  e:Edytuj  d:Usuń  Enter:Połącz  x:Rozłącz SSH  l:Język  q:Wyjście",
 
 		ConnectingTitle: "  Łączenie z: %s",
 		TryingAutoAuth:  "  Próbuję agenta SSH i dostępne klucze...",
@@ -2739,7 +2739,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "aktywny",
 		TunnelErrPrefix: "Błąd: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Rozłącz  q:Wstecz  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Rozłącz  q:Wstecz  r:Reset key",
 		NoActiveConn:    "Brak aktywnego połączenia",
 		DiscoMsg:        "Rozłączono",
   KeyCacheCleared: "Cached key cleared",
@@ -2785,7 +2785,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  ਕੋਈ ਕੁਨੈਕਸ਼ਨ ਸੁਰੱਖਿਅਤ ਨਹੀਂ।",
 		PressNToAdd:   "  ਨਵਾਂ ਕੁਨੈਕਸ਼ਨ ਜੋੜਨ ਲਈ 'n' ਦਬਾਓ।",
-		HelpList:      "  n:ਨਵਾਂ  e:ਸੋਧੋ  d:ਮਿਟਾਓ  Enter:ਕਨੈਕਟ  x:ਡਿਸਕਨੈਕਟ  g:SSH-ਕੁੰਜੀ  l:ਭਾਸ਼ਾ  q:ਬਾਹਰ",
+		HelpList:      "  n:ਨਵਾਂ  e:ਸੋਧੋ  d:ਮਿਟਾਓ  Enter:ਕਨੈਕਟ  x:ਡਿਸਕਨੈਕਟ  l:ਭਾਸ਼ਾ  q:ਬਾਹਰ",
 
 		ConnectingTitle: "  ਕਨੈਕਟ ਹੋ ਰਿਹਾ: %s",
 		TryingAutoAuth:  "  SSH ਏਜੰਟ ਅਤੇ ਉਪਲਬਧ ਕੁੰਜੀਆਂ ਅਜ਼ਮਾ ਰਿਹਾ...",
@@ -2824,7 +2824,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "ਟਨਲ:",
 		TunnelActive:    "ਸਰਗਰਮ",
 		TunnelErrPrefix: "ਗਲਤੀ: ",
-		StatusHelp:      "  t:ਟਰਮੀਨਲ  x/Esc:ਡਿਸਕਨੈਕਟ  q:ਪਿੱਛੇ  r:Reset key",
+		StatusHelp:      "  t:ਟਰਮੀਨਲ  x:ਡਿਸਕਨੈਕਟ  q:ਪਿੱਛੇ  r:Reset key",
 		NoActiveConn:    "ਕੋਈ ਸਰਗਰਮ ਕੁਨੈਕਸ਼ਨ ਨਹੀਂ",
 		DiscoMsg:        "ਡਿਸਕਨੈਕਟ",
   KeyCacheCleared: "Cached key cleared",
@@ -2870,7 +2870,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Nu există conexiuni salvate.",
 		PressNToAdd:   "  Apăsați 'n' pentru a adăuga o conexiune nouă.",
-		HelpList:      "  n:Nou  e:Editare  d:Șterge  Enter:Conectează  x:Deconectează  g:Cheie SSH  l:Limbă  q:Ieșire",
+		HelpList:      "  n:Nou  e:Editare  d:Șterge  Enter:Conectează  x:Deconectează SSH  l:Limbă  q:Ieșire",
 
 		ConnectingTitle: "  Conectare la: %s",
 		TryingAutoAuth:  "  Se încearcă agentul SSH și cheile disponibile...",
@@ -2909,7 +2909,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunel:",
 		TunnelActive:    "activ",
 		TunnelErrPrefix: "Eroare: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Deconectează  q:Înapoi  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Deconectează  q:Înapoi  r:Reset key",
 		NoActiveConn:    "Nicio conexiune activă",
 		DiscoMsg:        "Deconectat",
   KeyCacheCleared: "Cached key cleared",
@@ -2955,7 +2955,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Hakuna miunganiko iliyohifadhiwa.",
 		PressNToAdd:   "  Bonyeza 'n' kuongeza muunganiko mpya.",
-		HelpList:      "  n:Mpya  e:Hariri  d:Futa  Enter:Unganisha  x:Kata  g:Ufunguo SSH  l:Lugha  q:Ondoka",
+		HelpList:      "  n:Mpya  e:Hariri  d:Futa  Enter:Unganisha  x:Kata SSH  l:Lugha  q:Ondoka",
 
 		ConnectingTitle: "  Inaunganika na: %s",
 		TryingAutoAuth:  "  Inajaribu wakala wa SSH na funguo zinazopatikana...",
@@ -2994,7 +2994,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Handaki:",
 		TunnelActive:    "inafanya kazi",
 		TunnelErrPrefix: "Hitilafu: ",
-		StatusHelp:      "  t:Terminali  x/Esc:Kata  q:Rudi  r:Reset key",
+		StatusHelp:      "  t:Terminali  x:Kata  q:Rudi  r:Reset key",
 		NoActiveConn:    "Hakuna muunganiko unaofanya kazi",
 		DiscoMsg:        "Imekatwa",
   KeyCacheCleared: "Cached key cleared",
@@ -3040,7 +3040,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Inga anslutningar sparade.",
 		PressNToAdd:   "  Tryck 'n' för att lägga till en ny anslutning.",
-		HelpList:      "  n:Ny  e:Redigera  d:Ta bort  Enter:Anslut  x:Koppla från  g:SSH-nyckel  l:Språk  q:Avsluta",
+		HelpList:      "  n:Ny  e:Redigera  d:Ta bort  Enter:Anslut  x:Koppla från  l:Språk  q:Avsluta",
 
 		ConnectingTitle: "  Ansluter till: %s",
 		TryingAutoAuth:  "  Provar SSH-agent och tillgängliga nycklar...",
@@ -3079,7 +3079,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tunnel:",
 		TunnelActive:    "aktiv",
 		TunnelErrPrefix: "Fel: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Koppla från  r:Reset key  q:Tillbaka",
+		StatusHelp:      "  t:Terminal  x:Koppla från  r:Reset key  q:Tillbaka",
 		NoActiveConn:    "Ingen aktiv anslutning",
 		DiscoMsg:        "Frånkopplad",
   KeyCacheCleared: "Cached key cleared",
@@ -3125,7 +3125,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  சேமிக்கப்பட்ட இணைப்புகள் இல்லை.",
 		PressNToAdd:   "  புதிய இணைப்பு சேர்க்க 'n' அழுத்தவும்.",
-		HelpList:      "  n:புதிய  e:திருத்து  d:நீக்கு  Enter:இணை  x:துண்டிக்கு  g:SSH-விசை  l:மொழி  q:வெளியேறு",
+		HelpList:      "  n:புதிய  e:திருத்து  d:நீக்கு  Enter:இணை  x:துண்டிக்கு  l:மொழி  q:வெளியேறு",
 
 		ConnectingTitle: "  இணைக்கிறது: %s",
 		TryingAutoAuth:  "  SSH முகவர் மற்றும் கிடைக்கும் விசைகளை முயற்சிக்கிறது...",
@@ -3164,7 +3164,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "டன்னல்:",
 		TunnelActive:    "செயலில்",
 		TunnelErrPrefix: "பிழை: ",
-		StatusHelp:      "  t:டெர்மினல்  x/Esc:துண்டிக்கு  q:திரும்பு  r:Reset key",
+		StatusHelp:      "  t:டெர்மினல்  x:துண்டிக்கு  q:திரும்பு  r:Reset key",
 		NoActiveConn:    "செயலில் இணைப்பு இல்லை",
 		DiscoMsg:        "துண்டிக்கப்பட்டது",
   KeyCacheCleared: "Cached key cleared",
@@ -3210,7 +3210,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  సేవ్ చేసిన కనెక్షన్లు లేవు.",
 		PressNToAdd:   "  కొత్త కనెక్షన్ జోడించడానికి 'n' నొక్కండి.",
-		HelpList:      "  n:కొత్తది  e:సవరించు  d:తొలగించు  Enter:కనెక్ట్  x:డిస్‌కనెక్ట్  g:SSH-కీ  l:భాష  q:నిష్క్రమించు",
+		HelpList:      "  n:కొత్తది  e:సవరించు  d:తొలగించు  Enter:కనెక్ట్  x:డిస్‌కనెక్ట్  l:భాష  q:నిష్క్రమించు",
 
 		ConnectingTitle: "  కనెక్ట్ అవుతోంది: %s",
 		TryingAutoAuth:  "  SSH ఏజెంట్ మరియు అందుబాటులో ఉన్న కీలు ప్రయత్నిస్తోంది...",
@@ -3249,7 +3249,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "టన్నెల్:",
 		TunnelActive:    "చురుకుగా",
 		TunnelErrPrefix: "లోపం: ",
-		StatusHelp:      "  t:టెర్మినల్  x/Esc:డిస్‌కనెక్ట్  q:వెనుకకు  r:Reset key",
+		StatusHelp:      "  t:టెర్మినల్  x:డిస్‌కనెక్ట్  q:వెనుకకు  r:Reset key",
 		NoActiveConn:    "చురుకైన కనెక్షన్ లేదు",
 		DiscoMsg:        "డిస్‌కనెక్ట్",
   KeyCacheCleared: "Cached key cleared",
@@ -3295,7 +3295,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  ไม่มีการเชื่อมต่อที่บันทึกไว้",
 		PressNToAdd:   "  กด 'n' เพื่อเพิ่มการเชื่อมต่อใหม่",
-		HelpList:      "  n:ใหม่  e:แก้ไข  d:ลบ  Enter:เชื่อมต่อ  x:ตัดการเชื่อมต่อ  g:SSH-คีย์  l:ภาษา  q:ออก",
+		HelpList:      "  n:ใหม่  e:แก้ไข  d:ลบ  Enter:เชื่อมต่อ  x:ตัดการเชื่อมต่อ  l:ภาษา  q:ออก",
 
 		ConnectingTitle: "  กำลังเชื่อมต่อ: %s",
 		TryingAutoAuth:  "  กำลังลอง SSH agent และคีย์ที่มีอยู่...",
@@ -3334,7 +3334,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "อุโมงค์:",
 		TunnelActive:    "ใช้งาน",
 		TunnelErrPrefix: "ข้อผิดพลาด: ",
-		StatusHelp:      "  t:เทอร์มินัล  x/Esc:ตัดการเชื่อมต่อ  q:ย้อนกลับ  r:Reset key",
+		StatusHelp:      "  t:เทอร์มินัล  x:ตัดการเชื่อมต่อ  q:ย้อนกลับ  r:Reset key",
 		NoActiveConn:    "ไม่มีการเชื่อมต่อที่ใช้งานอยู่",
 		DiscoMsg:        "ตัดการเชื่อมต่อ",
   KeyCacheCleared: "Cached key cleared",
@@ -3380,7 +3380,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Kayıtlı bağlantı yok.",
 		PressNToAdd:   "  Yeni bağlantı eklemek için 'n' tuşuna basın.",
-		HelpList:      "  n:Yeni  e:Düzenle  d:Sil  Enter:Bağlan  x:Bağlantıyı Kes  g:SSH-Anahtarı  l:Dil  q:Çıkış",
+		HelpList:      "  n:Yeni  e:Düzenle  d:Sil  Enter:Bağlan  x:Bağlantıyı Kes  l:Dil  q:Çıkış",
 
 		ConnectingTitle: "  Bağlanıyor: %s",
 		TryingAutoAuth:  "  SSH ajanı ve mevcut anahtarlar deneniyor...",
@@ -3419,7 +3419,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Tünel:",
 		TunnelActive:    "aktif",
 		TunnelErrPrefix: "Hata: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Bağlantıyı Kes  r:Reset key  q:Geri",
+		StatusHelp:      "  t:Terminal  x:Bağlantıyı Kes  r:Reset key  q:Geri",
 		NoActiveConn:    "Aktif bağlantı yok",
 		DiscoMsg:        "Bağlantı kesildi",
   KeyCacheCleared: "Cached key cleared",
@@ -3465,7 +3465,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Немає збережених підключень.",
 		PressNToAdd:   "  Натисніть 'n' для додавання нового підключення.",
-		HelpList:      "  n:Нове  e:Редагувати  d:Видалити  Enter:Підключити  x:Відключити  g:SSH-Ключ  l:Мова  q:Вийти",
+		HelpList:      "  n:Нове  e:Редагувати  d:Видалити  Enter:Підключити  x:Відключити  l:Мова  q:Вийти",
 
 		ConnectingTitle: "  Підключення до: %s",
 		TryingAutoAuth:  "  Спробуємо SSH-агент та доступні ключі...",
@@ -3504,7 +3504,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Тунель:",
 		TunnelActive:    "активний",
 		TunnelErrPrefix: "Помилка: ",
-		StatusHelp:      "  t:Термінал  x/Esc:Відключити  q:Назад  r:Reset key",
+		StatusHelp:      "  t:Термінал  x:Відключити  q:Назад  r:Reset key",
 		NoActiveConn:    "Немає активного підключення",
 		DiscoMsg:        "Відключено",
   KeyCacheCleared: "Cached key cleared",
@@ -3550,7 +3550,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Không có kết nối nào được lưu.",
 		PressNToAdd:   "  Nhấn 'n' để thêm kết nối mới.",
-		HelpList:      "  n:Mới  e:Sửa  d:Xóa  Enter:Kết nối  x:Ngắt kết nối  g:SSH-Khóa  l:Ngôn ngữ  q:Thoát",
+		HelpList:      "  n:Mới  e:Sửa  d:Xóa  Enter:Kết nối  x:Ngắt kết nối  l:Ngôn ngữ  q:Thoát",
 
 		ConnectingTitle: "  Đang kết nối tới: %s",
 		TryingAutoAuth:  "  Đang thử SSH agent và các khóa có sẵn...",
@@ -3589,7 +3589,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Đường hầm:",
 		TunnelActive:    "hoạt động",
 		TunnelErrPrefix: "Lỗi: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Ngắt kết nối  r:Reset key  q:Quay lại",
+		StatusHelp:      "  t:Terminal  x:Ngắt kết nối  r:Reset key  q:Quay lại",
 		NoActiveConn:    "Không có kết nối hoạt động",
 		DiscoMsg:        "Đã ngắt kết nối",
   KeyCacheCleared: "Cached key cleared",
@@ -3635,7 +3635,7 @@ var allTranslations = map[Language]Translations{
 
 		NoConnections: "  Ko si asopọ ti a fipamọ.",
 		PressNToAdd:   "  Tẹ 'n' lati ṣafikun asopọ tuntun.",
-		HelpList:      "  n:Tuntun  e:Ṣatunkọ  d:Paarẹ  Enter:Sopọ  x:Yọọkuro  g:SSH-Kọkọrọ  l:Èdè  q:Jade",
+		HelpList:      "  n:Tuntun  e:Ṣatunkọ  d:Paarẹ  Enter:Sopọ  x:Yọọkuro  l:Èdè  q:Jade",
 
 		ConnectingTitle: "  Nsopọ si: %s",
 		TryingAutoAuth:  "  N gbiyanju SSH agent ati awọn kọkọrọ to wa...",
@@ -3674,7 +3674,7 @@ var allTranslations = map[Language]Translations{
 		LabelTunnel:     "Ìmọ̀:",
 		TunnelActive:    "n ṣiṣẹ",
 		TunnelErrPrefix: "Aṣiṣe: ",
-		StatusHelp:      "  t:Terminal  x/Esc:Yọọkuro  q:Pada  r:Reset key",
+		StatusHelp:      "  t:Terminal  x:Yọọkuro  q:Pada  r:Reset key",
 		NoActiveConn:    "Ko si asopọ ti nṣiṣẹ",
 		DiscoMsg:        "Ti yọọkuro",
   KeyCacheCleared: "Cached key cleared",

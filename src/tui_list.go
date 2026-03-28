@@ -130,18 +130,6 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case "g":
-		// SSH-Key generieren
-		m.state = ViewKeygen
-		m.keygenInputs = createKeygenInputs()
-		m.keygenFocused = 0
-		m.keygenInputs[0].Focus()
-		// Passphrase-Platzhalter in aktueller Sprache setzen
-		m.keygenInputs[keygenFieldPassphrase].Placeholder = m.lang.PlaceholderPass
-		m.errorMsg = ""
-		m.successMsg = ""
-		return m, textinput.Blink
-
 	case "l":
 		// Sprache wechseln
 		m.state = ViewLanguage

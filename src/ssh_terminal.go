@@ -155,6 +155,12 @@ func (t *sshTerminalCmd) Run() error {
 	// Warten bis der Nutzer die Session beendet (z.B. mit "exit" oder Ctrl+D)
 	sessionErr := session.Wait()
 
+	// Stdin-Puffer leeren: Das abschließende '\r' (Enter von "exit") steckt
+	// noch im Kernel-tty-Puffer. Ohne diesen Flush liest Bubbletea es als
+	// ersten "Tastendruck" nach der Rückkehr – der Nutzer müsste dann zweimal
+	// drücken. Muss VOR dem defer-Restore passieren (Raw-Mode noch aktiv).
+	flushStdinBuffer()
+
 	// Größen-Watcher beenden
 	close(stopResize)
 	resizeWg.Wait()

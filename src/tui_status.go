@@ -46,7 +46,7 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.sshManager.ClearAuthCache(m.activeID)
 		m.successMsg = m.lang.KeyCacheCleared
 
-	case "x", "esc":
+	case "x":
 		// Verbindung trennen und zur Liste zurück
 		m.sshManager.Disconnect(m.activeID)
 		m.successMsg = m.lang.DiscoMsg
