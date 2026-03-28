@@ -113,16 +113,27 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 		info.WriteString(fmt.Sprintf("%s%s\n", m.lang.LabelStatus, disconnectedStyle.Render(m.lang.StatusDisconn)))
 	}
 
+	// Ports die von anderen aktiven Verbindungen belegt sind vorher sammeln
+	usedPorts := m.sshManager.GetUsedLocalPorts(m.activeID)
+
 	info.WriteString(fmt.Sprintf("\n%s\n", m.lang.LabelTunnel))
 	for _, t := range conn.Tunnels {
 		if !t.Enabled {
 			continue
 		}
-		tunnelStatus := connectedStyle.Render(m.lang.TunnelActive)
+		var tunnelStatus string
 		if status != nil {
 			if errMsg, ok := status.TunnelErrors[t.LocalPort]; ok {
+				// Tunnel-Startfehler aus diesem Verbindungsversuch
 				tunnelStatus = errorStyle.Render(m.lang.TunnelErrPrefix + errMsg)
+			} else if otherConn, conflict := usedPorts[t.LocalPort]; conflict {
+				// Port wird von einer anderen aktiven Verbindung verwendet
+				tunnelStatus = errorStyle.Render(fmt.Sprintf(m.lang.TunnelPortConflict, otherConn))
+			} else {
+				tunnelStatus = connectedStyle.Render(m.lang.TunnelActive)
 			}
+		} else {
+			tunnelStatus = connectedStyle.Render(m.lang.TunnelActive)
 		}
 		info.WriteString(fmt.Sprintf("  localhost:%d -> remote:%d  %s\n",
 			t.LocalPort, t.RemotePort, tunnelStatus))

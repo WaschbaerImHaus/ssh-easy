@@ -635,6 +635,42 @@ func (m *SSHManager) IsConnected(id string) bool {
 	return ok && status != nil && status.Connected
 }
 
+// GetUsedLocalPorts gibt alle lokalen Ports zurück, die von anderen aktiven
+// Verbindungen (nicht excludeID) als Tunnel-Listener belegt sind.
+// Schlüssel = lokaler Port, Wert = Name der belegenden Verbindung.
+//
+// @param excludeID - Diese Verbindungs-ID wird übersprungen (eigene Ports)
+// @return map[int]string - Port → Verbindungsname
+// @date   2026-03-28 14:00
+func (m *SSHManager) GetUsedLocalPorts(excludeID string) map[int]string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	used := make(map[int]string)
+	for id, managed := range m.connections {
+		if id == excludeID {
+			continue
+		}
+		if managed.Status == nil || !managed.Status.Connected {
+			continue
+		}
+		// Aktive Tunnel-Listener: Adresse auslesen und Port extrahieren
+		for _, listener := range managed.Status.Listeners {
+			if listener == nil {
+				continue
+			}
+			addr := listener.Addr().String() // "127.0.0.1:8080"
+			if _, portStr, err := net.SplitHostPort(addr); err == nil {
+				var port int
+				if _, err := fmt.Sscanf(portStr, "%d", &port); err == nil {
+					used[port] = managed.Config.Name
+				}
+			}
+		}
+	}
+	return used
+}
+
 // buildAuthMethods erstellt SSH-Authentifizierungsmethoden für eine bestimmte
 // konfigurierte Auth-Methode (wird für gespeicherte Konfigurationen verwendet).
 //
