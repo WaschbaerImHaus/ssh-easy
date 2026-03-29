@@ -20,12 +20,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          node-version: 24
       - uses: actions/configure-pages@v5
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       - uses: actions/jekyll-build-pages@v1
         with:
           source: ./docs
           destination: ./_site
       - uses: actions/upload-pages-artifact@v3
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
   deploy:
     needs: build
@@ -36,3 +42,5 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
