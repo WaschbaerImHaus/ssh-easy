@@ -1,60 +1,86 @@
 ---
-layout: page
+layout: default
 title: Download
 permalink: /download/
 ---
 
 # Download
 
-All releases are available on the [GitHub Releases page](https://github.com/WaschbaerImHaus/ssh-easy/releases).
+<p style="color:#7a9aac; margin-bottom:2rem;">
+  All releases on <a href="https://github.com/WaschbaerImHaus/ssh-easy/releases">GitHub Releases</a> · No runtime dependencies · Fully static binaries
+</p>
 
 ## Latest Release
 
-**[Download latest version](https://github.com/WaschbaerImHaus/ssh-easy/releases/latest)**
+<a href="https://github.com/WaschbaerImHaus/ssh-easy/releases/latest"
+   style="display:inline-flex;align-items:center;gap:0.5rem;background:#00ff410f;border:1px solid #00ff4144;color:#00ff41;text-decoration:none;padding:0.65rem 1.4rem;border-radius:4px;font-family:'Share Tech Mono',monospace;font-size:1rem;margin-bottom:2rem;transition:all 0.15s;"
+   onmouseover="this.style.background='#00ff411a';this.style.boxShadow='0 0 20px #00ff4133'"
+   onmouseout="this.style.background='#00ff410f';this.style.boxShadow='none'">
+  ↓ Download latest version ↗
+</a>
 
-| File | Platform | Notes |
-|------|----------|-------|
-| `ssh-easy` | Linux x86_64 | |
-| `ssh-easy-linux-arm64` | Linux ARM64 | Raspberry Pi, etc. |
-| `ssh-easy-setup-amd64.exe` | Windows x86_64 | Installer with Start Menu entry |
-| `ssh-easy-setup-arm64.exe` | Windows ARM64 | Installer with Start Menu entry |
-| `ssh-easy-windows-amd64.exe` | Windows x86_64 | Portable (no installer) |
-| `ssh-easy-windows-arm64.exe` | Windows ARM64 | Portable (no installer) |
+<div class="dl-grid">
+  <a class="dl-card" href="https://github.com/WaschbaerImHaus/ssh-easy/releases/latest/download/ssh-easy">
+    <span class="dl-platform">Linux x86_64</span>
+    <span class="dl-filename">ssh-easy</span>
+    <span class="dl-type">ELF binary · no installer needed</span>
+  </a>
+  <a class="dl-card" href="https://github.com/WaschbaerImHaus/ssh-easy/releases/latest/download/ssh-easy-linux-arm64">
+    <span class="dl-platform">Linux ARM64</span>
+    <span class="dl-filename">ssh-easy-linux-arm64</span>
+    <span class="dl-type">Raspberry Pi, Apple Silicon, etc.</span>
+  </a>
+  <a class="dl-card" href="https://github.com/WaschbaerImHaus/ssh-easy/releases/latest/download/ssh-easy-setup-amd64.exe">
+    <span class="dl-platform">Windows x86_64</span>
+    <span class="dl-filename">ssh-easy-setup-amd64.exe</span>
+    <span class="dl-type">NSIS Installer · Start Menu entry</span>
+  </a>
+  <a class="dl-card" href="https://github.com/WaschbaerImHaus/ssh-easy/releases/latest/download/ssh-easy-setup-arm64.exe">
+    <span class="dl-platform">Windows ARM64</span>
+    <span class="dl-filename">ssh-easy-setup-arm64.exe</span>
+    <span class="dl-type">NSIS Installer · Start Menu entry</span>
+  </a>
+</div>
+
+---
 
 ## Installation
 
 ### Linux
 
 ```bash
-# Download
 wget https://github.com/WaschbaerImHaus/ssh-easy/releases/latest/download/ssh-easy
-
-# Make executable
 chmod +x ssh-easy
-
-# Run
 ./ssh-easy
 ```
 
-Optional – move to PATH:
+Optional — move to PATH so it runs from anywhere:
+
 ```bash
 sudo mv ssh-easy /usr/local/bin/
 ```
 
 ### Windows
 
-1. Download `ssh-easy-setup-amd64.exe`
-2. Run the installer
-3. Find **ssh-easy** in your Start Menu
+1. Download **`ssh-easy-setup-amd64.exe`**
+2. Run the installer (no admin required for user-install)
+3. Open **ssh-easy** from the Start Menu
 
-The installer creates a Start Menu entry and offers an optional Desktop shortcut. It silently removes any previous installation first.
+The installer silently removes any previous version and creates an optional Desktop shortcut.
+
+---
 
 ## Requirements
 
-- No runtime dependencies — fully static binary (`CGO_ENABLED=0`)
-- Linux: any modern distribution (kernel 3.2+)
-- Windows: Windows 10 / Windows 11
+| | |
+|---|---|
+| Runtime dependencies | **None** — fully static binary (`CGO_ENABLED=0`) |
+| Linux | Any modern distribution (kernel 3.2+) |
+| Windows | Windows 10 / Windows 11 |
+| Disk space | ~10 MB |
 
-## Building from Source
+---
 
-See [GitHub repository](https://github.com/WaschbaerImHaus/ssh-easy) for build instructions.
+## All Releases
+
+Browse all previous versions on the [GitHub Releases page](https://github.com/WaschbaerImHaus/ssh-easy/releases) — each release includes all 6 binaries.
