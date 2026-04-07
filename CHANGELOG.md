@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.35] – Build 35
+- **Fixed** app icon still showing cmd icon on Windows 11 for non-admin users: switched to GUI subsystem (`-H windowsgui`) + `AllocConsole()` so ssh-easy owns the console window directly — taskbar and title bar now show the correct icon unconditionally
+
 ## [v0.34] – Build 34
 - **Fixed** app icon not visible in title bar and taskbar for non-admin users: added `SetConsoleIcon` (undocumented kernel32 API) which sets the icon at OS level for the entire console — title bar, taskbar, Alt+Tab
 
