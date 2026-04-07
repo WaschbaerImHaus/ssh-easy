@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.36] – Build 36
+- **Fixed** colors missing in main TUI after GUI subsystem switch: `AllocConsole()` creates a console without `ENABLE_VIRTUAL_TERMINAL_PROCESSING` — now enabled immediately after console creation so Lipgloss/Bubbletea can render ANSI colors correctly
+
 ## [v0.35] – Build 35
 - **Fixed** app icon still showing cmd icon on Windows 11 for non-admin users: switched to GUI subsystem (`-H windowsgui`) + `AllocConsole()` so ssh-easy owns the console window directly — taskbar and title bar now show the correct icon unconditionally
 

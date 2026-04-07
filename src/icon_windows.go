@@ -131,11 +131,31 @@ func allocOwnConsole() bool {
 	_ = windows.SetStdHandle(windows.STD_OUTPUT_HANDLE, conout)
 	_ = windows.SetStdHandle(windows.STD_ERROR_HANDLE, conout)
 
-	// Go's os.Std* aktualisieren – Bubbletea liest direkt von os.Stdin/os.Stdout
-	// Diese müssen nach AllocConsole auf die neuen Handles zeigen
+	// Go's os.Std* aktualisieren – Bubbletea liest direkt von os.Stdin/os.Stdout.
+	// Diese müssen nach AllocConsole auf die neuen Handles zeigen.
 	os.Stdin = os.NewFile(uintptr(conin), "stdin")
 	os.Stdout = os.NewFile(uintptr(conout), "stdout")
 	os.Stderr = os.NewFile(uintptr(conout), "stderr")
+
+	// Virtual-Terminal-Verarbeitung aktivieren.
+	//
+	// Eine neue Konsole (AllocConsole) startet ohne ENABLE_VIRTUAL_TERMINAL_PROCESSING.
+	// Ohne dieses Flag interpretiert Windows ANSI/VT-Escape-Sequenzen nicht –
+	// Lipgloss/Bubbletea gibt Farben als Rohtext aus, und termenv erkennt
+	// die Konsole als "keine Farbunterstützung".
+	// setupConsoleVT() wird nur im SSH-Terminal aufgerufen; die Haupt-TUI
+	// braucht VT daher hier, direkt nach AllocConsole.
+	var outMode uint32
+	if windows.GetConsoleMode(conout, &outMode) == nil {
+		_ = windows.SetConsoleMode(conout, outMode|
+			windows.ENABLE_PROCESSED_OUTPUT|
+			windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING)
+	}
+	var inMode uint32
+	if windows.GetConsoleMode(conin, &inMode) == nil {
+		_ = windows.SetConsoleMode(conin, inMode|
+			windows.ENABLE_VIRTUAL_TERMINAL_INPUT)
+	}
 
 	// Fenstertitel setzen (sonst zeigt Windows den EXE-Pfad)
 	title, _ := windows.UTF16PtrFromString("ssh-easy")
