@@ -70,6 +70,13 @@ func (t *sshTerminalCmd) SetStderr(w io.Writer) { t.stderr = w }
 // @return error - Fehler beim Starten der Session oder nil bei normalem Ende
 // @date   2026-03-08 00:00
 func (t *sshTerminalCmd) Run() error {
+	// Stdin-Puffer als ERSTES defer registrieren → wird als LETZTES ausgeführt (LIFO).
+	// Muss nach allen anderen Defers laufen: term.Restore und restoreVT können beim
+	// Konsolen-Mode-Wechsel selbst Input-Events erzeugen. Würde der Flush vorher laufen,
+	// blieben diese Events im Puffer und Bubbletea würde sie als ersten Tastendruck lesen –
+	// der Nutzer müsste dann zweimal drücken.
+	defer flushStdinBuffer()
+
 	// Zwei getrennte Dateideskriptoren:
 	// stdinFd  → Raw-Modus (Tastatureingabe ungepuffert)
 	// stdoutFd → Terminalgröße (Windows: GetConsoleScreenBufferInfo braucht Output-Handle)
@@ -154,12 +161,6 @@ func (t *sshTerminalCmd) Run() error {
 
 	// Warten bis der Nutzer die Session beendet (z.B. mit "exit" oder Ctrl+D)
 	sessionErr := session.Wait()
-
-	// Stdin-Puffer leeren: Das abschließende '\r' (Enter von "exit") steckt
-	// noch im Kernel-tty-Puffer. Ohne diesen Flush liest Bubbletea es als
-	// ersten "Tastendruck" nach der Rückkehr – der Nutzer müsste dann zweimal
-	// drücken. Muss VOR dem defer-Restore passieren (Raw-Mode noch aktiv).
-	flushStdinBuffer()
 
 	// Größen-Watcher beenden
 	close(stopResize)

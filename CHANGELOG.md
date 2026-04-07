@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.38] – Build 38
+- **Fixed** double keypress required after leaving SSH terminal with `exit`: `flushStdinBuffer()` was called before the defers (`term.Restore`, `restoreVT`), which can produce console mode-change events after the flush. Moved flush to first-registered defer so it runs last — after all cleanup
+
 ## [v0.37] – Build 37
 - **Fixed** TUI colors still missing (gray/white) after Build 36: Lipgloss initializes its global renderer at import time — with GUI subsystem there's no console yet, so it caches "Ascii" color profile. Fixed by calling `lipgloss.SetColorProfile(termenv.TrueColor)` immediately after `AllocConsole()`
 
