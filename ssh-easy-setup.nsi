@@ -178,6 +178,10 @@ Section "ssh-easy (required)" SecMain
     "NoRepair" 1
 
   ; Start Menu entry
+  ; Hinweis: Die AppUserModelID "KurtIngwer.ssh-easy" wird vom Programm selbst
+  ; zur Laufzeit per SetCurrentProcessExplicitAppUserModelID gesetzt, damit
+  ; Windows den Taskleisteneintrag korrekt der App (und nicht dem Console-Host)
+  ; zuordnet.
   CreateDirectory "$SMPROGRAMS\ssh-easy"
   CreateShortcut "$SMPROGRAMS\ssh-easy\ssh-easy.lnk" \
     "$INSTDIR\ssh-easy.exe" "" \

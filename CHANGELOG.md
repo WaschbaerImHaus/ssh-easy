@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.33] – Build 33
+- **Fixed** app icon not visible in Windows taskbar for non-admin users: added `SetCurrentProcessExplicitAppUserModelID("KurtIngwer.ssh-easy")` so Windows assigns the taskbar button to the app instead of the console host (conhost.exe / Windows Terminal)
+
 ## [v0.29] – Build 29
 - **Fixed** connection list alignment: selected and unselected entries now share the same indent, eliminating the 2-character offset
 - **Removed** red `-` dash for disconnected entries; only connected entries show the green `●`
