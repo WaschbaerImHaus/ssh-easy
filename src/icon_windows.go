@@ -1,4 +1,4 @@
-// Windows-spezifische Konsolen- und Icon-Einrichtung für ssh-easy.
+// Windows-spezifische Konsolen-, Farb- und Icon-Einrichtung für ssh-easy.
 //
 // WARUM GUI-SUBSYSTEM?
 // ====================
@@ -31,6 +31,8 @@ import (
 	"os"
 	"unsafe"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	"golang.org/x/sys/windows"
 )
 
@@ -222,17 +224,35 @@ func applyConsoleIcon() {
 	}
 }
 
+// fixLipglossColorProfile setzt das Lipgloss-Farbprofil auf TrueColor zurück.
+//
+// Problem: Lipgloss initialisiert seinen Standard-Renderer beim Paket-Import.
+// Mit GUI-Subsystem existiert zu diesem Zeitpunkt noch keine Konsole.
+// termenv erkennt daher "kein Terminal" und setzt das Profil auf Ascii.
+// Alle Styles rendern danach ohne Farben (schwarz/weiß).
+//
+// Lösung: Nach AllocConsole() das Profil explizit auf TrueColor setzen.
+// lipgloss.SetColorProfile() wirkt auf den globalen Standard-Renderer und
+// damit auf alle Styles die mit lipgloss.NewStyle() erstellt wurden.
+//
+// @date 2026-04-07
+func fixLipglossColorProfile() {
+	lipgloss.SetColorProfile(termenv.TrueColor)
+}
+
 // init läuft automatisch beim Programmstart vor main().
 //
 // Reihenfolge ist kritisch:
-//  1. AllocConsole   – eigenes Konsolenfenster erstellen (GUI-Subsystem)
-//  2. stdio umleiten – Bubbletea braucht gültige os.Stdin/Stdout nach AllocConsole
-//  3. AUMID setzen   – App-Identität für Taskleiste
-//  4. Icon setzen    – EXE-Icon auf eigenes Konsolenfenster
+//  1. AllocConsole          – eigenes Konsolenfenster (GUI-Subsystem)
+//  2. stdio umleiten        – Bubbletea braucht gültige os.Stdin/Stdout
+//  3. Farbprofil korrigieren – Lipgloss-Renderer auf TrueColor setzen
+//  4. AUMID setzen          – App-Identität für Taskleiste
+//  5. Icon setzen           – EXE-Icon auf eigenes Konsolenfenster
 //
 // @date 2026-04-07
 func init() {
 	allocOwnConsole()
+	fixLipglossColorProfile()
 	setAppUserModelID()
 	applyConsoleIcon()
 }

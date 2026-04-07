@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.37] – Build 37
+- **Fixed** TUI colors still missing (gray/white) after Build 36: Lipgloss initializes its global renderer at import time — with GUI subsystem there's no console yet, so it caches "Ascii" color profile. Fixed by calling `lipgloss.SetColorProfile(termenv.TrueColor)` immediately after `AllocConsole()`
+
 ## [v0.36] – Build 36
 - **Fixed** colors missing in main TUI after GUI subsystem switch: `AllocConsole()` creates a console without `ENABLE_VIRTUAL_TERMINAL_PROCESSING` — now enabled immediately after console creation so Lipgloss/Bubbletea can render ANSI colors correctly
 
