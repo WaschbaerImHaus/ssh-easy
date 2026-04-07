@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.34] – Build 34
+- **Fixed** app icon not visible in title bar and taskbar for non-admin users: added `SetConsoleIcon` (undocumented kernel32 API) which sets the icon at OS level for the entire console — title bar, taskbar, Alt+Tab
+
 ## [v0.33] – Build 33
 - **Fixed** app icon not visible in Windows taskbar for non-admin users: added `SetCurrentProcessExplicitAppUserModelID("KurtIngwer.ssh-easy")` so Windows assigns the taskbar button to the app instead of the console host (conhost.exe / Windows Terminal)
 
