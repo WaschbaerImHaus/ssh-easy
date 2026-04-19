@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.39] – Build 39
+- **Added** clipboard paste via Shift+Insert inside SSH sessions on Windows: the app now intercepts the `ESC[2;2~` VT sequence, reads the system clipboard and feeds the content into the SSH stdin pipe. CRLF/LF line endings are normalized to CR so pasted multi-line text behaves as if each line was typed followed by Enter. Own stdin forwarder replaces `session.Stdin = os.Stdin` so the interception layer is available without breaking existing passthrough for normal keys and other VT sequences (arrow keys, function keys etc.)
+
 ## [v0.38] – Build 38
 - **Fixed** double keypress required after leaving SSH terminal with `exit`: `flushStdinBuffer()` was called before the defers (`term.Restore`, `restoreVT`), which can produce console mode-change events after the flush. Moved flush to first-registered defer so it runs last — after all cleanup
 

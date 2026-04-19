@@ -10,7 +10,7 @@
 // und direkt auf os.Stdin/os.Stdout arbeiten statt auf Bubbleteas Streams.
 //
 // @author Kurt Ingwer
-// @date   2026-03-08 00:00
+// @date   2026-04-19 00:00
 package main
 
 import (
@@ -112,11 +112,22 @@ func (t *sshTerminalCmd) Run() error {
 	}
 	defer session.Close()
 
-	// Direkt auf os.Stdin/Stdout/Stderr arbeiten (nicht Bubbleteas gefilterter Stream).
+	// Direkt auf os.Stdout/Stderr arbeiten (nicht Bubbleteas gefilterter Stream).
 	// Das umgeht den coninput-Reader auf Windows, der nach Alt-Tab instabil werden kann.
-	session.Stdin = os.Stdin
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
+
+	// Eigene stdin-Weiterleitung statt session.Stdin = os.Stdin: So können wir
+	// die Shift+Insert-VT-Sequenz abfangen und stattdessen den Clipboard-Inhalt
+	// einspeisen. Ohne diese Behandlung würde "Einfügen" auf Windows nicht
+	// funktionieren, weil conhost Shift+Insert nicht selbst abfängt.
+	stdinPipe, err := session.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("Stdin-Pipe konnte nicht erstellt werden: %w", err)
+	}
+	// Pipe schließen, sobald die Session endet - signalisiert der
+	// Forwarder-Goroutine zu beenden (ihr nächster Write liefert dann Fehler).
+	defer stdinPipe.Close()
 
 	// PTY-Modus: minimale Einstellungen – das Remote-PTY übernimmt die Steuerung
 	modes := ssh.TerminalModes{
@@ -147,6 +158,11 @@ func (t *sshTerminalCmd) Run() error {
 	if err := session.Shell(); err != nil {
 		return fmt.Errorf("Shell konnte nicht gestartet werden: %w", err)
 	}
+
+	// Stdin-Forwarder-Goroutine starten: liest roh von os.Stdin, fängt
+	// Shift+Insert-VT-Sequenz ab und ersetzt sie durch den Clipboard-Inhalt.
+	// Beendet sich automatisch, sobald stdinPipe durch defer geschlossen wird.
+	go forwardStdinWithPaste(os.Stdin, stdinPipe)
 
 	// Terminalgröße-Änderungen weiterleiten (SIGWINCH-Äquivalent für SSH).
 	// Läuft in einer Goroutine parallel zur Shell-Session.

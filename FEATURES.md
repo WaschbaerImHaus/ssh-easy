@@ -23,6 +23,7 @@
 - [x] ConfigCache mit Lazy-Loading
 - [x] Datei-basiertes Logging (~/.ssh-easy/ssh-easy.log)
 - [x] TUI aufgeteilt in Einzeldateien (tui_list, tui_form, tui_status, tui_keygen)
+- [x] Clipboard-Paste via Shift+Einf im SSH-Terminal (Windows: fängt VT-Sequenz ESC[2;2~ ab und fügt System-Clipboard ein)
 
 ## Offen
 
