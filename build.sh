@@ -51,15 +51,26 @@ GOOS=linux GOARCH=arm64 $GO build -o "$BUILD_DIR/ssh-easy-linux-arm64" .
 echo "    OK: build/ssh-easy-linux-arm64"
 
 # --- Windows x64 ---
+# -H windowsgui ist zwingend: ohne diesen Flag läuft die Binary als Console-
+# Subsystem, conhost gehört dann zu cmd.exe und das Taskleisten-Icon ist falsch.
 echo ">>> Windows amd64..."
-GOOS=windows GOARCH=amd64 $GO build -o "$BUILD_DIR/ssh-easy-windows-amd64.exe" .
+GOOS=windows GOARCH=amd64 $GO build -ldflags "-H windowsgui" -o "$BUILD_DIR/ssh-easy-windows-amd64.exe" .
 echo "    OK: build/ssh-easy-windows-amd64.exe"
 
 # --- Windows ARM64 ---
 echo ">>> Windows arm64..."
-GOOS=windows GOARCH=arm64 $GO build -o "$BUILD_DIR/ssh-easy-windows-arm64.exe" .
+GOOS=windows GOARCH=arm64 $GO build -ldflags "-H windowsgui" -o "$BUILD_DIR/ssh-easy-windows-arm64.exe" .
 echo "    OK: build/ssh-easy-windows-arm64.exe"
 echo ""
+
+# --- Linux Desktop-Integration ---
+# .desktop-Datei und PNG-Icon für Dateimanager-Integration nach build/ kopieren.
+# Nutzer kann die .desktop-Datei auf den Desktop legen oder nach
+# ~/.local/share/applications/ installieren – Doppelklick öffnet dann ssh-easy
+# im vom System konfigurierten Terminal-Emulator (Terminal=true im .desktop).
+cp "$SCRIPT_DIR/assets/ssh-easy.desktop" "$BUILD_DIR/ssh-easy.desktop"
+cp "$SCRIPT_DIR/assets/icon_256.png" "$BUILD_DIR/ssh-easy.png"
+echo ">>> Linux .desktop + icon kopiert"
 
 # --- Windows Installer (NSIS) ---
 cd "$SCRIPT_DIR"

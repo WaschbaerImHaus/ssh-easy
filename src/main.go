@@ -21,8 +21,18 @@ import (
 // main ist der Einstiegspunkt des Programms.
 // Initialisiert Logger, SSH-Manager, Konfiguration und startet die TUI.
 //
-// @date   2026-03-07 21:00
+// @date   2026-04-19 00:00
 func main() {
+	// Sicherstellen dass ein Terminal (TTY) vorhanden ist. Auf Linux/macOS:
+	// Wird die Binary aus einem Dateimanager doppelgeklickt, fehlt ein TTY –
+	// die Bubbletea-TUI wäre unsichtbar. ensureTerminal() startet die App dann
+	// in einem verfügbaren Terminal-Emulator neu und gibt false zurück, damit
+	// der parent-Prozess sofort beendet. Auf Windows ist dies ein No-Op
+	// (AllocConsole regelt das bereits).
+	if !ensureTerminal() {
+		return
+	}
+
 	// Logger initialisieren
 	logger := NewLogger()
 	logger.Info("ssh-easy gestartet (%s/%s)", runtime.GOOS, runtime.GOARCH)

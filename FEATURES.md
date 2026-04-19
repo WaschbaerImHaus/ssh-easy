@@ -24,6 +24,8 @@
 - [x] Datei-basiertes Logging (~/.ssh-easy/ssh-easy.log)
 - [x] TUI aufgeteilt in Einzeldateien (tui_list, tui_form, tui_status, tui_keygen)
 - [x] Clipboard-Paste via Shift+Einf im SSH-Terminal (Windows: fängt VT-Sequenz ESC[2;2~ ab und fügt System-Clipboard ein)
+- [x] Auto-Relaunch im Terminal-Emulator bei Start ohne TTY (Linux/macOS Dateimanager-Doppelklick)
+- [x] `.desktop`-Datei + PNG-Icon für Dateimanager-Integration unter Linux
 
 ## Offen
 

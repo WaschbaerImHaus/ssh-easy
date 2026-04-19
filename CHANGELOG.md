@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.40] – Build 40
+- **Added** Linux/macOS auto-launch in a terminal when started without TTY (e.g. double-click from Nemo/Nautilus/Dolphin): `ensureTerminal()` detects missing TTY + presence of `$DISPLAY` or `$WAYLAND_DISPLAY`, searches for a terminal emulator (respects `$TERMINAL`; falls back through `x-terminal-emulator`, `gnome-terminal`, `konsole`, `xfce4-terminal`, `mate-terminal`, `lxterminal`, `tilix`, `alacritty`, `kitty`, `urxvt`, `rxvt`, `xterm`) and relaunches itself via `exec.Command(emu, "-e", self)`. `SSH_EASY_RELAUNCHED=1` guards against infinite loops. On headless hosts (no display) a clear stderr message is printed instead of retrying
+- **Added** `ssh-easy.desktop` + `ssh-easy.png` shipped in `build/` for Linux desktop integration (Exec=ssh-easy, Terminal=true, category Network/ConsoleOnly); can be copied to `~/.local/share/applications/` or the desktop for double-click launch
+- **Fixed** build.sh was missing `-ldflags "-H windowsgui"` for Windows targets; would have produced binaries with the wrong taskbar icon if the script was used instead of manual builds
+
 ## [v0.39] – Build 39
 - **Added** clipboard paste via Shift+Insert inside SSH sessions on Windows: the app now intercepts the `ESC[2;2~` VT sequence, reads the system clipboard and feeds the content into the SSH stdin pipe. CRLF/LF line endings are normalized to CR so pasted multi-line text behaves as if each line was typed followed by Enter. Own stdin forwarder replaces `session.Stdin = os.Stdin` so the interception layer is available without breaking existing passthrough for normal keys and other VT sequences (arrow keys, function keys etc.)
 

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=ssh-easy
+GenericName=SSH Connection Manager
+GenericName[de]=SSH-Verbindungsmanager
+Comment=TUI for managing SSH connections with local port forwarding
+Comment[de]=TUI zur Verwaltung von SSH-Verbindungen mit lokalem Port-Forwarding
+Exec=ssh-easy
+Icon=ssh-easy
+Terminal=true
+Categories=Network;ConsoleOnly;Utility;
+Keywords=SSH;Tunnel;Port;Forwarding;Terminal;Network;
+StartupNotify=false
