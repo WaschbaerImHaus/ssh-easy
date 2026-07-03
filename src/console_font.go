@@ -78,6 +78,28 @@ func applyStartupFontSize(size int) {
 	setConsoleFontSize(clampFontSize(size))
 }
 
+// persistFontSize speichert eine Schriftgröße in der Config, falls sie sich
+// vom gespeicherten Wert unterscheidet. Wird beim Programmende aufgerufen,
+// damit auch per Strg+Mausrad (nativer conhost-Zoom) geänderte Größen den
+// Neustart überleben - dieser Zoom läuft an der Anwendung vorbei und wäre
+// sonst beim nächsten Start wieder weg.
+//
+// @param configPath - Pfad zur connections.json
+// @param size - Aktuelle Fonthöhe (0 = nicht ermittelbar, wird ignoriert)
+// @return bool - true wenn gespeichert wurde
+// @date   2026-07-03 20:40
+func persistFontSize(configPath string, size int) bool {
+	if size <= 0 {
+		return false
+	}
+	cfg, err := LoadConfig(configPath)
+	if err != nil || cfg.FontSize == size {
+		return false
+	}
+	cfg.FontSize = size
+	return SaveConfig(configPath, cfg) == nil
+}
+
 // changeFontSize ändert die Konsolen-Schriftgröße um delta Pixel und
 // persistiert den neuen Wert in der Config (font_size).
 // Auf Plattformen ohne Font-Steuerung (Linux/macOS) erscheint nur ein Hinweis.

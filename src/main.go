@@ -75,6 +75,12 @@ func main() {
 
 	// Alle Verbindungen sauber trennen
 	sshManager.DisconnectAll()
+
+	// Aktuelle Schriftgröße persistieren (nur Windows liefert > 0).
+	// Deckt auch den nativen conhost-Zoom per Strg+Mausrad ab, der an der
+	// Anwendung vorbeiläuft und sonst beim nächsten Start verloren wäre.
+	persistFontSize(configPath, getConsoleFontSize())
+
 	logger.Info("ssh-easy beendet")
 }
 

@@ -336,3 +336,57 @@ func TestApplyStartupFontSizeZeroIsNoop(t *testing.T) {
 	applyStartupFontSize(0)
 	applyStartupFontSize(-3)
 }
+
+// TestFontSizeCtrlArrowBindings prueft dass Strg+Pfeil-hoch/-runter die
+// Schriftgroessen-Aenderung ausloesen. Hintergrund (Build 42-Bug): Bubbletea
+// v1.x verwirft im Windows-coninput-Pfad den Ctrl-Modifier bei Zeichentasten
+// (Strg+Plus kommt als Rune 0x00 an) - VK_UP/VK_DOWN mit Ctrl sind dagegen
+// explizit als KeyCtrlUp/KeyCtrlDown gemappt und kommen zuverlaessig an.
+// Beobachtbar auf Linux: changeFontSize setzt den Unsupported-Hinweis.
+func TestFontSizeCtrlArrowBindings(t *testing.T) {
+	if getConsoleFontSize() > 0 {
+		t.Skip("Testumgebung kann Schriftgroesse steuern - Test nur fuer No-Op-Plattformen")
+	}
+
+	configPath := filepath.Join(t.TempDir(), "connections.json")
+
+	for _, keyType := range []tea.KeyType{tea.KeyCtrlUp, tea.KeyCtrlDown} {
+		m := NewAppModel(configPath, "test", NewSSHManager(NewLogger()))
+		m.state = ViewList
+
+		updated, _ := m.handleKeyPress(tea.KeyMsg{Type: keyType})
+		um := updated.(AppModel)
+
+		if um.errorMsg == "" {
+			t.Errorf("Taste %v sollte changeFontSize ausloesen (errorMsg erwartet)", keyType)
+		}
+	}
+}
+
+// TestPersistFontSize prueft die Persistierung der Schriftgroesse beim
+// Beenden (uebernimmt auch per Strg+Mausrad-Zoom geaenderte Groessen).
+func TestPersistFontSize(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "connections.json")
+
+	// Groesse 0 (nicht ermittelbar, z.B. Linux): nichts speichern
+	if persistFontSize(configPath, 0) {
+		t.Error("persistFontSize(0) sollte nichts speichern")
+	}
+
+	// Neue Groesse: speichern
+	if !persistFontSize(configPath, 18) {
+		t.Error("persistFontSize(18) sollte speichern")
+	}
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+	if cfg.FontSize != 18 {
+		t.Errorf("FontSize = %d, erwartet 18", cfg.FontSize)
+	}
+
+	// Unveraenderte Groesse: kein erneutes Speichern noetig
+	if persistFontSize(configPath, 18) {
+		t.Error("persistFontSize mit unveraendertem Wert sollte nicht erneut speichern")
+	}
+}

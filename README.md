@@ -58,7 +58,7 @@ Start the program:
 | `j/k` or arrow keys | Navigate |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field (e.g. password) |
-| `Ctrl+Plus` / `Ctrl+Minus` | Increase / decrease font size (Windows, persisted) |
+| `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
 | `Esc` | Back / Cancel |
 | `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
 

@@ -491,13 +491,16 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Globale Tasten: Schriftgröße ändern (nur Windows wirksam).
-	// Mehrere Aliase, weil Terminals Strg+Plus/Minus unterschiedlich melden
-	// (z.B. "ctrl+=" auf Layouts wo Plus auf der Gleichtaste liegt,
-	// "ctrl+_" als klassischer Control-Code 0x1F für Strg+Minus).
+	// Primär Strg+Pfeil-hoch/-runter: Bubbletea v1.x verwirft im Windows-
+	// coninput-Pfad den Ctrl-Modifier bei Zeichentasten (Strg+Plus kommt als
+	// Rune 0x00 an, "ctrl++" kann nie entstehen) - VK_UP/VK_DOWN mit Ctrl
+	// sind dagegen explizit als KeyCtrlUp/KeyCtrlDown gemappt.
+	// Die Plus/Minus-Aliase bleiben für Terminals die sie liefern können
+	// (z.B. Bubbletea-Unix-Pfad mit entsprechendem Terminal-Emulator).
 	switch msg.String() {
-	case "ctrl++", "ctrl+=", "ctrl+plus":
+	case "ctrl+up", "ctrl++", "ctrl+=", "ctrl+plus":
 		return m.changeFontSize(+FontSizeStep)
-	case "ctrl+-", "ctrl+_", "ctrl+minus":
+	case "ctrl+down", "ctrl+-", "ctrl+_", "ctrl+minus":
 		return m.changeFontSize(-FontSizeStep)
 	}
 

@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.43] – Build 43
+- **Fixed** font size keys not working on Windows: Bubbletea v1.x drops the Ctrl modifier for character keys in its Windows coninput path (Ctrl+Plus arrives as rune 0x00 — a "ctrl++" key message can never be produced). Font size is now bound to **Ctrl+Up / Ctrl+Down**, which are explicitly mapped as KeyCtrlUp/KeyCtrlDown in Bubbletea's Windows VK table and arrive reliably. The Ctrl+Plus/Minus aliases remain for terminals that can deliver them
+- **Added** font size is persisted on exit: the native conhost Ctrl+MouseWheel zoom bypasses the application, so ssh-easy now reads the actual console font size at shutdown and saves it to `font_size` — your mouse zoom survives a restart
+
 ## [v0.42] – Build 42
 - **Added** clipboard paste in all TUI form fields via Ctrl+V or Shift+Insert (connection form, password prompt, keygen form) — e.g. to paste a password from a password manager. Only the first line of the clipboard is inserted so stray newlines can't trigger an accidental submit
 - **Added** console window receives keyboard focus on startup (Windows): `SetForegroundWindow` + `ShowWindow` after `AllocConsole` — no more clicking into the window before you can type

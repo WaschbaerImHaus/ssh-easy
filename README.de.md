@@ -45,7 +45,7 @@ Programm starten:
 | `j/k` oder Pfeiltasten | Navigation |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld einfuegen (z.B. Passwort) |
-| `Strg+Plus` / `Strg+Minus` | Schriftgroesse aendern (Windows, wird gespeichert) |
+| `Strg+Hoch` / `Strg+Runter` | Schriftgroesse aendern (Windows, wird gespeichert; Strg+Mausrad geht auch) |
 | `Esc` | Zurueck / Abbrechen |
 | `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session) |
 
