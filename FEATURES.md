@@ -33,6 +33,7 @@
 - [ ] Alt+F4 schliesst das Fenster (Windows-Konsole faengt Alt+F4 nicht ab)
 - [ ] Fenster erhaelt beim Start den Fokus (Windows: SetForegroundWindow nach AllocConsole; aktuell muss man erst ins Fenster klicken)
 - [ ] Scroll-Back-Verhalten wie PuTTY: bei Tastatureingabe im SSH-Terminal automatisch zur aktuellen Eingabezeile zurueckspringen
+- [ ] Einfuegen aus Zwischenablage in TUI-Formularfeldern (Shift+Einf / Strg+V), z.B. fuer Passwoerter (SSH-Terminal kann es seit Build 39, die Bubbletea-Textfelder noch nicht)
 - [ ] Verbindungen exportieren/importieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Gruppen/Ordner fuer Verbindungen
