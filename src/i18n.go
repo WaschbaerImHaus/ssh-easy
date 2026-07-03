@@ -212,6 +212,10 @@ type Translations struct {
 	ConnErrPrefix    string // Präfix für Verbindungsfehler
 	ErrPortMustBeNum string // Fehler bei ungültigem Port
 	ErrTunnelPort    string // Fehler bei ungültigem Tunnel-Port, enthält %s
+
+	// --- Schriftgröße (Strg+Plus/Minus, nur Windows wirksam) ---
+	FontSizeChanged     string // Erfolgsmeldung, enthält %d für die neue Größe
+	FontSizeUnsupported string // Hinweis wenn Plattform das Ändern nicht erlaubt
 }
 
 // GetTranslations gibt die Übersetzungen für die angegebene Sprache zurück.
@@ -316,6 +320,9 @@ var allTranslations = map[Language]Translations{
 		TunnelInfo:       " [Tunnel: %s]",
 		ErrPortMustBeNum: "Port muss eine Zahl sein",
 		ErrTunnelPort:    "Tunnel-Port '%s' ist keine gültige Zahl",
+
+		FontSizeChanged:     "Schriftgröße: %d",
+		FontSizeUnsupported: "Schriftgröße ist nur unter Windows änderbar (sonst: Terminal-Einstellungen)",
 	},
 
 	// ===================== ENGLISH =====================
@@ -404,6 +411,9 @@ var allTranslations = map[Language]Translations{
 		TunnelInfo:       " [Tunnel: %s]",
 		ErrPortMustBeNum: "Port must be a number",
 		ErrTunnelPort:    "Tunnel port '%s' is not a valid number",
+
+		FontSizeChanged:     "Font size: %d",
+		FontSizeUnsupported: "Font size can only be changed on Windows (elsewhere: use terminal settings)",
 	},
 
 	// ===================== FRANÇAIS =====================
@@ -492,6 +502,9 @@ var allTranslations = map[Language]Translations{
 		TunnelInfo:       " [Tunnel : %s]",
 		ErrPortMustBeNum: "Le port doit être un nombre",
 		ErrTunnelPort:    "Le port tunnel '%s' n'est pas un nombre valide",
+
+		FontSizeChanged:     "Taille de police : %d",
+		FontSizeUnsupported: "La taille de police n'est modifiable que sous Windows (sinon : réglages du terminal)",
 	},
 
 	// ===================== ESPAÑOL =====================

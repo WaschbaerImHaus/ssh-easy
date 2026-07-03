@@ -57,8 +57,10 @@ Start the program:
 | `g` | Generate SSH key (Ed25519) |
 | `j/k` or arrow keys | Navigate |
 | `Tab` | Next form field |
+| `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field (e.g. password) |
+| `Ctrl+Plus` / `Ctrl+Minus` | Increase / decrease font size (Windows, persisted) |
 | `Esc` | Back / Cancel |
-| `q` / `Ctrl+C` | Quit |
+| `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
 
 ### Adding a Connection
 

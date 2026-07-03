@@ -30,6 +30,12 @@ import (
 // Dekodiert: ESC [ 2 ; 2 ~
 var shiftInsertSeq = []byte{0x1b, '[', '2', ';', '2', '~'}
 
+// altF4Seq ist die VT-Escape-Sequenz für Alt+F4.
+// F4 allein = SS3 S (ESC O S); mit Modifier wird daraus CSI 1;<mod>S,
+// wobei Modifier 3 = Alt. Dekodiert: ESC [ 1 ; 3 S
+// Alt+F4 soll das Programm auch mitten in einer SSH-Session beenden (wie PuTTY).
+var altF4Seq = []byte{0x1b, '[', '1', ';', '3', 'S'}
+
 // readClipboard ist ein Funktionszeiger, damit Tests einen Stub einsetzen können.
 // Standardmäßig wird das System-Clipboard über atotto/clipboard gelesen.
 //
@@ -40,31 +46,58 @@ var readClipboard = func() (string, error) {
 	return clipboard.ReadAll()
 }
 
-// forwardStdinWithPaste kopiert Bytes von r nach w und fängt dabei die
-// Shift+Insert-VT-Sequenz ab. Wird die Sequenz erkannt, wird stattdessen
-// der aktuelle Clipboard-Inhalt geschrieben (mit normalisierten Zeilenenden).
+// forwardStdinWithPaste kopiert Bytes von r nach w und fängt dabei zwei
+// VT-Sequenzen ab:
+//   - Shift+Insert: wird durch den Clipboard-Inhalt ersetzt (Einfügen)
+//   - Alt+F4: onAltF4-Callback wird aufgerufen und die Weiterleitung endet
+//     sofort (Programm-Beenden wie bei PuTTY, auch mitten in der Session)
 //
-// Kehrt zurück, sobald r EOF liefert oder ein Schreibfehler auf w auftritt
-// (z.B. wenn die SSH-Session geschlossen wird).
+// Kehrt zurück, sobald r EOF liefert, ein Schreibfehler auf w auftritt
+// (z.B. wenn die SSH-Session geschlossen wird) oder Alt+F4 erkannt wurde.
+//
+// Windows: durch Scroll-Snap springt der Konsolen-Viewport bei jeder
+// Tastatureingabe zurück zur Cursor-Zeile (wie PuTTY) - siehe
+// snapConsoleToBottom() in console_scroll_windows.go.
 //
 // @param r - Quelle (typischerweise os.Stdin im Raw-Mode)
 // @param w - Ziel (typischerweise session.StdinPipe() der SSH-Session)
-// @date   2026-04-19 00:00
-func forwardStdinWithPaste(r io.Reader, w io.Writer) {
+// @param onAltF4 - Callback bei Alt+F4 (nil = Alt+F4 wird nur verschluckt)
+// @date   2026-07-03 19:30
+func forwardStdinWithPaste(r io.Reader, w io.Writer, onAltF4 func()) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
+			// Windows: Viewport zur Eingabezeile zurückscrollen falls der
+			// Nutzer im Scrollback nach oben gescrollt hatte. Unix: No-Op.
+			snapConsoleToBottom()
+
 			data := buf[:n]
-			// Solange noch eine Shift+Insert-Sequenz im Puffer steht: Text davor
-			// schreiben, Sequenz durch Clipboard-Inhalt ersetzen, Rest weiterverarbeiten.
+			// Solange noch eine bekannte Sequenz im Puffer steht: Text davor
+			// schreiben, Sequenz behandeln, Rest weiterverarbeiten.
 			for {
-				idx := bytes.Index(data, shiftInsertSeq)
-				if idx < 0 {
+				idxPaste := bytes.Index(data, shiftInsertSeq)
+				idxQuit := bytes.Index(data, altF4Seq)
+				if idxPaste < 0 && idxQuit < 0 {
 					break
 				}
-				// Bytes vor der Sequenz unverändert weiterreichen
-				if _, werr := w.Write(data[:idx]); werr != nil {
+
+				// Alt+F4 zuerst behandeln wenn es vor der Paste-Sequenz steht
+				if idxQuit >= 0 && (idxPaste < 0 || idxQuit < idxPaste) {
+					// Bytes vor der Sequenz noch zustellen, dann beenden
+					if idxQuit > 0 {
+						if _, werr := w.Write(data[:idxQuit]); werr != nil {
+							return
+						}
+					}
+					if onAltF4 != nil {
+						onAltF4()
+					}
+					return
+				}
+
+				// Shift+Insert: Bytes vor der Sequenz unverändert weiterreichen
+				if _, werr := w.Write(data[:idxPaste]); werr != nil {
 					return
 				}
 				// Clipboard lesen und einfügen - Fehler wird ignoriert, dann wird
@@ -75,7 +108,7 @@ func forwardStdinWithPaste(r io.Reader, w io.Writer) {
 					}
 				}
 				// Hinter der Sequenz weitermachen
-				data = data[idx+len(shiftInsertSeq):]
+				data = data[idxPaste+len(shiftInsertSeq):]
 			}
 			// Verbleibende Bytes (ohne weitere Sequenz) schreiben
 			if len(data) > 0 {

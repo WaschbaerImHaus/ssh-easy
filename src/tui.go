@@ -10,6 +10,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -368,6 +369,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case terminalDoneMsg:
+		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
+		if msg.err != nil && errors.Is(msg.err, errAltF4Quit) {
+			m.sshManager.DisconnectAll()
+			return m, tea.Quit
+		}
 		// Interaktive Terminal-Session beendet, zurück zur Statusansicht
 		if msg.err != nil {
 			m.errorMsg = m.lang.ErrTerminal + msg.err.Error()
@@ -476,10 +482,23 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // @return tea.Cmd - Folge-Kommando
 // @date   2026-03-07 21:00
 func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Globale Taste: Ctrl+C beendet immer
-	if msg.String() == "ctrl+c" {
+	// Globale Tasten: Ctrl+C und Alt+F4 beenden immer.
+	// Alt+F4 wird von Windows bei Konsolenfenstern NICHT selbst behandelt
+	// (kein automatisches WM_CLOSE wie bei GUI-Fenstern), daher hier explizit.
+	if msg.String() == "ctrl+c" || msg.String() == "alt+f4" {
 		m.sshManager.DisconnectAll()
 		return m, tea.Quit
+	}
+
+	// Globale Tasten: Schriftgröße ändern (nur Windows wirksam).
+	// Mehrere Aliase, weil Terminals Strg+Plus/Minus unterschiedlich melden
+	// (z.B. "ctrl+=" auf Layouts wo Plus auf der Gleichtaste liegt,
+	// "ctrl+_" als klassischer Control-Code 0x1F für Strg+Minus).
+	switch msg.String() {
+	case "ctrl++", "ctrl+=", "ctrl+plus":
+		return m.changeFontSize(+FontSizeStep)
+	case "ctrl+-", "ctrl+_", "ctrl+minus":
+		return m.changeFontSize(-FontSizeStep)
 	}
 
 	// Dispatch an View-spezifische Handler

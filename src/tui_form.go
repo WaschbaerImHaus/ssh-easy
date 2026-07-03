@@ -26,6 +26,16 @@ import (
 // @return tea.Cmd - Folge-Kommando
 // @date   2026-03-07 21:00
 func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Einfügen aus der Zwischenablage ins fokussierte Feld (Strg+V / Shift+Einf)
+	if isPasteShortcut(msg.String()) {
+		if text, ok := readClipboardLine(); ok {
+			var cmd tea.Cmd
+			m.inputs[m.focusedInput], cmd = m.inputs[m.focusedInput].Update(makePasteKeyMsg(text))
+			return m, cmd
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "esc":
 		m.state = ViewList
@@ -102,6 +112,16 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // @return tea.Cmd - Folge-Kommando
 // @date   2026-03-08 00:00
 func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Passwort aus der Zwischenablage einfügen (Strg+V / Shift+Einf)
+	if isPasteShortcut(msg.String()) {
+		if text, ok := readClipboardLine(); ok {
+			var cmd tea.Cmd
+			m.passwordInput, cmd = m.passwordInput.Update(makePasteKeyMsg(text))
+			return m, cmd
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "esc":
 		m.state = ViewList

@@ -70,6 +70,9 @@ type AppConfig struct {
 	Version int `json:"version"`
 	// Gewählte UI-Sprache (ISO 639-1 Code, z.B. "de", "en")
 	Language Language `json:"language,omitempty"`
+	// Konsolen-Schriftgröße in Pixeln (nur Windows wirksam; 0 = Systemstandard).
+	// Wird per Strg+Plus/Strg+Minus geändert und hier persistiert.
+	FontSize int `json:"font_size,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

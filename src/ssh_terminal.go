@@ -14,14 +14,20 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 )
+
+// errAltF4Quit signalisiert der TUI dass der Nutzer die Session mit Alt+F4
+// beendet hat und das gesamte Programm geschlossen werden soll (wie PuTTY).
+var errAltF4Quit = errors.New("Alt+F4: Programm-Beenden angefordert")
 
 // sshTerminalCmd implementiert das tea.ExecCommand-Interface.
 // Startet eine interaktive PTY-Shell-Session über einen bestehenden SSH-Client.
@@ -160,9 +166,15 @@ func (t *sshTerminalCmd) Run() error {
 	}
 
 	// Stdin-Forwarder-Goroutine starten: liest roh von os.Stdin, fängt
-	// Shift+Insert-VT-Sequenz ab und ersetzt sie durch den Clipboard-Inhalt.
-	// Beendet sich automatisch, sobald stdinPipe durch defer geschlossen wird.
-	go forwardStdinWithPaste(os.Stdin, stdinPipe)
+	// Shift+Insert-VT-Sequenz ab (Clipboard-Paste) und erkennt Alt+F4
+	// (Programm beenden). Beendet sich automatisch, sobald stdinPipe durch
+	// defer geschlossen wird oder Alt+F4 gedrückt wurde.
+	var altF4Pressed atomic.Bool
+	go forwardStdinWithPaste(os.Stdin, stdinPipe, func() {
+		altF4Pressed.Store(true)
+		// Session schließen damit session.Wait() unten sofort zurückkehrt
+		session.Close()
+	})
 
 	// Terminalgröße-Änderungen weiterleiten (SIGWINCH-Äquivalent für SSH).
 	// Läuft in einer Goroutine parallel zur Shell-Session.
@@ -181,6 +193,13 @@ func (t *sshTerminalCmd) Run() error {
 	// Größen-Watcher beenden
 	close(stopResize)
 	resizeWg.Wait()
+
+	// Alt+F4 hat die Session hart geschlossen: den dadurch entstandenen
+	// Wait-Fehler nicht als Session-Fehler melden, sondern das Programm-
+	// Beenden an die TUI signalisieren (dort: DisconnectAll + tea.Quit).
+	if altF4Pressed.Load() {
+		return errAltF4Quit
+	}
 
 	return sessionErr
 }

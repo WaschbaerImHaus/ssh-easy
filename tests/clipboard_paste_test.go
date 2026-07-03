@@ -48,7 +48,7 @@ func TestForwardStdinPassthrough(t *testing.T) {
 	r := bytes.NewReader(input)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	if !bytes.Equal(w.Bytes(), input) {
 		t.Errorf("Passthrough fehlgeschlagen: erwartet %q, erhalten %q", input, w.Bytes())
@@ -68,7 +68,7 @@ func TestForwardStdinShiftInsertReplacement(t *testing.T) {
 	r := bytes.NewReader(input)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	expected := "abpastedcd"
 	if w.String() != expected {
@@ -93,7 +93,7 @@ func TestForwardStdinMultipleShiftInsert(t *testing.T) {
 	r := bytes.NewReader(input)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	expected := "aXbXc"
 	if w.String() != expected {
@@ -110,7 +110,7 @@ func TestForwardStdinLineEndingNormalization(t *testing.T) {
 	r := bytes.NewReader(shiftInsertSeq)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	expected := "line1\rline2\rline3"
 	if w.String() != expected {
@@ -130,7 +130,7 @@ func TestForwardStdinClipboardError(t *testing.T) {
 	r := bytes.NewReader(input)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	// Bei Fehler wird die Sequenz einfach verschluckt (keine Paste, kein Crash).
 	expected := "beforeafter"
@@ -153,7 +153,7 @@ func TestForwardStdinUnrelatedEscapeSequence(t *testing.T) {
 	r := bytes.NewReader(input)
 	var w bytes.Buffer
 
-	forwardStdinWithPaste(r, &w)
+	forwardStdinWithPaste(r, &w, nil)
 
 	if !bytes.Equal(w.Bytes(), input) {
 		t.Errorf("Fremde Escape-Sequenz wurde verändert: erwartet %q, erhalten %q", input, w.Bytes())
@@ -196,5 +196,5 @@ func TestForwardStdinWriterError(t *testing.T) {
 	w := writerAtEOF{}
 
 	// Darf nicht blockieren oder panicken.
-	forwardStdinWithPaste(r, w)
+	forwardStdinWithPaste(r, w, nil)
 }

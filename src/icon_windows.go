@@ -58,6 +58,10 @@ var (
 	procSendMessageW = user32Win.NewProc("SendMessageW")
 	// setCurrentProcessExplicitAppUserModelID setzt die App-User-Model-ID.
 	procSetCurrentProcessExplicitAppUserModelID = shell32Win.NewProc("SetCurrentProcessExplicitAppUserModelID")
+	// setForegroundWindow holt ein Fenster in den Vordergrund und gibt ihm den Fokus.
+	procSetForegroundWindow = user32Win.NewProc("SetForegroundWindow")
+	// showWindow ändert den Anzeigezustand eines Fensters (restore/minimiert/...).
+	procShowWindow = user32Win.NewProc("ShowWindow")
 )
 
 const (
@@ -224,6 +228,26 @@ func applyConsoleIcon() {
 	}
 }
 
+// focusConsoleWindow holt das eigene Konsolenfenster in den Vordergrund.
+//
+// Problem: Nach AllocConsole() erscheint das Konsolenfenster zwar, bekommt
+// aber nicht immer den Eingabe-Fokus - der Nutzer musste erst ins Fenster
+// klicken bevor er tippen konnte. SetForegroundWindow() ist erlaubt, weil
+// der eigene Prozess gerade vom Nutzer gestartet wurde (Windows gestattet
+// Fokus-Wechsel für den Prozess der die letzte Eingabe erhielt).
+// SW_SHOW davor stellt sicher dass das Fenster nicht minimiert ist.
+//
+// @date 2026-07-03 19:25
+func focusConsoleWindow() {
+	hwnd, _, _ := procGetConsoleWindow.Call()
+	if hwnd == 0 {
+		return
+	}
+	// SW_SHOW = 5: Fenster anzeigen und aktivieren (falls minimiert/versteckt)
+	procShowWindow.Call(hwnd, 5)
+	procSetForegroundWindow.Call(hwnd)
+}
+
 // fixLipglossColorProfile setzt das Lipgloss-Farbprofil auf TrueColor zurück.
 //
 // Problem: Lipgloss initialisiert seinen Standard-Renderer beim Paket-Import.
@@ -248,11 +272,13 @@ func fixLipglossColorProfile() {
 //  3. Farbprofil korrigieren – Lipgloss-Renderer auf TrueColor setzen
 //  4. AUMID setzen          – App-Identität für Taskleiste
 //  5. Icon setzen           – EXE-Icon auf eigenes Konsolenfenster
+//  6. Fokus setzen          – Konsolenfenster in den Vordergrund holen
 //
-// @date 2026-04-07
+// @date 2026-07-03 19:25
 func init() {
 	allocOwnConsole()
 	fixLipglossColorProfile()
 	setAppUserModelID()
 	applyConsoleIcon()
+	focusConsoleWindow()
 }

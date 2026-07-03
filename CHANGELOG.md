@@ -5,6 +5,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.42] – Build 42
+- **Added** clipboard paste in all TUI form fields via Ctrl+V or Shift+Insert (connection form, password prompt, keygen form) — e.g. to paste a password from a password manager. Only the first line of the clipboard is inserted so stray newlines can't trigger an accidental submit
+- **Added** console window receives keyboard focus on startup (Windows): `SetForegroundWindow` + `ShowWindow` after `AllocConsole` — no more clicking into the window before you can type
+- **Added** Alt+F4 quits the app everywhere (like PuTTY): as a global key in all menu views, and inside a running SSH session via the stdin forwarder detecting the `CSI 1;3S` VT sequence — the session is closed, all connections disconnected and the program exits cleanly
+- **Added** PuTTY-style scrollback snap (Windows): typing while scrolled up in the console buffer jumps the viewport back to the input line (`SetConsoleWindowInfo` on each stdin chunk)
+- **Added** console font size adjustable via Ctrl+Plus / Ctrl+Minus (Windows, 8–72px via `SetCurrentConsoleFontEx`); the value is persisted as `font_size` in connections.json and re-applied on startup. On Linux a hint points to the terminal emulator's own settings
+- **Added** 18 new tests in `feature_ux_test.go` (total: 74 → 92, all green)
+
 ## [v0.41] – Build 41
 - **Security** Password in `ManagedConnection` now stored as `[]byte` with active zero-out on disconnect (was `string`, immutable and never cleared). New `clearPassword()` helper overwrites the backing array before nulling the reference, reducing RAM lifetime of credentials (HIGH finding)
 - **Security** Keyboard-Interactive callback no longer copies the password into an extra `pwCopy` variable – closure references the caller's string directly (one less copy in memory, HIGH finding)

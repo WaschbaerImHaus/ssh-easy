@@ -53,6 +53,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Persistierte Konsolen-Schriftgröße anwenden (nur Windows wirksam).
+	// Muss vor dem TUI-Start passieren, damit Bubbletea gleich mit der
+	// korrekten Fenstergröße rendert.
+	if cfg, cfgErr := LoadConfig(configPath); cfgErr == nil {
+		applyStartupFontSize(cfg.FontSize)
+	}
+
 	// SSH-Manager erstellen
 	sshManager := NewSSHManager(logger)
 

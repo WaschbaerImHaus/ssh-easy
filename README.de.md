@@ -44,8 +44,10 @@ Programm starten:
 | `g` | SSH-Key generieren (Ed25519) |
 | `j/k` oder Pfeiltasten | Navigation |
 | `Tab` | Naechstes Formularfeld |
+| `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld einfuegen (z.B. Passwort) |
+| `Strg+Plus` / `Strg+Minus` | Schriftgroesse aendern (Windows, wird gespeichert) |
 | `Esc` | Zurueck / Abbrechen |
-| `q` / `Ctrl+C` | Beenden |
+| `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session) |
 
 ### Verbindung anlegen
 
