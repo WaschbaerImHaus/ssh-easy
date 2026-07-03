@@ -229,11 +229,11 @@ func SaveConfig(path string, cfg *AppConfig) error {
 	}
 	tmpFile.Close()
 
-	// Berechtigung setzen (nur Besitzer darf lesen/schreiben)
-	if runtime.GOOS != "windows" {
-		if err := os.Chmod(tmpPath, 0600); err != nil {
-			return fmt.Errorf("Berechtigung konnte nicht gesetzt werden: %w", err)
-		}
+	// Berechtigung setzen (nur Besitzer darf lesen/schreiben).
+	// restrictFilePermissions() kapselt plattform-spezifisches Verhalten:
+	// Unix chmod 0600, Windows DACL auf Owner-only per SetNamedSecurityInfo.
+	if err := restrictFilePermissions(tmpPath); err != nil {
+		return fmt.Errorf("Berechtigung konnte nicht gesetzt werden: %w", err)
 	}
 
 	// Atomarer Rename: Temp-Datei -> Zieldatei

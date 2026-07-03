@@ -102,7 +102,11 @@ func (ac *AuthCache) save() {
 		return
 	}
 	// 0600: nur der eigene Benutzer darf lesen/schreiben (Auth-Daten)
-	_ = os.WriteFile(ac.path, data, 0600)
+	if err := os.WriteFile(ac.path, data, 0600); err != nil {
+		return
+	}
+	// Windows ignoriert 0600 - DACL-Härtung via restrictFilePermissions erforderlich
+	_ = restrictFilePermissions(ac.path)
 }
 
 // Get gibt den Cache-Eintrag für eine Verbindung zurück.

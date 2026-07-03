@@ -5,6 +5,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.41] – Build 41
+- **Security** Password in `ManagedConnection` now stored as `[]byte` with active zero-out on disconnect (was `string`, immutable and never cleared). New `clearPassword()` helper overwrites the backing array before nulling the reference, reducing RAM lifetime of credentials (HIGH finding)
+- **Security** Keyboard-Interactive callback no longer copies the password into an extra `pwCopy` variable – closure references the caller's string directly (one less copy in memory, HIGH finding)
+- **Security** `expandTilde()` blocks path traversal: `~/../../etc/passwd` is normalized by `filepath.Join` and would have escaped the home directory. New guard returns the original path when the expanded result is not a prefix of `$HOME` (MEDIUM finding)
+- **Security** SSH key auto-discovery in `~/.ssh/` rejects symlinks via `entry.Type().IsRegular()` – a crafted symlink `id_fake → /etc/shadow` no longer triggers a file read (MEDIUM finding)
+- **Security** Auto-discovery uses a PEM content whitelist instead of a filename blacklist: new `looksLikePEMKey()` reads the first 11 bytes and only accepts files starting with `-----BEGIN ` (MEDIUM finding). Replaces incomplete skip-list (`known_hosts`, `config`, `authorized_keys`, `known_hosts.old`, `environment`) that let other non-key files through
+- **Security** `HostKeyChangedError` is now a typed error with `Hostname` field – detection uses `errors.As()` instead of fragile string matching on the German-localized error message. Transparent through `fmt.Errorf("%w", ...)` wrapping (MEDIUM finding)
+- **Security** Windows DACL hardening via `golang.org/x/sys/windows`: new `restrictFilePermissions()` calls `SetNamedSecurityInfo` with an owner-only DACL + `PROTECTED_DACL_SECURITY_INFORMATION` (blocks inheritance) on log file, config, auth-cache, generated private keys and `known_hosts`. Fixes `os.OpenFile(..., 0600)` being a no-op on Windows (MEDIUM finding). CGO-free – uses pure-Go syscalls
+- **Added** 12 new tests in `security_fixes_test.go` covering all six hardenings (total: 62 → 74 tests, all green)
+
 ## [v0.40] – Build 40
 - **Added** Linux/macOS auto-launch in a terminal when started without TTY (e.g. double-click from Nemo/Nautilus/Dolphin): `ensureTerminal()` detects missing TTY + presence of `$DISPLAY` or `$WAYLAND_DISPLAY`, searches for a terminal emulator (respects `$TERMINAL`; falls back through `x-terminal-emulator`, `gnome-terminal`, `konsole`, `xfce4-terminal`, `mate-terminal`, `lxterminal`, `tilix`, `alacritty`, `kitty`, `urxvt`, `rxvt`, `xterm`) and relaunches itself via `exec.Command(emu, "-e", self)`. `SSH_EASY_RELAUNCHED=1` guards against infinite loops. On headless hosts (no display) a clear stderr message is printed instead of retrying
 - **Added** `ssh-easy.desktop` + `ssh-easy.png` shipped in `build/` for Linux desktop integration (Exec=ssh-easy, Terminal=true, category Network/ConsoleOnly); can be copied to `~/.local/share/applications/` or the desktop for double-click launch

@@ -15,6 +15,7 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -28,6 +29,26 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
+
+// HostKeyChangedError signalisiert dass sich ein Host-Key gegenüber dem
+// gespeicherten Eintrag in known_hosts geändert hat (möglicher MITM-Angriff).
+// Typisierter Fehler ermöglicht robustes Matching via errors.As() statt
+// fragilem String-Parsing der Fehlermeldung.
+//
+// @date   2026-04-19 12:00
+type HostKeyChangedError struct {
+	// Hostname/IP des betroffenen Servers
+	Hostname string
+}
+
+// Error liefert die lesbare Fehlermeldung.
+// Format: "HOST-KEY GEÄNDERT für HOSTNAME! Möglicher MITM-Angriff."
+//
+// @return string - Fehlermeldung
+// @date   2026-04-19 12:00
+func (e *HostKeyChangedError) Error() string {
+	return fmt.Sprintf("HOST-KEY GEÄNDERT für %s! Möglicher MITM-Angriff.", e.Hostname)
+}
 
 // startTunnel startet einen einzelnen Local-Port-Forwarding-Tunnel.
 // Lauscht auf localhost:localPort und leitet Verbindungen an den
@@ -198,6 +219,10 @@ func GenerateSSHKey(keyPath string, passphrase string) (string, error) {
 	if err := os.WriteFile(keyPath, privKeyBytes, 0600); err != nil {
 		return "", fmt.Errorf("Privater Schlüssel konnte nicht gespeichert werden: %w", err)
 	}
+	// Unter Windows setzt 0600 keine Berechtigungen - Private-Key via DACL härten
+	if err := restrictFilePermissions(keyPath); err != nil {
+		return "", fmt.Errorf("Berechtigungen für Privatschlüssel konnten nicht gesetzt werden: %w", err)
+	}
 
 	// Öffentlichen Schlüssel im OpenSSH-Format erstellen
 	sshPubKey, err := ssh.NewPublicKey(pubKey)
@@ -360,40 +385,30 @@ func getKnownHostsPath() (string, error) {
 	return filepath.Join(home, ".ssh", "known_hosts"), nil
 }
 
-// parseHostKeyChangedHostname extrahiert den Hostname aus einer
-// "HOST-KEY GEÄNDERT für HOSTNAME!"-Fehlermeldung.
+// parseHostKeyChangedHostname extrahiert den Hostname aus einem
+// HostKeyChangedError (auch verpackt in anderen Fehlern).
+// Verwendet errors.As statt fragilem String-Parsing.
 //
-// @param err - Fehler der geparst werden soll
-// @return string - Hostname oder leer wenn kein Match
-// @date   2026-03-15 00:00
+// @param err - Fehler der geprüft werden soll
+// @return string - Hostname oder leer wenn kein Host-Key-Wechsel
+// @date   2026-04-19 12:00
 func parseHostKeyChangedHostname(err error) string {
-	if err == nil {
-		return ""
+	var hkcErr *HostKeyChangedError
+	if errors.As(err, &hkcErr) {
+		return hkcErr.Hostname
 	}
-	msg := err.Error()
-	marker := "HOST-KEY GEÄNDERT für "
-	idx := strings.Index(msg, marker)
-	if idx < 0 {
-		return ""
-	}
-	rest := msg[idx+len(marker):]
-	end := strings.Index(rest, "!")
-	if end < 0 {
-		return strings.TrimSpace(rest)
-	}
-	return strings.TrimSpace(rest[:end])
+	return ""
 }
 
-// IsHostKeyChangedError prüft ob ein Fehler ein Host-Key-Änderungsfehler ist.
+// IsHostKeyChangedError prüft ob ein Fehler ein Host-Key-Änderungsfehler ist
+// (auch verpackt in anderen Fehlern, z.B. durch fmt.Errorf("%w", ...)).
 //
 // @param err - Zu prüfender Fehler
 // @return bool - Ob der Host-Key sich geändert hat
-// @date   2026-03-15 00:00
+// @date   2026-04-19 12:00
 func IsHostKeyChangedError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(err.Error(), "HOST-KEY GEÄNDERT")
+	var hkcErr *HostKeyChangedError
+	return errors.As(err, &hkcErr)
 }
 
 // deployPublicKey fügt einen öffentlichen SSH-Key zur authorized_keys des Remote-Servers hinzu.

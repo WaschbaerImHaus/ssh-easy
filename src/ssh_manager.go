@@ -52,17 +52,33 @@ type SSHManager struct {
 }
 
 // ManagedConnection erweitert ConnectionStatus um Reconnect-Informationen.
+// Das Passwort wird als []byte gehalten (nicht als string), damit es beim
+// Disconnect aktiv mit Nullen überschrieben werden kann. Go-Strings sind
+// immutable und verbleiben bis zum nächsten GC-Zyklus im Heap.
 type ManagedConnection struct {
 	// Eingebetteter Verbindungsstatus
 	Status *ConnectionStatus
 	// Originale Verbindungskonfiguration (für Reconnect)
 	Config Connection
-	// Passwort/Passphrase (nur im Speicher, für Reconnect)
-	password string
+	// Passwort/Passphrase (nur im Speicher, für Reconnect).
+	// Beim Disconnect wird der Inhalt mit 0 überschrieben.
+	password []byte
 	// Anzahl bisheriger Reconnect-Versuche
 	reconnectCount int
 	// Ob Reconnect aktiv versucht wird
 	reconnecting bool
+}
+
+// clearPassword überschreibt das gespeicherte Passwort mit Nullen.
+// Reduziert die Lebensdauer sensibler Daten im RAM deutlich, auch wenn
+// andere Kopien (z.B. in der aufrufenden Funktion) nicht beeinflusst werden.
+//
+// @date   2026-04-19 12:00
+func (mc *ManagedConnection) clearPassword() {
+	for i := range mc.password {
+		mc.password[i] = 0
+	}
+	mc.password = nil
 }
 
 // NewSSHManager erstellt einen neuen SSH-Manager.
@@ -182,45 +198,96 @@ func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *Con
 	}
 
 	// 3. Alle anderen Keys aus ~/.ssh/ einzeln durchprobieren
-	home, err := os.UserHomeDir()
-	if err == nil {
-		sshDir := filepath.Join(home, ".ssh")
-		entries, err := os.ReadDir(sshDir)
-		if err == nil {
-			skipFiles := map[string]bool{
-				"known_hosts": true, "config": true, "authorized_keys": true,
-				"known_hosts.old": true, "environment": true,
-			}
-			absExclude := expandTilde(conn.KeyPath)
-
-			for _, entry := range entries {
-				if entry.IsDir() {
-					continue
-				}
-				name := entry.Name()
-				if strings.HasSuffix(name, ".pub") || skipFiles[name] {
-					continue
-				}
-				absPath := filepath.Join(sshDir, name)
-				if absPath == absExclude {
-					continue // bereits unter Schritt 2 probiert
-				}
-
-				signers := m.loadKeysFromPaths([]string{absPath})
-				if len(signers) == 0 {
-					continue
-				}
-				ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
-				if err == nil {
-					m.logger.Info("Key %s erfolgreich für %s", absPath, conn.Name)
-					return ctx, status, authCacheKeyPrefix + absPath, nil
-				}
-				m.logger.Info("Key %s fehlgeschlagen: %v", absPath, err)
-			}
+	absExclude := ""
+	if conn.KeyPath != "" {
+		absExclude = expandTilde(conn.KeyPath)
+	}
+	for _, absPath := range discoverSSHKeys(absExclude, m.logger) {
+		signers := m.loadKeysFromPaths([]string{absPath})
+		if len(signers) == 0 {
+			continue
 		}
+		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
+		if err == nil {
+			m.logger.Info("Key %s erfolgreich für %s", absPath, conn.Name)
+			return ctx, status, authCacheKeyPrefix + absPath, nil
+		}
+		m.logger.Info("Key %s fehlgeschlagen: %v", absPath, err)
 	}
 
 	return nil, nil, "", fmt.Errorf("keine SSH-Schlüssel oder Agent verfügbar")
+}
+
+// discoverSSHKeys listet alle Dateien aus ~/.ssh/ die wie SSH-Private-Keys
+// aussehen. Schutzmaßnahmen:
+//  - Symlinks werden ignoriert (Symlink-Escape verhindern)
+//  - Nur reguläre Dateien
+//  - .pub-Dateien werden übersprungen (öffentliche Schlüssel)
+//  - Inhaltsprüfung: Datei muss mit einem PEM-Marker beginnen
+//    ("-----BEGIN" bzw. "-----BEGIN OPENSSH"). Dateinamen-basierte Blacklist
+//    war unvollständig und konnte andere Dateien (z.B. "rc", "config.old")
+//    fälschlicherweise als Key öffnen.
+//
+// @param excludePath - Bereits separat geprüfter Pfad wird übersprungen
+// @param logger      - Logger für Skip-Meldungen
+// @return []string   - Absolute Pfade zu PEM-artigen Dateien
+// @date   2026-04-19 12:00
+func discoverSSHKeys(excludePath string, logger *Logger) []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	sshDir := filepath.Join(home, ".ssh")
+	entries, err := os.ReadDir(sshDir)
+	if err != nil {
+		return nil
+	}
+
+	var paths []string
+	for _, entry := range entries {
+		// Nur reguläre Dateien: Verzeichnisse, Symlinks, Sockets etc. auslassen.
+		// entry.Type() liefert die Datei-Typ-Bits ohne dem Filesystem zu folgen,
+		// d.h. Symlinks werden erkannt (und verworfen) ohne auf das Ziel zuzugreifen.
+		if !entry.Type().IsRegular() {
+			continue
+		}
+		name := entry.Name()
+		// Öffentliche Schlüssel sind nicht authentifizierungsfähig
+		if strings.HasSuffix(name, ".pub") {
+			continue
+		}
+		absPath := filepath.Join(sshDir, name)
+		if absPath == excludePath {
+			continue // bereits unter Schritt 2 probiert
+		}
+		// Whitelist per Inhalt: nur echte PEM-Dateien durchlassen
+		if !looksLikePEMKey(absPath) {
+			continue
+		}
+		paths = append(paths, absPath)
+	}
+	return paths
+}
+
+// looksLikePEMKey prüft ob eine Datei mit einem PEM-Header beginnt.
+// Das deckt sowohl klassisches OpenSSH-Format ("-----BEGIN OPENSSH PRIVATE KEY-----")
+// als auch ältere PKCS#1/PKCS#8-Formate ("-----BEGIN RSA PRIVATE KEY-----" etc.) ab.
+// Nur die ersten Bytes werden gelesen – spart IO und verhindert dass Nicht-Key-Dateien
+// komplett geparst werden.
+//
+// @param path - Zu prüfender Dateipfad
+// @return bool - true wenn Datei mit einem PEM-Marker beginnt
+// @date   2026-04-19 12:00
+func looksLikePEMKey(path string) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	// 11 Bytes reichen für "-----BEGIN " – der universelle Präfix jedes PEM-Headers.
+	buf := make([]byte, 11)
+	n, _ := f.Read(buf)
+	return n == 11 && string(buf) == "-----BEGIN "
 }
 
 // buildMethodFromCache erstellt eine ssh.AuthMethod aus einem Cache-Eintrag.
@@ -279,13 +346,15 @@ func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*Con
 	// Passwort-Authentifizierung
 	methods = append(methods, ssh.Password(password))
 
-	// Keyboard-Interactive für Server die das statt Password verwenden
-	pwCopy := password
+	// Keyboard-Interactive für Server die das statt Password verwenden.
+	// Callback referenziert password direkt – keine zusätzliche Kopie im Speicher.
+	// Go-Strings sind immutable, daher lässt sich password selbst nicht clearen;
+	// die Closure ist aber nur gültig bis ssh.Dial() zurückkehrt.
 	methods = append(methods, ssh.KeyboardInteractive(
 		func(user, instruction string, questions []string, echos []bool) ([]string, error) {
 			answers := make([]string, len(questions))
 			for i := range questions {
-				answers[i] = pwCopy
+				answers[i] = password
 			}
 			return answers, nil
 		},
@@ -387,17 +456,25 @@ func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod) (context
 }
 
 // registerConnection registriert eine Verbindung im Manager und startet Keepalive.
+// Das Passwort wird als Byte-Kopie gehalten, damit es später aktiv gelöscht werden kann.
 //
 // @param conn - Verbindungskonfiguration
 // @param status - Verbindungsstatus
-// @param password - Passwort (für Reconnect)
+// @param password - Passwort (für Reconnect, leerer String wenn nicht verfügbar)
 // @param ctx - Kontext für Keepalive-Loop
-// @date   2026-03-15 00:00
+// @date   2026-04-19 12:00
 func (m *SSHManager) registerConnection(conn Connection, status *ConnectionStatus, password string, ctx context.Context) {
+	// String → []byte kopiert den Inhalt in ein beschreibbares Slice.
+	// Nur so kann clearPassword() den Speicher später wirklich überschreiben.
+	var pwCopy []byte
+	if password != "" {
+		pwCopy = []byte(password)
+	}
+
 	managed := &ManagedConnection{
 		Status:   status,
 		Config:   conn,
-		password: password,
+		password: pwCopy,
 	}
 
 	m.mu.Lock()
@@ -440,56 +517,17 @@ func (m *SSHManager) buildAutoAuthMethods(conn Connection) []ssh.AuthMethod {
 
 // loadAllSSHKeys lädt alle SSH-Private-Keys aus ~/.ssh/ die keine Passphrase haben.
 // excludePath wird übersprungen (bereits separat geladen).
+// Verwendet discoverSSHKeys für sichere Dateierkennung (Symlink-Filter + PEM-Whitelist).
 //
 // @param excludePath - Pfad der übersprungen werden soll (leer = nichts überspringen)
 // @return []ssh.Signer - Geladene Signierer
-// @date   2026-03-15 00:00
+// @date   2026-04-19 12:00
 func (m *SSHManager) loadAllSSHKeys(excludePath string) []ssh.Signer {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-	sshDir := filepath.Join(home, ".ssh")
-
-	entries, err := os.ReadDir(sshDir)
-	if err != nil {
-		return nil
-	}
-
-	// Diese Dateien sind keine privaten Schlüssel
-	skipFiles := map[string]bool{
-		"known_hosts":      true,
-		"config":           true,
-		"authorized_keys":  true,
-		"known_hosts.old":  true,
-		"environment":      true,
-	}
-
-	// Absoluten Ausschlusspfad auflösen
 	absExclude := ""
 	if excludePath != "" {
 		absExclude = expandTilde(excludePath)
 	}
-
-	var paths []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		// .pub-Dateien und bekannte Nicht-Key-Dateien überspringen
-		if strings.HasSuffix(name, ".pub") || skipFiles[name] {
-			continue
-		}
-		absPath := filepath.Join(sshDir, name)
-		// Bereits konfigurierten Schlüssel nicht doppelt laden
-		if absPath == absExclude {
-			continue
-		}
-		paths = append(paths, absPath)
-	}
-
-	return m.loadKeysFromPaths(paths)
+	return m.loadKeysFromPaths(discoverSSHKeys(absExclude, m.logger))
 }
 
 // loadKeysFromPaths lädt SSH-Private-Keys aus den angegebenen Pfaden.
@@ -521,19 +559,40 @@ func (m *SSHManager) loadKeysFromPaths(paths []string) []ssh.Signer {
 }
 
 // expandTilde löst eine Tilde am Anfang eines Pfades zum Home-Verzeichnis auf.
+// Blockiert Path-Traversal-Versuche: "~/../etc/passwd" würde sonst auf
+// /etc/passwd expandieren. Liegt das Ergebnis außerhalb des Home-Verzeichnisses,
+// wird der Original-Pfad unverändert zurückgegeben.
 //
 // @param path - Pfad mit möglicher Tilde
-// @return string - Absoluter Pfad
-// @date   2026-03-15 00:00
+// @return string - Absoluter Pfad (oder Original bei Traversal-Versuch)
+// @date   2026-04-19 12:00
 func expandTilde(path string) string {
-	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return path
-		}
-		return filepath.Join(home, path[2:])
+	if !strings.HasPrefix(path, "~/") {
+		return path
 	}
-	return path
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+
+	// filepath.Join normalisiert (.. aufgelöst) und Clean() entfernt Doppelpunkte.
+	// Nach Normalisierung prüfen ob Ergebnis noch unter Home liegt.
+	expanded := filepath.Join(home, path[2:])
+
+	absExpanded, err1 := filepath.Abs(expanded)
+	absHome, err2 := filepath.Abs(home)
+	if err1 != nil || err2 != nil {
+		return path
+	}
+
+	// Gültig: expanded == home ODER expanded beginnt mit home + Separator.
+	// Ohne Separator-Check würde "/home/foo2" fälschlich als Treffer für "/home/foo" zählen.
+	if absExpanded != absHome && !strings.HasPrefix(absExpanded, absHome+string(filepath.Separator)) {
+		// Path-Traversal-Versuch → Original unverändert zurückgeben
+		return path
+	}
+	return expanded
 }
 
 // IsSSHAuthError prüft ob ein Fehler ein SSH-Authentifizierungsfehler ist.
@@ -573,9 +632,11 @@ func IsNetworkError(err error) bool {
 }
 
 // Disconnect trennt eine SSH-Verbindung und entfernt sie aus dem Manager.
+// Das gespeicherte Passwort wird dabei mit Nullen überschrieben, damit es
+// nicht länger als nötig im Speicher verbleibt.
 //
 // @param id - ID der zu trennenden Verbindung
-// @date   2026-03-15 00:00
+// @date   2026-04-19 12:00
 func (m *SSHManager) Disconnect(id string) {
 	m.mu.Lock()
 	managed, ok := m.connections[id]
@@ -584,7 +645,14 @@ func (m *SSHManager) Disconnect(id string) {
 	}
 	m.mu.Unlock()
 
-	if !ok || managed.Status == nil {
+	if !ok {
+		return
+	}
+
+	// Passwort aus dem Speicher löschen (Defense-in-Depth gegen RAM-Dumps)
+	managed.clearPassword()
+
+	if managed.Status == nil {
 		return
 	}
 
@@ -768,6 +836,8 @@ func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 		if err := os.WriteFile(knownHostsPath, []byte{}, 0600); err != nil {
 			return nil, fmt.Errorf("known_hosts konnte nicht erstellt werden: %w", err)
 		}
+		// Unter Windows wirkt 0600 nicht - DACL-Härtung nachziehen
+		_ = restrictFilePermissions(knownHostsPath)
 		m.logger.Info("known_hosts erstellt: %s", knownHostsPath)
 	}
 
@@ -790,7 +860,7 @@ func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 			}
 			// Key geändert - MITM-Warnung!
 			m.logger.Error("HOST-KEY GEÄNDERT für %s - möglicher MITM-Angriff!", hostname)
-			return fmt.Errorf("HOST-KEY GEÄNDERT für %s! Möglicher MITM-Angriff.", hostname)
+			return &HostKeyChangedError{Hostname: hostname}
 		}
 		return nil
 	}, nil
@@ -892,10 +962,13 @@ func (m *SSHManager) reconnect(connID string) {
 			ctx, status, err = m.dialSSH(managed.Config, autoMethods)
 		}
 
-		// Falls Auto fehlschlägt und Passwort bekannt: Passwort versuchen
-		if (err != nil || len(autoMethods) == 0) && managed.password != "" {
+		// Falls Auto fehlschlägt und Passwort bekannt: Passwort versuchen.
+		// string()-Konvertierung erstellt eine temporäre Kopie für ssh.Password();
+		// das []byte im ManagedConnection bleibt die einzige persistent gehaltene Version
+		// und kann bei Disconnect überschrieben werden.
+		if (err != nil || len(autoMethods) == 0) && len(managed.password) > 0 {
 			m.logger.Info("Auto-Reconnect fehlgeschlagen, versuche Passwort...")
-			pwMethods := []ssh.AuthMethod{ssh.Password(managed.password)}
+			pwMethods := []ssh.AuthMethod{ssh.Password(string(managed.password))}
 			ctx, status, err = m.dialSSH(managed.Config, pwMethods)
 		}
 

@@ -24,6 +24,9 @@ type Logger struct {
 	filePath string
 	// Ob Logging aktiviert ist
 	enabled bool
+	// Ob bereits restriktive Berechtigungen gesetzt wurden
+	// (einmaliger Aufruf, da SetNamedSecurityInfo unter Windows I/O kostet)
+	permsApplied bool
 }
 
 // NewLogger erstellt einen neuen Logger.
@@ -86,12 +89,22 @@ func (l *Logger) write(level, format string, args ...interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	// Logdatei öffnen (Append-Modus)
+	// Logdatei öffnen (Append-Modus).
+	// Hinweis: os.OpenFile ignoriert 0600 unter Windows - daher setzen wir die
+	// Berechtigungen separat via restrictFilePermissions (plattformabhängig).
 	f, err := os.OpenFile(l.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return
 	}
 	defer f.Close()
+
+	// Beim ersten Schreiben nach Neustart restriktive Berechtigungen setzen.
+	// Fehler werden still ignoriert (Logging darf nicht crashen); im schlimmsten
+	// Fall behält die Datei ihre bisherigen Rechte.
+	if !l.permsApplied {
+		_ = restrictFilePermissions(l.filePath)
+		l.permsApplied = true
+	}
 
 	// Zeitstempel und Nachricht schreiben
 	timestamp := time.Now().Format("2006-01-02 15:04:05")

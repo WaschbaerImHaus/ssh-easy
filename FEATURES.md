@@ -29,6 +29,10 @@
 
 ## Offen
 
+- [ ] Schriftgroesse im Menue konfigurierbar (Windows: Console-Font via SetCurrentConsoleFontEx; Linux: nicht steuerbar, Terminal-Emulator bestimmt die Schrift)
+- [ ] Alt+F4 schliesst das Fenster (Windows-Konsole faengt Alt+F4 nicht ab)
+- [ ] Fenster erhaelt beim Start den Fokus (Windows: SetForegroundWindow nach AllocConsole; aktuell muss man erst ins Fenster klicken)
+- [ ] Scroll-Back-Verhalten wie PuTTY: bei Tastatureingabe im SSH-Terminal automatisch zur aktuellen Eingabezeile zurueckspringen
 - [ ] Verbindungen exportieren/importieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Gruppen/Ordner fuer Verbindungen
