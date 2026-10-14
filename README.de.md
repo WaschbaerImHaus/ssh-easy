@@ -11,6 +11,7 @@ Ein einfacher SSH-Verbindungsmanager mit Terminal-UI (TUI) zum Verwalten und Auf
 - Automatischer Reconnect bei Verbindungsabbruch (max. 5 Versuche)
 - SSH-Keepalive (alle 30 Sekunden)
 - Farbige TUI mit Statusanzeige
+- Kopieren aus Remote-Programmen: OSC-52-Sequenzen (z.B. Claude Code, vim, tmux) landen in der lokalen Zwischenablage – auch in der Windows-Konsole, die OSC 52 selbst nicht beherrscht
 - Logging nach ~/.ssh-easy/ssh-easy.log
 - Cross-Platform: Linux (x86/ARM), Windows (x86/ARM)
 
@@ -111,3 +112,4 @@ Passwoerter werden **nicht** gespeichert und muessen bei jedem Verbindungsaufbau
 - Geaenderte Host-Keys werden mit MITM-Warnung abgelehnt
 - Konfigurationsdatei hat Berechtigung 0600
 - Atomares Schreiben der Konfiguration
+- OSC-52-Zwischenablage: Remote-Programme duerfen nur **schreiben** (max. 1 MiB); Leseanfragen werden nie beantwortet

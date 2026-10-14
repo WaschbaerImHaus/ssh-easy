@@ -5,6 +5,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.44] – Build 44
+- **Fixed** copying from programs running on the remote host did nothing (e.g. the login link in Claude Code): such programs copy via the OSC 52 escape sequence, which the Windows console (conhost) silently discards. ssh-easy now filters OSC 52 out of the SSH output stream itself and writes the decoded text to the local clipboard (Windows, Linux with xclip/xsel/wl-clipboard). Supports BEL and ST terminators, sequences split across SSH packets, unpadded base64 and all selection parameters. If the clipboard is unavailable, the original sequence is passed through to the terminal emulator
+- **Security** OSC 52 is write-only: clipboard read requests (`?`) are never answered, payloads are limited to 1 MiB
+- **Security** `golang.org/x/crypto` 0.48.0 → 0.58.0 — closes the reachable critical CVEs in known_hosts handling and the SSH agent path (CVE-2026-42508, CVE-2026-39830 to -39834, CVE-2026-46595, CVE-2026-46597, CVE-2026-39829 and later advisories up to 0.56.0). Also `x/sys` 0.49.0, `x/term` 0.47.0, `x/text` 0.43.0
+- **Security** built with Go 1.27.2 (was 1.26.0) — fixes three reachable standard library vulnerabilities (GO-2026-5972 encoding/asn1, GO-2026-4971 net, GO-2026-4602 os). govulncheck: 0 reachable vulnerabilities
+- **Added** 26 new tests in `osc52_test.go`
+
 ## [v0.43] – Build 43
 - **Fixed** font size keys not working on Windows: Bubbletea v1.x drops the Ctrl modifier for character keys in its Windows coninput path (Ctrl+Plus arrives as rune 0x00 — a "ctrl++" key message can never be produced). Font size is now bound to **Ctrl+Up / Ctrl+Down**, which are explicitly mapped as KeyCtrlUp/KeyCtrlDown in Bubbletea's Windows VK table and arrive reliably. The Ctrl+Plus/Minus aliases remain for terminals that can deliver them
 - **Added** font size is persisted on exit: the native conhost Ctrl+MouseWheel zoom bypasses the application, so ssh-easy now reads the actual console font size at shutdown and saves it to `font_size` — your mouse zoom survives a restart

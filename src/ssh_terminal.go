@@ -10,7 +10,7 @@
 // und direkt auf os.Stdin/os.Stdout arbeiten statt auf Bubbleteas Streams.
 //
 // @author Kurt Ingwer
-// @date   2026-04-19 00:00
+// @date   2026-10-14 10:35
 package main
 
 import (
@@ -74,7 +74,7 @@ func (t *sshTerminalCmd) SetStderr(w io.Writer) { t.stderr = w }
 //  5. Terminal-Zustand wiederherstellen
 //
 // @return error - Fehler beim Starten der Session oder nil bei normalem Ende
-// @date   2026-03-08 00:00
+// @date   2026-10-14 10:35
 func (t *sshTerminalCmd) Run() error {
 	// Stdin-Puffer als ERSTES defer registrieren → wird als LETZTES ausgeführt (LIFO).
 	// Muss nach allen anderen Defers laufen: term.Restore und restoreVT können beim
@@ -120,8 +120,9 @@ func (t *sshTerminalCmd) Run() error {
 
 	// Direkt auf os.Stdout/Stderr arbeiten (nicht Bubbleteas gefilterter Stream).
 	// Das umgeht den coninput-Reader auf Windows, der nach Alt-Tab instabil werden kann.
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
+	// Davor sitzt je ein OSC-52-Filter: Remote-Programme (z.B. Claude Code)
+	// kopieren per OSC 52 in die Zwischenablage, was conhost nicht beherrscht.
+	flushOutput := attachOutputFilters(session, os.Stdout, os.Stderr)
 
 	// Eigene stdin-Weiterleitung statt session.Stdin = os.Stdin: So können wir
 	// die Shift+Insert-VT-Sequenz abfangen und stattdessen den Clipboard-Inhalt
@@ -189,6 +190,10 @@ func (t *sshTerminalCmd) Run() error {
 
 	// Warten bis der Nutzer die Session beendet (z.B. mit "exit" oder Ctrl+D)
 	sessionErr := session.Wait()
+
+	// Wait() wartet auch auf die Ausgabe-Kopierer der SSH-Bibliothek - danach
+	// kommt nichts mehr nach, zurückgehaltene Bytes können ausgegeben werden.
+	flushOutput()
 
 	// Größen-Watcher beenden
 	close(stopResize)

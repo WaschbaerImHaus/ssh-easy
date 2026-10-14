@@ -1,5 +1,9 @@
 # Behobene Sicherheitsprobleme - ssh-easy
 
+- **Abhängigkeits-Update Build 44 (2026-10-14)**:
+  - **KRITISCH: `golang.org/x/crypto` v0.48.0 mit erreichbaren SSH-CVEs** (Scanner-Befund M1 / M-2026-09-29) – CVE-2026-42508 (@revoked in known_hosts nicht durchgesetzt), CVE-2026-39832/39833 (Agent-Constraints), CVE-2026-39831 (FIDO/U2F), CVE-2026-39830/39834 (DoS), CVE-2026-46595, CVE-2026-46597, CVE-2026-39829 sowie CVE-2026-56854/56855/78662. Behoben durch Update auf v0.58.0 (gefordert: ≥ 0.56.0). Zusätzlich `x/sys` 0.49.0, `x/term` 0.47.0, `x/text` 0.43.0 (schließt auch CVE-2026-56851, war nicht erreichbar).
+  - **Go-Standardbibliothek** – GO-2026-5972 (encoding/asn1, Rekursionstiefe), GO-2026-4971 (net, Panic bei NUL-Byte unter Windows), GO-2026-4602 (os, FileInfo-Escape aus Root) waren laut govulncheck erreichbar. Behoben durch Build mit Go 1.27.2.
+  - Nachweis: `govulncheck ./...` → „Your code is affected by 0 vulnerabilities“.
 - **Security-Audit Build 41 (2026-04-19)** – Sechs Findings behoben:
   - **HOCH: Passwort im Klartext unbegrenzt im RAM** – `ManagedConnection.password` war `string` (immutable) und wurde nie überschrieben. Umgestellt auf `[]byte` + neue `clearPassword()`-Methode; `Disconnect()` nullt das Slice. Reduziert die Lebensdauer sensibler Daten im Speicher deutlich.
   - **HOCH: KeyboardInteractive-Callback mit zusätzlicher String-Kopie** – `pwCopy := password` entfernt, Closure referenziert das Passwort direkt (eine Kopie weniger im Speicher).

@@ -34,6 +34,29 @@ Bedrohungsmodells dieses Tools liegt.
 
 **Maßnahme:** Keine Änderung sinnvoll.
 
+### OSC 52: Remote-Server kann die lokale Zwischenablage beschreiben (akzeptiertes Risiko)
+
+**Datei:** `src/osc52.go` – `osc52Writer`
+**Schweregrad:** NIEDRIG
+
+Seit Build 44 schreibt ssh-easy OSC-52-Sequenzen aus der SSH-Ausgabe in die
+lokale Zwischenablage – das ist der Zweck der Funktion (Kopieren aus Claude Code,
+vim, tmux). Ein bösartiger oder kompromittierter Server könnte damit unbemerkt
+Text in die Zwischenablage legen (z.B. einen Befehl, den der Nutzer später
+lokal einfügt). Gleiches Verhalten wie Windows Terminal, kitty, WezTerm u.a.
+
+Gegenmaßnahmen:
+- Nur Schreiben – Leseanfragen (`?`) werden nie beantwortet, der Server kann
+  die Zwischenablage nicht auslesen
+- Größenlimit 1 MiB, übergroße Sequenzen werden verworfen
+- Nur in einer interaktiven Session, die der Nutzer selbst geöffnet hat, zu
+  einem per known_hosts verifizierten Host
+
+**Maßnahme:** Akzeptiert. Optional später: Schalter in der Konfiguration zum
+Deaktivieren von OSC 52.
+
+---
+
 ## Empfehlungen
 
 - Immer eine aktuelle `~/.ssh/known_hosts`-Datei pflegen

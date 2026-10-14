@@ -13,6 +13,7 @@ A simple SSH connection manager with Terminal UI (TUI) for managing and establis
 - Automatic reconnect on connection loss (max. 5 attempts)
 - SSH keepalive (every 30 seconds)
 - Colored TUI with status display
+- Copy from remote programs: OSC 52 clipboard sequences (e.g. Claude Code, vim, tmux) are written to the local clipboard — also on the Windows console, which does not support OSC 52 itself
 - Logging to `~/.ssh-easy/ssh-easy.log`
 - Cross-platform: Linux (x86/ARM), Windows (x86/ARM)
 
@@ -124,10 +125,11 @@ Passwords are **never** stored and must be entered on each connection attempt.
 - Changed host keys are rejected with a MITM warning
 - Configuration file permissions are set to `0600`
 - Atomic config file writes
+- OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
 
 ## Building from Source
 
-Requirements: Go 1.26+
+Requirements: Go 1.26+ (release builds use the latest Go version)
 
 ```bash
 cd src

@@ -8,9 +8,10 @@
 - Log-Datei: ~/.ssh-easy/ssh-easy.log
 
 ## Technologie
-- Go 1.26.0
+- Go 1.27.2 (seit Build 44; go.mod-Minimum 1.26.0)
 - Bubbletea v1.3.10, Lipgloss v1.1.0, Bubbles v1.0.0
-- golang.org/x/crypto v0.48.0
+- golang.org/x/crypto v0.58.0 (Build 44, CVE-Fix)
+- OSC 52: src/osc52.go filtert SSH-Ausgabe, schreibt Zwischenablage (conhost kann kein OSC 52)
 
 ## Dateistruktur (Build 3)
 - src/main.go - Einstiegspunkt (Logger + SSHManager)

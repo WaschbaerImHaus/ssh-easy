@@ -31,6 +31,7 @@
 - [x] Alt+F4 beendet das Programm - im Menue und in der SSH-Session (wie PuTTY) (Build 42)
 - [x] Scroll-Back springt bei Tastatureingabe zur Eingabezeile zurueck (Windows-Konsole, wie PuTTY) (Build 42)
 - [x] Schriftgroesse per Strg+Hoch/Strg+Runter (Windows: SetCurrentConsoleFontEx, 8-72px, persistiert in font_size; Strg+Mausrad-Zoom wird beim Beenden uebernommen; Linux: Hinweis auf Terminal-Einstellungen) (Build 42/43)
+- [x] OSC-52-Zwischenablage: Remote-Programme koennen in die lokale Zwischenablage kopieren (Build 44)
 
 ## Offen
 - [ ] Verbindungen exportieren/importieren
