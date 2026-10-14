@@ -5,13 +5,13 @@
 // mit Local-Port-Forwarding-Tunneln.
 //
 // @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @date   2026-10-14 16:10
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -84,38 +84,47 @@ func main() {
 	logger.Info("ssh-easy beendet")
 }
 
-// readBuildNumber liest die Build-Nummer aus der build.txt-Datei.
+// embeddedBuild enthält den Inhalt von build.txt zum Zeitpunkt des Kompilierens.
+// Per go:embed fest in die Binary eingebaut - installierte Versionen haben
+// keine build.txt neben der EXE (früher stand im Menü dann "vdev").
+//
+//go:embed build.txt
+var embeddedBuild string
+
+// readBuildNumber liefert die beim Kompilieren eingebettete Build-Nummer.
 //
 // @return string - Build-Nummer oder "dev" als Fallback
-// @date   2026-03-07 21:00
+// @date   2026-10-14 16:10
 func readBuildNumber() string {
-	paths := []string{}
+	return parseEmbeddedBuild(embeddedBuild)
+}
 
-	execPath, err := os.Executable()
-	if err == nil {
-		execDir := filepath.Dir(execPath)
-		paths = append(paths,
-			filepath.Join(execDir, "build.txt"),
-			filepath.Join(execDir, "..", "src", "build.txt"),
-		)
+// parseEmbeddedBuild normalisiert den Inhalt von build.txt (Leerzeichen und
+// Zeilenumbrüche entfernen). Leerer Inhalt ergibt "dev".
+//
+// @param raw - Rohinhalt der build.txt
+// @return string - Build-Nummer oder "dev"
+// @date   2026-10-14 16:10
+func parseEmbeddedBuild(raw string) string {
+	build := strings.TrimSpace(raw)
+	if build == "" {
+		return "dev"
 	}
+	return build
+}
 
-	cwd, err := os.Getwd()
-	if err == nil {
-		paths = append(paths,
-			filepath.Join(cwd, "build.txt"),
-			filepath.Join(cwd, "src", "build.txt"),
-		)
+// formatAppTitle erzeugt den Programmtitel für das Hauptmenü. Das Format
+// entspricht dem Release-Schema v0.<Build>, z.B. "ssh-easy v0.46 (Build 46)".
+//
+// @param build - Build-Nummer ("dev" oder leer = Entwicklungsversion)
+// @return string - Titelzeile
+// @date   2026-10-14 16:10
+func formatAppTitle(build string) string {
+	build = strings.TrimSpace(build)
+	if build == "" || build == "dev" {
+		return "ssh-easy (Build dev)"
 	}
-
-	for _, p := range paths {
-		data, err := os.ReadFile(p)
-		if err == nil {
-			return strings.TrimSpace(string(data))
-		}
-	}
-
-	return "dev"
+	return fmt.Sprintf("ssh-easy v0.%s (Build %s)", build, build)
 }
 
 // getBuildInfo gibt Build-Informationen als formatierten String zurück.

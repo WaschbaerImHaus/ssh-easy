@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.46] – Build 46
+- **Fixed** the main menu showed "ssh-easy vdev" in installed versions: the build number was read at runtime from `build.txt` next to the executable, which installers don't ship. `build.txt` is now embedded into the binary via `go:embed`
+- **Changed** menu title now shows version and build, matching the release scheme: `ssh-easy v0.46 (Build 46)`
+- **Added** 5 new tests in `build_info_test.go` (136 total, all green)
+
 ## [v0.45] – Build 45
 - **Security** OSC 52 clipboard content from the remote host is sanitized: all control characters except tab, CR and LF are removed (C0, DEL, C1). Prevents paste-jacking, e.g. a malicious server planting `ESC[201~` (end of bracketed paste) so that text pasted later into a local shell would execute immediately. Found by automated security review of Build 44
 - **Added** 4 new tests (131 total, all green)

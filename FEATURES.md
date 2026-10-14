@@ -32,6 +32,7 @@
 - [x] Scroll-Back springt bei Tastatureingabe zur Eingabezeile zurueck (Windows-Konsole, wie PuTTY) (Build 42)
 - [x] Schriftgroesse per Strg+Hoch/Strg+Runter (Windows: SetCurrentConsoleFontEx, 8-72px, persistiert in font_size; Strg+Mausrad-Zoom wird beim Beenden uebernommen; Linux: Hinweis auf Terminal-Einstellungen) (Build 42/43)
 - [x] OSC-52-Zwischenablage: Remote-Programme koennen in die lokale Zwischenablage kopieren (Build 44)
+- [x] Build-Nummer im Hauptmenü (eingebettet, „ssh-easy v0.<Build> (Build <Build>)“) (Build 46)
 
 ## Offen
 - [ ] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h` erkennen, Inhalt einschließen, `ESC[201~` entfernen) – siehe SECURITY_RISKS.md

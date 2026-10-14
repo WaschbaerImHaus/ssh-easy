@@ -143,9 +143,10 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // renderList rendert die Hauptansicht mit der Verbindungsliste.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-03-07 21:00
+// @date   2026-10-14 16:10
 func (m AppModel) renderList(s *strings.Builder) {
-	s.WriteString(titleStyle.Render(fmt.Sprintf("  ssh-easy v%s", m.buildNumber)))
+	// Titel mit Version und Build, z.B. "ssh-easy v0.46 (Build 46)"
+	s.WriteString(titleStyle.Render("  " + formatAppTitle(m.buildNumber)))
 	s.WriteString("\n\n")
 
 	if len(m.connections) == 0 {
