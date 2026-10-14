@@ -18,18 +18,21 @@
 // Base64-Inhalt und schreibt ihn selbst in die Zwischenablage.
 //
 // Sicherheit:
+//   - Steuerzeichen (außer Tab/CR/LF) werden aus dem Inhalt entfernt, damit
+//     ein Server kein "ESC[201~" für Paste-Jacking unterschieben kann.
 //   - Leseanfragen ("?") werden nie beantwortet - ein Server darf die lokale
 //     Zwischenablage nicht auslesen können.
 //   - Nutzdaten sind auf osc52MaxPayload Bytes begrenzt (Speicherschutz).
 //
 // @author Kurt Ingwer
-// @date   2026-10-14 10:20
+// @date   2026-10-14 15:50
 
 package main
 
 import (
 	"encoding/base64"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/atotto/clipboard"
@@ -291,7 +294,7 @@ func (w *osc52Writer) finishPayload(terminator []byte) {
 // @param payload - Nutzdaten zwischen Präfix und Terminator
 // @return string - dekodierter Text
 // @return bool - false bei Leseanfrage ("?"), leerem oder ungültigem Inhalt
-// @date 2026-10-14 10:20
+// @date 2026-10-14 15:50
 func decodeOSC52Payload(payload []byte) (string, bool) {
 	sep := -1
 	for i, b := range payload {
@@ -316,10 +319,37 @@ func decodeOSC52Payload(payload []byte) (string, bool) {
 			return "", false
 		}
 	}
-	if len(decoded) == 0 {
+	text := sanitizeClipboardText(string(decoded))
+	if text == "" {
 		return "", false
 	}
-	return string(decoded), true
+	return text, true
+}
+
+// sanitizeClipboardText entfernt Steuerzeichen aus Text, den der Remote-Server
+// in die Zwischenablage legen will. Erhalten bleiben Tab, CR und LF (für
+// mehrzeilige Code-Schnipsel). Entfernt werden alle übrigen C0-Zeichen, DEL
+// und C1-Zeichen (U+0080-U+009F).
+//
+// Hintergrund (Paste-Jacking): Ein bösartiger Server könnte sonst z.B.
+// "ESC[201~" (Ende von Bracketed Paste) in die Zwischenablage legen. Beim
+// späteren Einfügen in eine lokale Shell würde der folgende Text dann als
+// getippte Eingabe gelten und sofort ausgeführt.
+//
+// @param text - dekodierter Text vom Server
+// @return string - Text ohne gefährliche Steuerzeichen
+// @date 2026-10-14 15:50
+func sanitizeClipboardText(text string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t' || r == '\n' || r == '\r':
+			return r
+		case r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f):
+			return -1 // Zeichen entfernen
+		default:
+			return r
+		}
+	}, text)
 }
 
 // Flush schreibt zurückgehaltene Präfix-Bytes aus (sie waren keine OSC 52)

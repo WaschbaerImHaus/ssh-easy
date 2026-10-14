@@ -46,6 +46,8 @@ Text in die Zwischenablage legen (z.B. einen Befehl, den der Nutzer später
 lokal einfügt). Gleiches Verhalten wie Windows Terminal, kitty, WezTerm u.a.
 
 Gegenmaßnahmen:
+- Steuerzeichen (außer Tab/CR/LF) werden entfernt – kein Paste-Jacking über
+  `ESC[201~` (Build 45)
 - Nur Schreiben – Leseanfragen (`?`) werden nie beantwortet, der Server kann
   die Zwischenablage nicht auslesen
 - Größenlimit 1 MiB, übergroße Sequenzen werden verworfen
@@ -54,6 +56,23 @@ Gegenmaßnahmen:
 
 **Maßnahme:** Akzeptiert. Optional später: Schalter in der Konfiguration zum
 Deaktivieren von OSC 52.
+
+---
+
+### Shift+Einfg-Paste in die Remote-Session ohne Bracketed Paste (offen)
+
+**Datei:** `src/clipboard_paste.go` – `forwardStdinWithPaste()`
+**Schweregrad:** NIEDRIG
+
+ssh-easy schreibt beim Einfügen per Shift+Einfg den Clipboard-Inhalt roh in
+die Remote-Shell. Hat das Remote-Programm Bracketed Paste aktiviert
+(`ESC[?2004h`), sollte der Inhalt in `ESC[200~ … ESC[201~` eingeschlossen und
+eingebettetes `ESC[201~` entfernt werden. Sonst führt eine mehrzeilige
+Zwischenablage (z.B. von einer präparierten Webseite kopiert) jede Zeile in der
+Remote-Shell sofort aus. Hinweis aus dem Security-Review von Build 44.
+
+**Maßnahme:** Offen – benötigt Erkennung von `ESC[?2004h/l` im Ausgabestrom
+(passt in den osc52Writer). Als Feature in FEATURES.md eingetragen.
 
 ---
 

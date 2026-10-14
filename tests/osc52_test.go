@@ -508,3 +508,54 @@ func TestAttachOutputFilters(t *testing.T) {
 		t.Errorf("Clipboard = %q", *written)
 	}
 }
+
+// TestOSC52StripsEscape: ESC aus Remote-Inhalten wird entfernt. Sonst könnte
+// ein Server z.B. "ESC[201~" (Ende von Bracketed Paste) in die Zwischenablage
+// legen und beim späteren Einfügen in eine lokale Shell Befehle sofort
+// ausführen lassen (Paste-Jacking).
+func TestOSC52StripsEscape(t *testing.T) {
+	written, cleanup := stubClipboardWriter(nil)
+	defer cleanup()
+
+	runOSC52(t, osc52Seq("c", "harmlos\x1b[201~rm -rf ~\r"))
+	if len(*written) != 1 || (*written)[0] != "harmlos[201~rm -rf ~\r" {
+		t.Errorf("Clipboard = %q, ESC muss entfernt sein", *written)
+	}
+}
+
+// TestOSC52KeepsTabAndLineBreaks: Tab, CR und LF bleiben erhalten - mehrzeilige
+// Code-Schnipsel müssen korrekt kopiert werden.
+func TestOSC52KeepsTabAndLineBreaks(t *testing.T) {
+	written, cleanup := stubClipboardWriter(nil)
+	defer cleanup()
+
+	text := "func main() {\r\n\tfmt.Println(\"hi\")\n}"
+	runOSC52(t, osc52Seq("c", text))
+	if len(*written) != 1 || (*written)[0] != text {
+		t.Errorf("Clipboard = %q, erwartet %q", *written, text)
+	}
+}
+
+// TestOSC52StripsOtherControlChars: übrige C0-Steuerzeichen, DEL und
+// C1-Steuerzeichen (z.B. U+009B = 8-Bit-CSI) werden entfernt.
+func TestOSC52StripsOtherControlChars(t *testing.T) {
+	written, cleanup := stubClipboardWriter(nil)
+	defer cleanup()
+
+	runOSC52(t, osc52Seq("c", "a\x00b\x07c\x08d\x7fe\u009bf\u0085g"))
+	if len(*written) != 1 || (*written)[0] != "abcdefg" {
+		t.Errorf("Clipboard = %q, erwartet [abcdefg]", *written)
+	}
+}
+
+// TestOSC52OnlyControlCharsIgnored: Bleibt nach dem Filtern nichts übrig,
+// wird die Zwischenablage nicht angefasst.
+func TestOSC52OnlyControlCharsIgnored(t *testing.T) {
+	written, cleanup := stubClipboardWriter(nil)
+	defer cleanup()
+
+	runOSC52(t, osc52Seq("c", "\x1b\x00\x07"))
+	if len(*written) != 0 {
+		t.Errorf("Clipboard darf nicht beschrieben werden, bekam %q", *written)
+	}
+}

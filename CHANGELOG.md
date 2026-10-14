@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.45] – Build 45
+- **Security** OSC 52 clipboard content from the remote host is sanitized: all control characters except tab, CR and LF are removed (C0, DEL, C1). Prevents paste-jacking, e.g. a malicious server planting `ESC[201~` (end of bracketed paste) so that text pasted later into a local shell would execute immediately. Found by automated security review of Build 44
+- **Added** 4 new tests (131 total, all green)
+
 ## [v0.44] – Build 44
 - **Fixed** copying from programs running on the remote host did nothing (e.g. the login link in Claude Code): such programs copy via the OSC 52 escape sequence, which the Windows console (conhost) silently discards. ssh-easy now filters OSC 52 out of the SSH output stream itself and writes the decoded text to the local clipboard (Windows, Linux with xclip/xsel/wl-clipboard). Supports BEL and ST terminators, sequences split across SSH packets, unpadded base64 and all selection parameters. If the clipboard is unavailable, the original sequence is passed through to the terminal emulator
 - **Security** OSC 52 is write-only: clipboard read requests (`?`) are never answered, payloads are limited to 1 MiB

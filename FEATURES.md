@@ -34,6 +34,8 @@
 - [x] OSC-52-Zwischenablage: Remote-Programme koennen in die lokale Zwischenablage kopieren (Build 44)
 
 ## Offen
+- [ ] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h` erkennen, Inhalt einschließen, `ESC[201~` entfernen) – siehe SECURITY_RISKS.md
+- [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Verbindungen exportieren/importieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Gruppen/Ordner fuer Verbindungen
