@@ -12,6 +12,7 @@
 - Bubbletea v1.3.10, Lipgloss v1.1.0, Bubbles v1.0.0
 - golang.org/x/crypto v0.58.0 (Build 44, CVE-Fix)
 - OSC 52: src/osc52.go filtert SSH-Ausgabe, schreibt Zwischenablage (conhost kann kein OSC 52)
+- Bracketed Paste (Build 47): src/bracketed_paste.go - Tracker hinter dem OSC-52-Filter erkennt ESC[?2004h/l, preparePaste() schliesst Shift+Einfg-Text ein; forwardStdinWithPaste/attachOutputFilters haben dafuer einen pasteMode-Parameter
 
 ## Dateistruktur (Build 3)
 - src/main.go - Einstiegspunkt (Logger + SSHManager)

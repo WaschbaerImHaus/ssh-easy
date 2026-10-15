@@ -126,6 +126,7 @@ Passwords are **never** stored and must be entered on each connection attempt.
 - Configuration file permissions are set to `0600`
 - Atomic config file writes
 - OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
+- Shift+Insert paste uses bracketed paste when the remote shell enables it (`ESC[?2004h`): pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded markers are removed, so multi-line clipboard content is not executed line by line
 
 ## Building from Source
 

@@ -375,18 +375,21 @@ func (w *osc52Writer) Flush() error {
 }
 
 // attachOutputFilters hängt je einen OSC-52-Filter vor stdout und stderr der
-// SSH-Session. Die zurückgegebene Funktion muss nach session.Wait() aufgerufen
-// werden: Sie gibt zurückgehaltene Präfix-Bytes aus und verwirft
-// unvollständige OSC-52-Sequenzen.
+// SSH-Session. Hinter jedem Filter sitzt ein Bracketed-Paste-Tracker, der den
+// gemeinsamen pasteMode aktualisiert (siehe bracketed_paste.go). Die
+// zurückgegebene Funktion muss nach session.Wait() aufgerufen werden: Sie
+// gibt zurückgehaltene Präfix-Bytes aus und verwirft unvollständige
+// OSC-52-Sequenzen.
 //
 // @param session - SSH-Session vor dem Start der Shell
 // @param stdout - Ziel für die Standardausgabe (typischerweise os.Stdout)
 // @param stderr - Ziel für die Fehlerausgabe (typischerweise os.Stderr)
+// @param pasteMode - Bracketed-Paste-Modus der Session (nil = nicht verfolgen)
 // @return func() - Flush-Funktion, nach Session-Ende aufrufen
-// @date 2026-10-14 10:35
-func attachOutputFilters(session *ssh.Session, stdout, stderr io.Writer) func() {
-	outFilter := newOSC52Writer(stdout)
-	errFilter := newOSC52Writer(stderr)
+// @date 2026-10-14 17:10
+func attachOutputFilters(session *ssh.Session, stdout, stderr io.Writer, pasteMode *bracketedPasteMode) func() {
+	outFilter := newOSC52Writer(newBracketedPasteTracker(stdout, pasteMode))
+	errFilter := newOSC52Writer(newBracketedPasteTracker(stderr, pasteMode))
 	session.Stdout = outFilter
 	session.Stderr = errFilter
 	return func() {

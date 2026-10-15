@@ -14,7 +14,7 @@
 //   wie Pfeiltasten) bleiben unverändert.
 //
 // @author Kurt Ingwer
-// @date   2026-04-19 00:00
+// @date   2026-10-14 17:10
 package main
 
 import (
@@ -48,7 +48,9 @@ var readClipboard = func() (string, error) {
 
 // forwardStdinWithPaste kopiert Bytes von r nach w und fängt dabei zwei
 // VT-Sequenzen ab:
-//   - Shift+Insert: wird durch den Clipboard-Inhalt ersetzt (Einfügen)
+//   - Shift+Insert: wird durch den Clipboard-Inhalt ersetzt (Einfügen); hat
+//     die Remote-Seite Bracketed Paste aktiviert, wird der Inhalt in
+//     ESC[200~ ... ESC[201~ eingeschlossen (siehe bracketed_paste.go)
 //   - Alt+F4: onAltF4-Callback wird aufgerufen und die Weiterleitung endet
 //     sofort (Programm-Beenden wie bei PuTTY, auch mitten in der Session)
 //
@@ -62,8 +64,9 @@ var readClipboard = func() (string, error) {
 // @param r - Quelle (typischerweise os.Stdin im Raw-Mode)
 // @param w - Ziel (typischerweise session.StdinPipe() der SSH-Session)
 // @param onAltF4 - Callback bei Alt+F4 (nil = Alt+F4 wird nur verschluckt)
-// @date   2026-07-03 19:30
-func forwardStdinWithPaste(r io.Reader, w io.Writer, onAltF4 func()) {
+// @param pasteMode - Bracketed-Paste-Modus der Session (nil = nie einschließen)
+// @date   2026-10-14 17:10
+func forwardStdinWithPaste(r io.Reader, w io.Writer, onAltF4 func(), pasteMode *bracketedPasteMode) {
 	buf := make([]byte, 4096)
 	for {
 		n, err := r.Read(buf)
@@ -102,8 +105,9 @@ func forwardStdinWithPaste(r io.Reader, w io.Writer, onAltF4 func()) {
 				}
 				// Clipboard lesen und einfügen - Fehler wird ignoriert, dann wird
 				// die Sequenz einfach verschluckt (besser als abstürzen).
+				// preparePaste schließt den Text bei aktivem Bracketed Paste ein.
 				if text, cerr := readClipboard(); cerr == nil {
-					if _, werr := w.Write(normalizeLineEndings(text)); werr != nil {
+					if _, werr := w.Write(preparePaste(text, pasteMode)); werr != nil {
 						return
 					}
 				}

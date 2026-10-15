@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.47] – Build 47
+- **Security** Shift+Insert paste into the SSH session now supports bracketed paste. ssh-easy watches the session output for `ESC[?2004h` / `ESC[?2004l` (also combined, e.g. `ESC[?1049;2004h`, and split across SSH packets). While the mode is active, pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded start/end markers are stripped repeatedly. Previously a multi-line clipboard (e.g. copied from a crafted web page) was executed line by line in the remote shell. Without the mode the old behavior is unchanged
+- **Added** 19 new tests in `bracketed_paste_test.go` (155 total, all green)
+
 ## [v0.46] – Build 46
 - **Fixed** the main menu showed "ssh-easy vdev" in installed versions: the build number was read at runtime from `build.txt` next to the executable, which installers don't ship. `build.txt` is now embedded into the binary via `go:embed`
 - **Changed** menu title now shows version and build, matching the release scheme: `ssh-easy v0.46 (Build 46)`

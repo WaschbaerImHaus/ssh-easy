@@ -181,7 +181,7 @@ func TestForwardStdinAltF4Callback(t *testing.T) {
 	var w bytes.Buffer
 	called := false
 
-	forwardStdinWithPaste(r, &w, func() { called = true })
+	forwardStdinWithPaste(r, &w, func() { called = true }, nil)
 
 	if !called {
 		t.Error("Alt+F4-Callback wurde nicht aufgerufen")
@@ -204,7 +204,7 @@ func TestForwardStdinAltF4NilCallback(t *testing.T) {
 	var w bytes.Buffer
 
 	// Darf nicht paniken
-	forwardStdinWithPaste(r, &w, nil)
+	forwardStdinWithPaste(r, &w, nil, nil)
 
 	if w.Len() != 0 {
 		t.Errorf("Alt+F4-Sequenz wurde weitergeleitet: %q", w.String())
@@ -228,7 +228,7 @@ func TestForwardStdinPasteBeforeAltF4(t *testing.T) {
 	var w bytes.Buffer
 	called := false
 
-	forwardStdinWithPaste(r, &w, func() { called = true })
+	forwardStdinWithPaste(r, &w, func() { called = true }, nil)
 
 	if !called {
 		t.Error("Alt+F4-Callback wurde nicht aufgerufen")

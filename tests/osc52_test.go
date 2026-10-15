@@ -492,7 +492,7 @@ func TestAttachOutputFilters(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	session := &ssh.Session{}
-	flush := attachOutputFilters(session, &stdout, &stderr)
+	flush := attachOutputFilters(session, &stdout, &stderr, nil)
 
 	_, _ = session.Stdout.Write([]byte("out" + osc52Seq("c", "von-stdout") + "\x1b"))
 	_, _ = session.Stderr.Write([]byte("err" + osc52Seq("c", "von-stderr") + "\x1b]"))
