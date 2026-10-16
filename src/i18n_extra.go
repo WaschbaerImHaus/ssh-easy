@@ -37,6 +37,8 @@ const (
 	txtGroupHelp textKey = "group_help"
 	// txtErrUntrustedHost - unbekannter Host-Key über Fallback-DNS (%s = Host)
 	txtErrUntrustedHost textKey = "err_untrusted_host"
+	// txtNoTunnels - Statusseite ohne (aktive) Tunnel
+	txtNoTunnels textKey = "no_tunnels"
 )
 
 // extraTranslations enthält die Zusatztexte pro Sprache.
@@ -53,6 +55,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Name mit „:“ braucht Text vor und nach dem Doppelpunkt (z. B. Büro:Server1)",
 		txtGroupHelp:        "  Enter/→: Gruppe öffnen  ←: Gruppe schließen  Bild↑/Bild↓: blättern",
 		txtErrUntrustedHost: "Unbekannter Host-Key für %s, Adresse nur über öffentlichen DNS ermittelt (lokaler DNS nicht erreichbar) – wird nicht automatisch vertraut. Bitte einmal im lokalen Netz oder per IP-Adresse verbinden.",
+		txtNoTunnels:        "Keine Tunnel",
 	},
 	LangEnglish: {
 		txtMoreTunnelsOne:   "+%d more",
@@ -66,6 +69,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "A name with \":\" needs text before and after the colon (e.g. Office:Server1)",
 		txtGroupHelp:        "  Enter/→: open group  ←: close group  PgUp/PgDn: page",
 		txtErrUntrustedHost: "Unknown host key for %s and the address only came from public DNS (local DNS unreachable) – not trusted automatically. Connect once via the local network or by IP address.",
+		txtNoTunnels:        "No tunnels",
 	},
 	LangFrancais: {
 		txtMoreTunnelsOne:   "+%d autre",
@@ -79,6 +83,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Un nom avec « : » doit avoir du texte avant et après (ex. Bureau:Serveur1)",
 		txtGroupHelp:        "  Entrée/→ : ouvrir le groupe  ← : fermer  PgPréc/PgSuiv : page",
 		txtErrUntrustedHost: "Clé d'hôte inconnue pour %s et adresse obtenue uniquement via un DNS public (DNS local injoignable) – pas approuvée automatiquement. Connectez-vous une fois via le réseau local ou par adresse IP.",
+		txtNoTunnels:        "Aucun tunnel",
 	},
 	LangAmharic: {
 		txtMoreTunnelsOne:   "+%d ተጨማሪ",
@@ -92,6 +97,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" ያለው ስም ከኮሎኑ በፊትና በኋላ ጽሑፍ ያስፈልገዋል (ለምሳሌ ቢሮ:ሰርቨር1)",
 		txtGroupHelp:        "  Enter/→: ቡድን ክፈት  ←: ቡድን ዝጋ  PgUp/PgDn: ገጽ",
 		txtErrUntrustedHost: "የ%s የአስተናጋጅ ቁልፍ አይታወቅም፣ አድራሻውም ከሕዝባዊ DNS ብቻ ተገኝቷል (የአካባቢ DNS አይገኝም) – በራስ-ሰር አይታመንም። እባክዎ አንድ ጊዜ በአካባቢ አውታረ መረብ ወይም በIP አድራሻ ይገናኙ።",
+		txtNoTunnels:        "ምንም ቱኔል የለም",
 	},
 	LangArabic: {
 		txtMoreTunnelsOne:   "+%d آخر",
@@ -105,6 +111,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "الاسم الذي يحتوي على \":\" يحتاج إلى نص قبل النقطتين وبعدهما (مثل مكتب:خادم1)",
 		txtGroupHelp:        "  Enter/→: فتح المجموعة  ←: إغلاق المجموعة  PgUp/PgDn: صفحة",
 		txtErrUntrustedHost: "مفتاح المضيف لـ %s غير معروف والعنوان مأخوذ فقط من DNS عام (DNS المحلي غير متاح) – لن يُوثق به تلقائيًا. اتصل مرة واحدة عبر الشبكة المحلية أو عنوان IP.",
+		txtNoTunnels:        "لا توجد أنفاق",
 	},
 	LangBengali: {
 		txtMoreTunnelsOne:   "+আরও %d",
@@ -118,6 +125,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" যুক্ত নামে কোলনের আগে ও পরে লেখা থাকতে হবে (যেমন অফিস:সার্ভার1)",
 		txtGroupHelp:        "  Enter/→: গ্রুপ খুলুন  ←: গ্রুপ বন্ধ করুন  PgUp/PgDn: পৃষ্ঠা",
 		txtErrUntrustedHost: "%s-এর হোস্ট কী অজানা এবং ঠিকানাটি শুধু পাবলিক DNS থেকে পাওয়া গেছে (স্থানীয় DNS পাওয়া যাচ্ছে না) – স্বয়ংক্রিয়ভাবে বিশ্বাস করা হবে না। একবার স্থানীয় নেটওয়ার্ক বা IP ঠিকানা দিয়ে সংযোগ করুন।",
+		txtNoTunnels:        "কোনো টানেল নেই",
 	},
 	LangBulgarian: {
 		txtMoreTunnelsOne:   "+още %d",
@@ -131,6 +139,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Име с „:“ изисква текст преди и след двоеточието (напр. Офис:Сървър1)",
 		txtGroupHelp:        "  Enter/→: отвори група  ←: затвори група  PgUp/PgDn: страница",
 		txtErrUntrustedHost: "Непознат ключ на хоста за %s, адресът е получен само чрез публичен DNS (локалният DNS е недостъпен) – не се приема автоматично. Свържете се веднъж през локалната мрежа или по IP адрес.",
+		txtNoTunnels:        "Няма тунели",
 	},
 	LangChinese: {
 		txtMoreTunnelsOne:   "+%d 个",
@@ -144,6 +153,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "含“:”的名称在冒号前后都需要文字（例如 办公室:服务器1）",
 		txtGroupHelp:        "  Enter/→：展开分组  ←：折叠分组  PgUp/PgDn：翻页",
 		txtErrUntrustedHost: "%s 的主机密钥未知，且地址仅来自公共 DNS（本地 DNS 不可达）– 不会自动信任。请先通过本地网络或 IP 地址连接一次。",
+		txtNoTunnels:        "无隧道",
 	},
 	LangCzech: {
 		txtMoreTunnelsOne:   "+%d další",
@@ -157,6 +167,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Název s „:“ musí mít text před i za dvojtečkou (např. Kancelář:Server1)",
 		txtGroupHelp:        "  Enter/→: otevřít skupinu  ←: zavřít skupinu  PgUp/PgDn: stránka",
 		txtErrUntrustedHost: "Neznámý klíč hostitele pro %s a adresa získána jen z veřejného DNS (místní DNS nedostupný) – není automaticky důvěryhodný. Připojte se jednou přes místní síť nebo IP adresu.",
+		txtNoTunnels:        "Žádné tunely",
 	},
 	LangDutch: {
 		txtMoreTunnelsOne:   "+%d andere",
@@ -170,6 +181,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Een naam met „:” heeft tekst vóór en na de dubbele punt nodig (bijv. Kantoor:Server1)",
 		txtGroupHelp:        "  Enter/→: groep openen  ←: groep sluiten  PgUp/PgDn: bladeren",
 		txtErrUntrustedHost: "Onbekende hostsleutel voor %s en het adres kwam alleen van publieke DNS (lokale DNS onbereikbaar) – wordt niet automatisch vertrouwd. Maak eenmaal verbinding via het lokale netwerk of via het IP-adres.",
+		txtNoTunnels:        "Geen tunnels",
 	},
 	LangEspanol: {
 		txtMoreTunnelsOne:   "+%d más",
@@ -183,6 +195,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Un nombre con «:» necesita texto antes y después de los dos puntos (p. ej. Oficina:Servidor1)",
 		txtGroupHelp:        "  Enter/→: abrir grupo  ←: cerrar grupo  RePág/AvPág: paginar",
 		txtErrUntrustedHost: "Clave de host desconocida para %s y dirección obtenida solo mediante DNS público (DNS local inaccesible): no se confía automáticamente. Conéctese una vez por la red local o por dirección IP.",
+		txtNoTunnels:        "Sin túneles",
 	},
 	LangFilipino: {
 		txtMoreTunnelsOne:   "+%d pa",
@@ -196,6 +209,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Ang pangalang may \":\" ay kailangang may teksto bago at pagkatapos ng tutuldok (hal. Opisina:Server1)",
 		txtGroupHelp:        "  Enter/→: buksan ang grupo  ←: isara ang grupo  PgUp/PgDn: pahina",
 		txtErrUntrustedHost: "Hindi kilala ang host key ng %s at galing lang sa pampublikong DNS ang address (hindi maabot ang lokal na DNS) – hindi awtomatikong pagkakatiwalaan. Kumonekta muna nang isang beses sa lokal na network o gamit ang IP address.",
+		txtNoTunnels:        "Walang tunnel",
 	},
 	LangGeorgian: {
 		txtMoreTunnelsOne:   "+კიდევ %d",
@@ -209,6 +223,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "„:“-იან სახელს ორწერტილის წინ და შემდეგ ტექსტი სჭირდება (მაგ. ოფისი:სერვერი1)",
 		txtGroupHelp:        "  Enter/→: ჯგუფის გახსნა  ←: ჯგუფის დახურვა  PgUp/PgDn: გვერდი",
 		txtErrUntrustedHost: "%s-ის ჰოსტის გასაღები უცნობია და მისამართი მხოლოდ საჯარო DNS-იდან არის მიღებული (ლოკალური DNS მიუწვდომელია) – ავტომატურად არ ენდობა. ერთხელ დაუკავშირდით ლოკალური ქსელით ან IP მისამართით.",
+		txtNoTunnels:        "გვირაბები არ არის",
 	},
 	LangGreek: {
 		txtMoreTunnelsOne:   "+%d ακόμη",
@@ -222,6 +237,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Όνομα με «:» χρειάζεται κείμενο πριν και μετά την άνω και κάτω τελεία (π.χ. Γραφείο:Διακομιστής1)",
 		txtGroupHelp:        "  Enter/→: άνοιγμα ομάδας  ←: κλείσιμο ομάδας  PgUp/PgDn: σελίδα",
 		txtErrUntrustedHost: "Άγνωστο κλειδί κεντρικού υπολογιστή για %s και η διεύθυνση προήλθε μόνο από δημόσιο DNS (το τοπικό DNS δεν είναι διαθέσιμο) – δεν γίνεται αυτόματα αποδεκτό. Συνδεθείτε μία φορά μέσω του τοπικού δικτύου ή με διεύθυνση IP.",
+		txtNoTunnels:        "Χωρίς τούνελ",
 	},
 	LangGujarati: {
 		txtMoreTunnelsOne:   "+%d વધુ",
@@ -235,6 +251,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" વાળા નામમાં કોલોન પહેલાં અને પછી લખાણ જરૂરી છે (દા.ત. ઓફિસ:સર્વર1)",
 		txtGroupHelp:        "  Enter/→: જૂથ ખોલો  ←: જૂથ બંધ કરો  PgUp/PgDn: પાનું",
 		txtErrUntrustedHost: "%s ની હોસ્ટ કી અજાણી છે અને સરનામું ફક્ત જાહેર DNS પરથી મળ્યું (સ્થાનિક DNS ઉપલબ્ધ નથી) – આપમેળે વિશ્વાસ નહીં કરાય. કૃપા કરી એકવાર સ્થાનિક નેટવર્ક અથવા IP સરનામાથી જોડાઓ.",
+		txtNoTunnels:        "કોઈ ટનલ નથી",
 	},
 	LangHausa: {
 		txtMoreTunnelsOne:   "+%d ƙari",
@@ -248,6 +265,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Suna mai \":\" yana buƙatar rubutu kafin da bayan ruɓi biyu (misali Ofis:Sabar1)",
 		txtGroupHelp:        "  Enter/→: buɗe rukuni  ←: rufe rukuni  PgUp/PgDn: shafi",
 		txtErrUntrustedHost: "Maɓallin mai masauki na %s ba a san shi ba kuma adireshin ya fito daga DNS na jama'a kawai (DNS na gida ba ya samuwa) – ba za a amince da shi kai tsaye ba. Haɗa sau ɗaya ta hanyar sadarwar gida ko adireshin IP.",
+		txtNoTunnels:        "Babu rami",
 	},
 	LangHindi: {
 		txtMoreTunnelsOne:   "+%d और",
@@ -261,6 +279,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" वाले नाम में कोलन से पहले और बाद में पाठ होना चाहिए (जैसे कार्यालय:सर्वर1)",
 		txtGroupHelp:        "  Enter/→: समूह खोलें  ←: समूह बंद करें  PgUp/PgDn: पृष्ठ",
 		txtErrUntrustedHost: "%s की होस्ट कुंजी अज्ञात है और पता केवल सार्वजनिक DNS से मिला (स्थानीय DNS उपलब्ध नहीं) – स्वतः भरोसा नहीं किया जाएगा। कृपया एक बार स्थानीय नेटवर्क या IP पते से कनेक्ट करें।",
+		txtNoTunnels:        "कोई टनल नहीं",
 	},
 	LangIgbo: {
 		txtMoreTunnelsOne:   "+%d ọzọ",
@@ -274,6 +293,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Aha nwere \":\" chọrọ ederede tupu na mgbe kọlọn (dịka Ọfịs:Sava1)",
 		txtGroupHelp:        "  Enter/→: mepee otu  ←: mechie otu  PgUp/PgDn: peeji",
 		txtErrUntrustedHost: "Amabeghị igodo onye nnabata maka %s, adreesị sitere naanị na DNS ọha (DNS mpaghara anaghị arụ ọrụ) – a gaghị atụkwasị ya obi na-akpaghị aka. Jikọọ otu ugboro site na netwọk mpaghara ma ọ bụ adreesị IP.",
+		txtNoTunnels:        "Enweghị ọwa",
 	},
 	LangIndonesian: {
 		txtMoreTunnelsOne:   "+%d lainnya",
@@ -287,6 +307,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Nama dengan \":\" perlu teks sebelum dan sesudah titik dua (mis. Kantor:Server1)",
 		txtGroupHelp:        "  Enter/→: buka grup  ←: tutup grup  PgUp/PgDn: halaman",
 		txtErrUntrustedHost: "Kunci host untuk %s tidak dikenal dan alamat hanya didapat dari DNS publik (DNS lokal tidak terjangkau) – tidak dipercaya otomatis. Hubungkan sekali melalui jaringan lokal atau alamat IP.",
+		txtNoTunnels:        "Tidak ada terowongan",
 	},
 	LangItaliano: {
 		txtMoreTunnelsOne:   "+%d altro",
@@ -300,6 +321,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Un nome con «:» richiede testo prima e dopo i due punti (es. Ufficio:Server1)",
 		txtGroupHelp:        "  Invio/→: apri gruppo  ←: chiudi gruppo  PagSu/PagGiù: scorri",
 		txtErrUntrustedHost: "Chiave host sconosciuta per %s e indirizzo ottenuto solo tramite DNS pubblico (DNS locale non raggiungibile): non considerata attendibile automaticamente. Connettersi una volta tramite la rete locale o l'indirizzo IP.",
+		txtNoTunnels:        "Nessun tunnel",
 	},
 	LangJapanese: {
 		txtMoreTunnelsOne:   "+%d 件",
@@ -313,6 +335,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "「:」を含む名前は、コロンの前後に文字が必要です（例: 事務所:サーバー1）",
 		txtGroupHelp:        "  Enter/→: グループを開く  ←: グループを閉じる  PgUp/PgDn: ページ送り",
 		txtErrUntrustedHost: "%s のホスト鍵が不明で、アドレスは公開 DNS からのみ取得されました（ローカル DNS に到達不可）– 自動では信頼しません。一度ローカルネットワークまたは IP アドレスで接続してください。",
+		txtNoTunnels:        "トンネルなし",
 	},
 	LangKannada: {
 		txtMoreTunnelsOne:   "+%d ಇನ್ನಷ್ಟು",
@@ -326,6 +349,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" ಇರುವ ಹೆಸರಿನಲ್ಲಿ ಕೋಲನ್‌ನ ಮೊದಲು ಮತ್ತು ನಂತರ ಪಠ್ಯ ಬೇಕು (ಉದಾ. ಕಚೇರಿ:ಸರ್ವರ್1)",
 		txtGroupHelp:        "  Enter/→: ಗುಂಪು ತೆರೆಯಿರಿ  ←: ಗುಂಪು ಮುಚ್ಚಿ  PgUp/PgDn: ಪುಟ",
 		txtErrUntrustedHost: "%s ನ ಹೋಸ್ಟ್ ಕೀ ಅಪರಿಚಿತವಾಗಿದೆ ಮತ್ತು ವಿಳಾಸ ಸಾರ್ವಜನಿಕ DNS ನಿಂದ ಮಾತ್ರ ಬಂದಿದೆ (ಸ್ಥಳೀಯ DNS ಲಭ್ಯವಿಲ್ಲ) – ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನಂಬಲಾಗುವುದಿಲ್ಲ. ಒಮ್ಮೆ ಸ್ಥಳೀಯ ನೆಟ್‌ವರ್ಕ್ ಅಥವಾ IP ವಿಳಾಸದ ಮೂಲಕ ಸಂಪರ್ಕಿಸಿ.",
+		txtNoTunnels:        "ಯಾವುದೇ ಟನಲ್ ಇಲ್ಲ",
 	},
 	LangKorean: {
 		txtMoreTunnelsOne:   "+%d개 더",
@@ -339,6 +363,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\"가 포함된 이름은 콜론 앞뒤에 텍스트가 있어야 합니다 (예: 사무실:서버1)",
 		txtGroupHelp:        "  Enter/→: 그룹 열기  ←: 그룹 닫기  PgUp/PgDn: 페이지",
 		txtErrUntrustedHost: "%s의 호스트 키를 알 수 없고 주소는 공용 DNS에서만 얻었습니다(로컬 DNS에 연결할 수 없음) – 자동으로 신뢰하지 않습니다. 로컬 네트워크나 IP 주소로 한 번 연결하세요.",
+		txtNoTunnels:        "터널 없음",
 	},
 	LangMarathi: {
 		txtMoreTunnelsOne:   "+आणखी %d",
@@ -352,6 +377,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" असलेल्या नावात कोलनच्या आधी आणि नंतर मजकूर आवश्यक आहे (उदा. कार्यालय:सर्व्हर1)",
 		txtGroupHelp:        "  Enter/→: गट उघडा  ←: गट बंद करा  PgUp/PgDn: पान",
 		txtErrUntrustedHost: "%s ची होस्ट की अज्ञात आहे आणि पत्ता फक्त सार्वजनिक DNS मधून मिळाला (स्थानिक DNS उपलब्ध नाही) – आपोआप विश्वास ठेवला जाणार नाही. कृपया एकदा स्थानिक नेटवर्क किंवा IP पत्त्याद्वारे कनेक्ट करा.",
+		txtNoTunnels:        "कोणतेही टनेल नाही",
 	},
 	LangOromo: {
 		txtMoreTunnelsOne:   "+%d dabalataa",
@@ -365,6 +391,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Maqaan \":\" qabu tuqaa lamaa dura fi booda barreeffama barbaada (fkn. Waajjira:Sarvarii1)",
 		txtGroupHelp:        "  Enter/→: garee bani  ←: garee cufi  PgUp/PgDn: fuula",
 		txtErrUntrustedHost: "Furtuun keessummeessaa %s hin beekamu, teessoon DNS uummataa qofa irraa argame (DNS naannoo hin argamu) – ofumaan hin amanamu. Al tokko neetworkii naannoo ykn teessoo IP'n walqunnamaa.",
+		txtNoTunnels:        "Tuuneeliin hin jiru",
 	},
 	LangPersian: {
 		txtMoreTunnelsOne:   "+%d مورد دیگر",
@@ -378,6 +405,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "نامی که «:» دارد باید قبل و بعد از دونقطه متن داشته باشد (مثلاً دفتر:سرور1)",
 		txtGroupHelp:        "  Enter/→: باز کردن گروه  ←: بستن گروه  PgUp/PgDn: صفحه",
 		txtErrUntrustedHost: "کلید میزبان %s ناشناخته است و نشانی فقط از DNS عمومی به دست آمده (DNS محلی در دسترس نیست) – به‌طور خودکار اعتماد نمی‌شود. یک بار از طریق شبکهٔ محلی یا نشانی IP وصل شوید.",
+		txtNoTunnels:        "بدون تونل",
 	},
 	LangPolish: {
 		txtMoreTunnelsOne:   "+%d inny",
@@ -391,6 +419,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Nazwa z „:” wymaga tekstu przed i po dwukropku (np. Biuro:Serwer1)",
 		txtGroupHelp:        "  Enter/→: otwórz grupę  ←: zamknij grupę  PgUp/PgDn: strona",
 		txtErrUntrustedHost: "Nieznany klucz hosta dla %s, a adres pochodzi tylko z publicznego DNS (lokalny DNS niedostępny) – nie jest automatycznie zaufany. Połącz się raz przez sieć lokalną lub adres IP.",
+		txtNoTunnels:        "Brak tuneli",
 	},
 	LangPortugues: {
 		txtMoreTunnelsOne:   "+%d outro",
@@ -404,6 +433,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Um nome com «:» precisa de texto antes e depois dos dois-pontos (ex.: Escritório:Servidor1)",
 		txtGroupHelp:        "  Enter/→: abrir grupo  ←: fechar grupo  PgUp/PgDn: paginar",
 		txtErrUntrustedHost: "Chave de host desconhecida para %s e endereço obtido apenas via DNS público (DNS local inacessível) – não é confiada automaticamente. Conecte-se uma vez pela rede local ou pelo endereço IP.",
+		txtNoTunnels:        "Nenhum túnel",
 	},
 	LangPunjabi: {
 		txtMoreTunnelsOne:   "+%d ਹੋਰ",
@@ -417,6 +447,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" ਵਾਲੇ ਨਾਮ ਵਿੱਚ ਕੋਲਨ ਤੋਂ ਪਹਿਲਾਂ ਅਤੇ ਬਾਅਦ ਲਿਖਤ ਲਾਜ਼ਮੀ ਹੈ (ਜਿਵੇਂ ਦਫ਼ਤਰ:ਸਰਵਰ1)",
 		txtGroupHelp:        "  Enter/→: ਗਰੁੱਪ ਖੋਲ੍ਹੋ  ←: ਗਰੁੱਪ ਬੰਦ ਕਰੋ  PgUp/PgDn: ਪੰਨਾ",
 		txtErrUntrustedHost: "%s ਦੀ ਹੋਸਟ ਕੁੰਜੀ ਅਣਜਾਣ ਹੈ ਅਤੇ ਪਤਾ ਸਿਰਫ਼ ਜਨਤਕ DNS ਤੋਂ ਮਿਲਿਆ (ਸਥਾਨਕ DNS ਉਪਲਬਧ ਨਹੀਂ) – ਆਪਣੇ ਆਪ ਭਰੋਸਾ ਨਹੀਂ ਕੀਤਾ ਜਾਵੇਗਾ। ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵਾਰ ਸਥਾਨਕ ਨੈੱਟਵਰਕ ਜਾਂ IP ਪਤੇ ਰਾਹੀਂ ਕਨੈਕਟ ਕਰੋ।",
+		txtNoTunnels:        "ਕੋਈ ਟਨਲ ਨਹੀਂ",
 	},
 	LangRomanian: {
 		txtMoreTunnelsOne:   "+încă %d",
@@ -430,6 +461,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Un nume cu „:” necesită text înainte și după două puncte (de ex. Birou:Server1)",
 		txtGroupHelp:        "  Enter/→: deschide grupul  ←: închide grupul  PgUp/PgDn: pagină",
 		txtErrUntrustedHost: "Cheie de gazdă necunoscută pentru %s, iar adresa provine doar din DNS public (DNS-ul local nu răspunde) – nu este acceptată automat. Conectați-vă o dată prin rețeaua locală sau prin adresa IP.",
+		txtNoTunnels:        "Niciun tunel",
 	},
 	LangRussian: {
 		txtMoreTunnelsOne:   "+ещё %d",
@@ -443,6 +475,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Имя с «:» должно содержать текст до и после двоеточия (например, Офис:Сервер1)",
 		txtGroupHelp:        "  Enter/→: открыть группу  ←: закрыть группу  PgUp/PgDn: листать",
 		txtErrUntrustedHost: "Неизвестный ключ хоста для %s, адрес получен только через публичный DNS (локальный DNS недоступен) – автоматическое доверие запрещено. Подключитесь один раз через локальную сеть или по IP-адресу.",
+		txtNoTunnels:        "Нет туннелей",
 	},
 	LangSwahili: {
 		txtMoreTunnelsOne:   "+%d zaidi",
@@ -456,6 +489,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Jina lenye \":\" linahitaji maandishi kabla na baada ya nukta pacha (mf. Ofisi:Seva1)",
 		txtGroupHelp:        "  Enter/→: fungua kundi  ←: funga kundi  PgUp/PgDn: ukurasa",
 		txtErrUntrustedHost: "Ufunguo wa mwenyeji wa %s haujulikani na anwani imepatikana kupitia DNS ya umma pekee (DNS ya ndani haipatikani) – hautaaminiwa kiotomatiki. Unganisha mara moja kupitia mtandao wa ndani au anwani ya IP.",
+		txtNoTunnels:        "Hakuna handaki",
 	},
 	LangSwedish: {
 		txtMoreTunnelsOne:   "+%d till",
@@ -469,6 +503,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Ett namn med ”:” behöver text före och efter kolonet (t.ex. Kontor:Server1)",
 		txtGroupHelp:        "  Enter/→: öppna grupp  ←: stäng grupp  PgUp/PgDn: bläddra",
 		txtErrUntrustedHost: "Okänd värdnyckel för %s och adressen kom bara från offentlig DNS (lokal DNS nås inte) – litas inte på automatiskt. Anslut en gång via det lokala nätverket eller med IP-adress.",
+		txtNoTunnels:        "Inga tunnlar",
 	},
 	LangTamil: {
 		txtMoreTunnelsOne:   "+மேலும் %d",
@@ -482,6 +517,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" உள்ள பெயரில் முக்காற்புள்ளிக்கு முன்னும் பின்னும் உரை தேவை (எ.கா. அலுவலகம்:சர்வர்1)",
 		txtGroupHelp:        "  Enter/→: குழுவைத் திற  ←: குழுவை மூடு  PgUp/PgDn: பக்கம்",
 		txtErrUntrustedHost: "%s இன் ஹோஸ்ட் சாவி தெரியவில்லை, முகவரி பொது DNS இலிருந்து மட்டுமே கிடைத்தது (உள்ளூர் DNS கிடைக்கவில்லை) – தானாக நம்பப்படாது. ஒருமுறை உள்ளூர் வலையமைப்பு அல்லது IP முகவரி மூலம் இணைக்கவும்.",
+		txtNoTunnels:        "டன்னல் எதுவும் இல்லை",
 	},
 	LangTelugu: {
 		txtMoreTunnelsOne:   "+మరో %d",
@@ -495,6 +531,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" ఉన్న పేరులో కోలన్‌కు ముందు, తర్వాత పాఠ్యం ఉండాలి (ఉదా. కార్యాలయం:సర్వర్1)",
 		txtGroupHelp:        "  Enter/→: సమూహం తెరువు  ←: సమూహం మూసివేయి  PgUp/PgDn: పేజీ",
 		txtErrUntrustedHost: "%s హోస్ట్ కీ తెలియదు, చిరునామా పబ్లిక్ DNS నుండి మాత్రమే వచ్చింది (స్థానిక DNS అందుబాటులో లేదు) – స్వయంచాలకంగా నమ్మబడదు. ఒకసారి స్థానిక నెట్‌వర్క్ లేదా IP చిరునామా ద్వారా కనెక్ట్ అవ్వండి.",
+		txtNoTunnels:        "టన్నెల్‌లు లేవు",
 	},
 	LangThai: {
 		txtMoreTunnelsOne:   "+อีก %d",
@@ -508,6 +545,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "ชื่อที่มี \":\" ต้องมีข้อความทั้งก่อนและหลังเครื่องหมายทวิภาค (เช่น สำนักงาน:เซิร์ฟเวอร์1)",
 		txtGroupHelp:        "  Enter/→: เปิดกลุ่ม  ←: ปิดกลุ่ม  PgUp/PgDn: หน้า",
 		txtErrUntrustedHost: "ไม่รู้จักคีย์โฮสต์ของ %s และได้ที่อยู่จาก DNS สาธารณะเท่านั้น (เข้าถึง DNS ภายในไม่ได้) – จะไม่เชื่อถือโดยอัตโนมัติ โปรดเชื่อมต่อหนึ่งครั้งผ่านเครือข่ายภายในหรือที่อยู่ IP",
+		txtNoTunnels:        "ไม่มีอุโมงค์",
 	},
 	LangTurkish: {
 		txtMoreTunnelsOne:   "+%d tane daha",
@@ -521,6 +559,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" içeren bir ad, iki noktanın önünde ve arkasında metin gerektirir (ör. Ofis:Sunucu1)",
 		txtGroupHelp:        "  Enter/→: grubu aç  ←: grubu kapat  PgUp/PgDn: sayfa",
 		txtErrUntrustedHost: "%s için ana makine anahtarı bilinmiyor ve adres yalnızca genel DNS'ten alındı (yerel DNS erişilemiyor) – otomatik olarak güvenilmez. Bir kez yerel ağ üzerinden veya IP adresiyle bağlanın.",
+		txtNoTunnels:        "Tünel yok",
 	},
 	LangUkrainian: {
 		txtMoreTunnelsOne:   "+ще %d",
@@ -534,6 +573,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Ім'я з «:» потребує тексту до і після двокрапки (напр. Офіс:Сервер1)",
 		txtGroupHelp:        "  Enter/→: відкрити групу  ←: закрити групу  PgUp/PgDn: сторінка",
 		txtErrUntrustedHost: "Невідомий ключ хоста для %s, адресу отримано лише через публічний DNS (локальний DNS недоступний) – автоматично не довіряється. Підключіться один раз через локальну мережу або за IP-адресою.",
+		txtNoTunnels:        "Немає тунелів",
 	},
 	LangUrdu: {
 		txtMoreTunnelsOne:   "+%d مزید",
@@ -547,6 +587,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "\":\" والے نام میں کولن سے پہلے اور بعد متن ضروری ہے (مثلاً دفتر:سرور1)",
 		txtGroupHelp:        "  Enter/→: گروپ کھولیں  ←: گروپ بند کریں  PgUp/PgDn: صفحہ",
 		txtErrUntrustedHost: "%s کی ہوسٹ کلید نامعلوم ہے اور پتہ صرف عوامی DNS سے ملا (مقامی DNS دستیاب نہیں) – خودکار طور پر بھروسہ نہیں کیا جائے گا۔ ایک بار مقامی نیٹ ورک یا IP پتے سے کنکٹ کریں۔",
+		txtNoTunnels:        "کوئی ٹنل نہیں",
 	},
 	LangVietnamese: {
 		txtMoreTunnelsOne:   "+%d nữa",
@@ -560,6 +601,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Tên có \":\" cần có chữ trước và sau dấu hai chấm (vd. VănPhòng:MáyChủ1)",
 		txtGroupHelp:        "  Enter/→: mở nhóm  ←: đóng nhóm  PgUp/PgDn: trang",
 		txtErrUntrustedHost: "Khóa máy chủ của %s chưa biết và địa chỉ chỉ lấy từ DNS công cộng (không truy cập được DNS nội bộ) – không tự động tin cậy. Hãy kết nối một lần qua mạng nội bộ hoặc bằng địa chỉ IP.",
+		txtNoTunnels:        "Không có đường hầm",
 	},
 	LangYoruba: {
 		txtMoreTunnelsOne:   "+%d sí i",
@@ -573,6 +615,7 @@ var extraTranslations = map[Language]map[textKey]string{
 		txtErrGroupName:     "Orúkọ tí ó ní \":\" nílò ọ̀rọ̀ ṣáájú àti lẹ́yìn àmì àkọsílẹ̀ méjì (àpẹẹrẹ Ọ́fíìsì:Sáfà1)",
 		txtGroupHelp:        "  Enter/→: ṣí ẹgbẹ́  ←: pa ẹgbẹ́  PgUp/PgDn: ojú-ìwé",
 		txtErrUntrustedHost: "A kò mọ kọ́kọ́rọ́ agbàlejò fún %s, àdírẹ́sì náà sì wá láti DNS gbangba nìkan (DNS agbègbè kò sí) – a kò ní gbẹ́kẹ̀lé e láìfọwọ́yí. Jọ̀wọ́ so pọ̀ lẹ́ẹ̀kan nípasẹ̀ nẹ́tíwọ́ọ̀kì agbègbè tàbí àdírẹ́sì IP.",
+		txtNoTunnels:        "Kò sí ọ̀nà ìkọ̀kọ̀",
 	},
 }
 

@@ -116,7 +116,20 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 	// Ports die von anderen aktiven Verbindungen belegt sind vorher sammeln
 	usedPorts := m.sshManager.GetUsedLocalPorts(m.activeID)
 
-	info.WriteString(fmt.Sprintf("\n%s\n", m.lang.LabelTunnel))
+	// Ohne aktive Tunnel: statt leerer Überschrift "Tunnel:" den Hinweis
+	// "Keine Tunnel" zeigen
+	hasTunnels := false
+	for _, t := range conn.Tunnels {
+		if t.Enabled {
+			hasTunnels = true
+			break
+		}
+	}
+	if !hasTunnels {
+		info.WriteString("\n" + m.tr(txtNoTunnels) + "\n")
+	} else {
+		info.WriteString(fmt.Sprintf("\n%s\n", m.lang.LabelTunnel))
+	}
 	for _, t := range conn.Tunnels {
 		if !t.Enabled {
 			continue

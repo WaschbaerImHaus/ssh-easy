@@ -119,3 +119,33 @@ func TestPasswordPromptShowsHostAndUser(t *testing.T) {
 		t.Errorf("Benutzerzeile ohne Beschriftung: %q", lines[userLine])
 	}
 }
+
+// TestStatusViewNoTunnels prüft: Ohne (aktive) Tunnel erscheint statt der
+// leeren Überschrift "Tunnel" der Hinweis "Keine Tunnel".
+func TestStatusViewNoTunnels(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	markConnected(m, m.connections[0], nil)
+	m.activeID = m.connections[0].ID
+	m.state = ViewStatus
+
+	plain := stripANSI(m.View())
+	if !strings.Contains(plain, "Keine Tunnel") {
+		t.Errorf("Hinweis 'Keine Tunnel' fehlt:\n%s", plain)
+	}
+	if strings.Contains(plain, m.lang.LabelTunnel) {
+		t.Errorf("Überschrift %q darf ohne Tunnel nicht erscheinen:\n%s", m.lang.LabelTunnel, plain)
+	}
+
+	// Nur deaktivierte Tunnel zählen ebenfalls als "keine"
+	m.connections[0].Tunnels = []TunnelConfig{{LocalPort: 80, RemotePort: 80, Enabled: false}}
+	if plain = stripANSI(m.View()); !strings.Contains(plain, "Keine Tunnel") {
+		t.Errorf("nur deaktivierte Tunnel: Hinweis fehlt:\n%s", plain)
+	}
+
+	// Mit Tunnel: Überschrift da, Hinweis weg
+	m.connections[0].Tunnels = []TunnelConfig{{LocalPort: 80, RemotePort: 80, Enabled: true}}
+	plain = stripANSI(m.View())
+	if !strings.Contains(plain, m.lang.LabelTunnel) || strings.Contains(plain, "Keine Tunnel") {
+		t.Errorf("mit Tunnel falsch dargestellt:\n%s", plain)
+	}
+}

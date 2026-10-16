@@ -43,6 +43,7 @@
 - [x] Neue Verbindung nach dem Anlegen ausgewählt (Build 48)
 - [x] Host und Benutzer bei der Passwortabfrage (Build 48)
 - [x] Alle Texte in allen 41 Sprachen, Vollständigkeitstest + Claude-Code-Stop-Hook (Build 48)
+- [x] Statusseite zeigt „Keine Tunnel“ statt leerer Tunnel-Überschrift (Build 50)
 - [x] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h/l` wird erkannt, Inhalt in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker entfernt) (Build 47)
 
 ## Offen

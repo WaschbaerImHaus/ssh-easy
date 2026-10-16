@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.50] – Build 50
+- **Changed** the status view no longer shows an empty "Tunnel:" heading for connections without (enabled) tunnels; it shows "No tunnels" instead (translated into all 41 languages)
+- **Added** 1 new test (280 total, all green)
+
 ## [v0.49] – Build 49
 - **Security** DNS fallback hardening (automated security review of Build 48): local-only names (no dot, `.local`, `.lan`, `.internal`, `.home.arpa`, `.fritz.box`, …) are never sent to public DNS servers. If an address came from the public fallback DNS and the host key is still unknown, it is no longer trusted automatically (no trust-on-first-use) — ssh-easy explains that you should connect once via the local network or by IP. Known hosts are unaffected and still protected by known_hosts
 - **Security** Windows auto-update via setup: every setup is downloaded into its own freshly created, owner-only subfolder; right before the elevated start ssh-easy verifies that nothing but the setup is in that folder (protection against DLL planting next to an elevated installer)
