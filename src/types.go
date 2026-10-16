@@ -65,6 +65,8 @@ type Connection struct {
 }
 
 // AppConfig ist die gesamte Konfigurationsdatei mit allen Verbindungen
+//
+// @date   2026-10-16 10:00
 type AppConfig struct {
 	// Schema-Version für zukünftige Migrationen
 	Version int `json:"version"`
@@ -73,6 +75,14 @@ type AppConfig struct {
 	// Konsolen-Schriftgröße in Pixeln (nur Windows wirksam; 0 = Systemstandard).
 	// Wird per Strg+Plus/Strg+Minus geändert und hier persistiert.
 	FontSize int `json:"font_size,omitempty"`
+	// Letzte Fensterbreite in Zeichen (nur Windows; 0 = nicht gespeichert).
+	// Wird nur gespeichert, wenn das Fenster nicht maximiert/Vollbild war.
+	WindowCols int `json:"window_cols,omitempty"`
+	// Letzte Fensterhöhe in Zeilen (nur Windows; 0 = nicht gespeichert)
+	WindowRows int `json:"window_rows,omitempty"`
+	// Auto-Update über GitHub-Releases (Standard: aus). Download beim Start,
+	// Installation beim Beenden.
+	AutoUpdate bool `json:"auto_update,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

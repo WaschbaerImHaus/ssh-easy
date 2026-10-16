@@ -7,7 +7,7 @@
 # Usage: ./build.sh
 #
 # @author Kurt Ingwer
-# @date   2026-03-14
+# @date   2026-10-16
 
 set -e  # Abort on any error
 
@@ -15,6 +15,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/src"
 BUILD_DIR="$SCRIPT_DIR/build"
 GO=/usr/local/go/bin/go
+
+# Vollständig statische Binaries ohne libc-Abhängigkeit: ohne CGO_ENABLED=0
+# startet die Linux-Binary auf älteren Distributionen nicht (CXXABI-Fehler)
+export CGO_ENABLED=0
 
 echo "=== ssh-easy Build ==="
 echo ""

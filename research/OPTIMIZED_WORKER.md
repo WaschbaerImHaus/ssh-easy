@@ -35,3 +35,17 @@ Unterstuetzung und Keepalive. Die TUI ist modular in Views aufgeteilt.
 - "Notifications" - Desktop-Benachrichtigung bei Verbindungsabbruch
 - "Dynamic Port Forwarding" - SOCKS5-Proxy statt fester Port-Liste
 - "Remote Command" - Einzelbefehle auf Remote ausfuehren ohne Shell
+
+## Stand 2026-10-16 (Build 48)
+
+### Gelernt
+- Bubbletea v1 unter Windows: VK_INSERT ist nicht gemappt – Einfg, Shift+Einfg und Strg+Plus kommen alle als Rune 0x00. Modifier nur über GetAsyncKeyState ermittelbar.
+- tea.Exec-Kindprozesse mit eigener stdin-Goroutine MÜSSEN ihre Eingabe vor der Rückkehr stoppen (cancelreader / Peek-Polling), sonst frisst die hängende Goroutine die nächste Taste. Puffer leeren (Build 38) reicht nicht.
+- lipgloss: Ein separat gerendertes Teilstück innerhalb einer Render()-Zeile beendet mit ESC[0m den äußeren Stil. Zeilen mit mehreren Farben immer segmentweise mit gemeinsamem Grundstil rendern.
+- ConnectAuto probiert jeden Schlüssel mit eigener Verbindung – bei Netzwerkfehlern sofort abbrechen; ohne Schlüssel vorher Erreichbarkeit prüfen.
+- GitHub-Releases-API liefert pro Asset `digest: sha256:…` – für Update-Prüfung nutzbar.
+
+### Arbeitsweise
+- Neue UI-Texte nur über Schlüssel in i18n_extra.go und sofort in alle 41 Sprachen; Stop-Hook prüft das.
+- Für jedes Feature: Test zuerst, danach Gegenprobe (Fix zurücknehmen → Test muss rot werden).
+- Nach Implementierung echten TUI-Lauf in tmux mit temporärem HOME (capture-pane) – findet UX-Lücken, die Unit-Tests nicht sehen.

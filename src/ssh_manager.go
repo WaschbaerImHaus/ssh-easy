@@ -6,11 +6,12 @@
 // ausprobiert, ohne den Benutzer nach der Methode zu fragen.
 //
 // @author Kurt Ingwer
-// @date   2026-03-15 00:00
+// @date   2026-10-16 10:00
 package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -49,6 +50,10 @@ type SSHManager struct {
 	done chan struct{}
 	// authCache merkt sich welche Auth-Methode zuletzt für welche Verbindung klappte
 	authCache *AuthCache
+	// resolver löst Hostnamen auf (System-DNS, bei Fehlern öffentliche Server)
+	resolver *hostResolver
+	// dialTCP baut TCP-Verbindungen auf (austauschbar für Tests)
+	dialTCP tcpDialFunc
 }
 
 // ManagedConnection erweitert ConnectionStatus um Reconnect-Informationen.
@@ -99,6 +104,8 @@ func NewSSHManager(logger *Logger) *SSHManager {
 		logger:      logger,
 		done:        make(chan struct{}),
 		authCache:   NewAuthCache(cachePath),
+		resolver:    newHostResolver(),
+		dialTCP:     defaultTCPDial,
 	}
 }
 
@@ -124,7 +131,7 @@ func (m *SSHManager) Shutdown() {
 // @param conn - Die Verbindungskonfiguration
 // @return *ConnectionStatus - Status der aufgebauten Verbindung
 // @return error - Fehler wenn keine Methode funktioniert
-// @date   2026-03-23 12:00
+// @date   2026-10-16 10:00
 func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 	m.logger.Info("Auto-Verbindung zu %s@%s:%d...", conn.User, conn.Host, conn.Port)
 
@@ -132,7 +139,7 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 	if entry := m.authCache.Get(conn.ID); entry != nil {
 		m.logger.Info("Probiere gecachte Auth-Methode für %s: %s", conn.Name, entry.Method)
 		if method := m.buildMethodFromCache(conn, entry.Method); method != nil {
-			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{method})
+			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{method}, InitialConnectTimeout)
 			if err == nil {
 				m.logger.Info("Gecachte Methode erfolgreich für %s", conn.Name)
 				m.authCache.RecordSuccess(conn.ID, entry.Method)
@@ -143,6 +150,10 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 			// Netzwerkfehler (Timeout, refused, …) lassen den Cache unberührt –
 			// der Schlüssel ist weiterhin gültig, der Server war nur nicht erreichbar.
 			m.logger.Info("Gecachte Methode fehlgeschlagen für %s: %v", conn.Name, err)
+			// Server nicht erreichbar: weitere Methoden sind sinnlos -> sofort melden
+			if IsNetworkError(err) {
+				return nil, err
+			}
 			if IsSSHAuthError(err) {
 				m.authCache.RecordFailure(conn.ID)
 			}
@@ -172,28 +183,39 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 // @return *ConnectionStatus - Verbindungsstatus
 // @return string - Cache-Schlüssel der erfolgreichen Methode
 // @return error - Fehler wenn keine Methode funktioniert
-// @date   2026-03-23 12:00
+// @date   2026-10-16 10:00
 func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *ConnectionStatus, string, error) {
+	// Wurde mindestens ein Verbindungsversuch unternommen?
+	attempted := false
+
 	// 1. SSH-Agent versuchen
 	if agentAuth, err := m.getAgentAuth(); err == nil {
-		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{agentAuth})
+		attempted = true
+		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{agentAuth}, InitialConnectTimeout)
 		if err == nil {
 			m.logger.Info("SSH-Agent erfolgreich für %s", conn.Name)
 			return ctx, status, authCacheMethodAgent, nil
 		}
 		m.logger.Info("SSH-Agent fehlgeschlagen: %v", err)
+		if IsNetworkError(err) {
+			return nil, nil, "", err
+		}
 	}
 
 	// 2. Explizit konfigurierten Key zuerst probieren
 	if conn.KeyPath != "" {
 		absPath := expandTilde(conn.KeyPath)
 		if signers := m.loadKeysFromPaths([]string{absPath}); len(signers) > 0 {
-			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
+			attempted = true
+			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)}, InitialConnectTimeout)
 			if err == nil {
 				m.logger.Info("Konfigurierter Key %s erfolgreich für %s", conn.KeyPath, conn.Name)
 				return ctx, status, authCacheKeyPrefix + absPath, nil
 			}
 			m.logger.Info("Konfigurierter Key %s fehlgeschlagen: %v", conn.KeyPath, err)
+			if IsNetworkError(err) {
+				return nil, nil, "", err
+			}
 		}
 	}
 
@@ -207,12 +229,30 @@ func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *Con
 		if len(signers) == 0 {
 			continue
 		}
-		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)})
+		attempted = true
+		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)}, InitialConnectTimeout)
 		if err == nil {
 			m.logger.Info("Key %s erfolgreich für %s", absPath, conn.Name)
 			return ctx, status, authCacheKeyPrefix + absPath, nil
 		}
 		m.logger.Info("Key %s fehlgeschlagen: %v", absPath, err)
+		// Ziel nicht erreichbar (z.B. PC ausgeschaltet): nicht jeden weiteren
+		// Schlüssel mit eigenem Timeout probieren, sondern sofort abbrechen
+		if IsNetworkError(err) {
+			return nil, nil, "", err
+		}
+	}
+
+	// Kein einziger Verbindungsversuch möglich (kein Agent, keine Schlüssel)?
+	// Dann wenigstens die Erreichbarkeit prüfen - sonst würde bei einem
+	// ausgeschalteten Ziel-PC erst nach der Passworteingabe ein Fehler kommen.
+	if !attempted {
+		probe, err := dialResolved(context.Background(), m.resolver, m.dialTCP, conn.Host, conn.Port, InitialConnectTimeout)
+		if err != nil {
+			m.logger.Info("%s nicht erreichbar: %v", conn.Name, err)
+			return nil, nil, "", err
+		}
+		probe.Close()
 	}
 
 	return nil, nil, "", fmt.Errorf("keine SSH-Schlüssel oder Agent verfügbar")
@@ -360,7 +400,7 @@ func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*Con
 		},
 	))
 
-	ctx, status, err := m.dialSSH(conn, methods)
+	ctx, status, err := m.dialSSH(conn, methods, InitialConnectTimeout)
 	if err != nil {
 		m.logger.Error("Passwort-Verbindung zu %s fehlgeschlagen: %v", conn.Name, err)
 		return nil, err
@@ -388,7 +428,7 @@ func (m *SSHManager) Connect(conn Connection, password string) (*ConnectionStatu
 		return nil, fmt.Errorf("Authentifizierung fehlgeschlagen: %w", err)
 	}
 
-	ctx, status, err := m.dialSSH(conn, authMethods)
+	ctx, status, err := m.dialSSH(conn, authMethods, InitialConnectTimeout)
 	if err != nil {
 		m.logger.Error("SSH-Verbindung zu %s fehlgeschlagen: %v", conn.Name, err)
 		return nil, fmt.Errorf("SSH-Verbindung zu %s fehlgeschlagen: %w", conn.Name, err)
@@ -401,14 +441,16 @@ func (m *SSHManager) Connect(conn Connection, password string) (*ConnectionStatu
 
 // dialSSH stellt die eigentliche SSH-TCP-Verbindung her und startet Tunnel.
 // Gibt den Kontext für Keepalive zurück (wird benötigt um Keepalive zu stoppen).
+// Namensauflösung mit DNS-Fallback und TCP-Frist: siehe net_dial.go.
 //
 // @param conn - Verbindungskonfiguration
 // @param methods - SSH-Authentifizierungsmethoden
+// @param timeout - Frist für den TCP-Aufbau (5 s beim ersten Verbinden)
 // @return context.Context - Kontext (für Keepalive-Loop)
 // @return *ConnectionStatus - Verbindungsstatus
-// @return error - Fehler beim Verbinden
-// @date   2026-03-15 00:00
-func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod) (context.Context, *ConnectionStatus, error) {
+// @return error - Fehler beim Verbinden (Netzwerkfehler als *networkError)
+// @date   2026-10-16 10:00
+func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod, timeout time.Duration) (context.Context, *ConnectionStatus, error) {
 	hostKeyCallback, err := m.getHostKeyCallback()
 	if err != nil {
 		return nil, nil, fmt.Errorf("HostKey-Prüfung fehlgeschlagen: %w", err)
@@ -418,11 +460,10 @@ func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod) (context
 		User:            conn.User,
 		Auth:            methods,
 		HostKeyCallback: hostKeyCallback,
-		Timeout:         10 * time.Second,
+		Timeout:         timeout,
 	}
 
-	addr := fmt.Sprintf("%s:%d", conn.Host, conn.Port)
-	client, err := ssh.Dial("tcp", addr, config)
+	client, err := dialSSHClient(m.resolver, m.dialTCP, conn.Host, conn.Port, timeout, config)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -616,10 +657,15 @@ func IsSSHAuthError(err error) bool {
 //
 // @param err - Zu prüfender Fehler
 // @return bool - Ob es ein Netzwerkfehler ist
-// @date   2026-03-15 00:00
+// @date   2026-10-16 10:00
 func IsNetworkError(err error) bool {
 	if err == nil {
 		return false
+	}
+	// Typisierter Fehler aus net_dial.go (DNS, TCP, Handshake-Timeout)
+	var netErr *networkError
+	if errors.As(err, &netErr) {
+		return true
 	}
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "connection refused") ||
@@ -959,7 +1005,7 @@ func (m *SSHManager) reconnect(connID string) {
 		var err error
 
 		if len(autoMethods) > 0 {
-			ctx, status, err = m.dialSSH(managed.Config, autoMethods)
+			ctx, status, err = m.dialSSH(managed.Config, autoMethods, ReconnectDialTimeout)
 		}
 
 		// Falls Auto fehlschlägt und Passwort bekannt: Passwort versuchen.
@@ -969,7 +1015,7 @@ func (m *SSHManager) reconnect(connID string) {
 		if (err != nil || len(autoMethods) == 0) && len(managed.password) > 0 {
 			m.logger.Info("Auto-Reconnect fehlgeschlagen, versuche Passwort...")
 			pwMethods := []ssh.AuthMethod{ssh.Password(string(managed.password))}
-			ctx, status, err = m.dialSSH(managed.Config, pwMethods)
+			ctx, status, err = m.dialSSH(managed.Config, pwMethods, ReconnectDialTimeout)
 		}
 
 		if err != nil {

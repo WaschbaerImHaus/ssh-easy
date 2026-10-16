@@ -5,7 +5,7 @@
 // mit Local-Port-Forwarding-Tunneln.
 //
 // @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
-// @date   2026-10-14 16:10
+// @date   2026-10-16 10:00
 package main
 
 import (
@@ -20,8 +20,9 @@ import (
 
 // main ist der Einstiegspunkt des Programms.
 // Initialisiert Logger, SSH-Manager, Konfiguration und startet die TUI.
+// Beim Beenden: Schrift-/Fenstergröße merken, ggf. Update installieren.
 //
-// @date   2026-04-19 00:00
+// @date   2026-10-16 10:00
 func main() {
 	// Sicherstellen dass ein Terminal (TTY) vorhanden ist. Auf Linux/macOS:
 	// Wird die Binary aus einem Dateimanager doppelgeklickt, fehlt ein TTY –
@@ -53,21 +54,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Persistierte Konsolen-Schriftgröße anwenden (nur Windows wirksam).
-	// Muss vor dem TUI-Start passieren, damit Bubbletea gleich mit der
-	// korrekten Fenstergröße rendert.
+	// Persistierte Konsolen-Schriftgröße und Fenstergröße anwenden (nur
+	// Windows wirksam). Muss vor dem TUI-Start passieren, damit Bubbletea
+	// gleich mit der korrekten Fenstergröße rendert. Reihenfolge: erst
+	// Schrift, dann Fenster (die maximale Fenstergröße hängt von der Schrift ab).
 	if cfg, cfgErr := LoadConfig(configPath); cfgErr == nil {
 		applyStartupFontSize(cfg.FontSize)
+		applyStartupWindowSize(cfg.WindowCols, cfg.WindowRows)
 	}
+
+	// Auto-Updater: Reste früherer Updates entfernen (z.B. ssh-easy.exe.old)
+	updater := NewUpdater(buildNumber)
+	cleanupUpdateLeftovers(updater.exePath, updater.downloadDir)
 
 	// SSH-Manager erstellen
 	sshManager := NewSSHManager(logger)
 
 	// TUI-Modell erstellen und Programm starten
 	model := NewAppModel(configPath, buildNumber, sshManager)
+	model.SetUpdater(updater)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
-	if _, err := p.Run(); err != nil {
+	finalModel, err := p.Run()
+	if err != nil {
 		logger.Error("TUI-Fehler: %v", err)
 		fmt.Fprintf(os.Stderr, "Fehler beim Starten der TUI: %v\n", err)
 		os.Exit(1)
@@ -80,6 +89,22 @@ func main() {
 	// Deckt auch den nativen conhost-Zoom per Strg+Mausrad ab, der an der
 	// Anwendung vorbeiläuft und sonst beim nächsten Start verloren wäre.
 	persistFontSize(configPath, getConsoleFontSize())
+
+	// Letzte Fenstergröße merken (nur wenn nicht maximiert/Vollbild)
+	cols, rows, normal := queryWindowState()
+	persistWindowSize(configPath, cols, rows, normal)
+
+	// Heruntergeladenes Update beim Beenden installieren - nur wenn
+	// Auto-Update beim Beenden noch eingeschaltet ist
+	if final, ok := finalModel.(AppModel); ok && final.autoUpdate {
+		if pending := updater.Pending(); pending != nil {
+			if err := updater.Apply(); err != nil {
+				logger.Error("Update auf v0.%d fehlgeschlagen: %v", pending.build, err)
+			} else {
+				logger.Info("Update auf v0.%d installiert", pending.build)
+			}
+		}
+	}
 
 	logger.Info("ssh-easy beendet")
 }

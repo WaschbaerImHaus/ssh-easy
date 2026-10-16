@@ -5,6 +5,23 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.48] – Build 48
+- **Added** connection groups: a colon in the name is a group separator (`Office:Server1`, `Office:NAS` → expandable group *Office*). Only the first colon splits; names need text before and after the colon. A group shows a green dot when any member is connected
+- **Added** scrollable connection list: at most 15 rows are visible (fewer in small windows), `↑ +N` / `↓ +N` show hidden rows; PgUp/PgDn/Home/End page through long lists
+- **Added** optional auto-update from GitHub releases (toggle with `u`, last menu line, off by default): download at startup, installation on exit. Linux replaces the binary atomically; Windows renames the running EXE (`.old`, removed on next start) or, when installed in *Program Files*, runs the setup silently with UAC elevation. Mandatory SHA-256 check against the GitHub API digest, size and format check, downloads only from this repository's release URL. Before installing, the checksum is verified again; on Windows the setup is hashed through a handle that blocks writes, deletes and renames until it has been launched (no swap window before the elevated start). The download folder must not be a symlink/reparse point, planted symlinks at the target path are not followed
+- **Added** DNS fallback: if the system DNS does not work (timeout, server error), names are resolved via 1.1.1.1, 1.0.0.1, 8.8.8.8 and 8.8.4.4, starting with the server that worked last (rotation). An unknown name (NXDOMAIN) is not sent to public servers. IPv4 addresses are tried before IPv6
+- **Added** the window size (columns × rows) is remembered and restored on Windows unless the window was maximized, fullscreen or minimized (checked every 2 s, after resizing and on exit; skipped in Windows Terminal, which remembers its own size)
+- **Added** the password prompt shows host and, on the next line, the user name
+- **Changed** first connection attempt uses a 5-second connect timeout; a network error (host off, DNS failure, handshake timeout) stops immediately instead of trying every SSH key with its own 10-second timeout. Without any SSH key or agent, the host is probed first, so an unreachable host is reported right away instead of asking for a password
+- **Changed** the list shows at most two tunnel ports, further ports as a count (`+3 more`)
+- **Changed** tunnels that could not be opened are shown in red (list and status view) without the error text; details remain in the log. If a hidden port (3rd and later) failed, the `+N more` hint is red
+- **Changed** a newly created or renamed connection is selected after saving (its group is expanded)
+- **Changed** all UI texts are now translated into all 41 languages (previously several messages, e.g. "This name is already in use", were English in every language); a new completeness test fails the build if a text is missing, a placeholder differs or a sentence is an English copy
+- **Fixed** the first key press after leaving the SSH terminal was swallowed (e.g. the first `x` to disconnect did nothing): the stdin forwarder stayed blocked in a read after the session ended and consumed the next key. Input is now cancellable (Unix: cancelreader/epoll, Windows: console input peek) and the forwarder is stopped before Bubbletea takes over stdin again
+- **Fixed** the selected row of a connected host only highlighted the green dot, the name stayed on a black background (the dot's reset sequence ended the selection style). Rows are now rendered segment by segment with the same base style
+- **Fixed** Shift+Insert did nothing in the connection form and password prompt on Windows: Bubbletea v1 does not map VK_INSERT and delivers a NUL rune; ssh-easy now checks that Shift and Insert are really pressed (GetAsyncKeyState) — Shift+Ctrl or Alt+Shift (layout switch) do not paste. Plain Insert no longer inserts a NUL character. `ESC[2;2~` from Unix terminals pastes as well
+- **Added** 115 new tests (270 total, all green)
+
 ## [v0.47] – Build 47
 - **Security** Shift+Insert paste into the SSH session now supports bracketed paste. ssh-easy watches the session output for `ESC[?2004h` / `ESC[?2004l` (also combined, e.g. `ESC[?1049;2004h`, and split across SSH packets). While the mode is active, pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded start/end markers are stripped repeatedly. Previously a multi-line clipboard (e.g. copied from a crafted web page) was executed line by line in the remote shell. Without the mode the old behavior is unchanged
 - **Added** 19 new tests in `bracketed_paste_test.go` (155 total, all green)

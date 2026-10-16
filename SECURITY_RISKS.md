@@ -59,6 +59,42 @@ Deaktivieren von OSC 52.
 
 ---
 
+### Auto-Update: Vertrauen in GitHub-Konto und -API (akzeptiertes Risiko)
+
+**Datei:** `src/updater.go`
+**Schweregrad:** NIEDRIG (nur wenn vom Nutzer eingeschaltet, Standard: aus)
+
+Prüfsumme und Download stammen beide von GitHub. Wer das GitHub-Konto bzw.
+ein Release-Token kontrolliert, könnte eine manipulierte Binary samt passender
+Prüfsumme veröffentlichen. Gegenmaßnahmen: TLS, nur Release-Adresse dieses
+Repositorys, SHA-256-Pflicht (zweite Prüfung direkt vor der Installation gegen
+Austausch auf der Platte), Größen- und Formatprüfung, Standard aus. Unter
+Windows zeigt die Benutzerkontensteuerung beim Setup „Unbekannter Herausgeber“
+(nicht signiert). Das GitHub-Token liegt im Klartext in lokalen Notizen
+(`.claude/CLAUDE.md`, nicht im Repo) – wer es erbeutet, kann Releases
+veröffentlichen, die alle Auto-Update-Nutzer installieren (unter Windows mit
+Adminrechten). Token mit minimalen Rechten und kurzer Laufzeit verwenden.
+
+**Maßnahme:** Optional später: Releases signieren und Schlüssel einbetten (OPTIMIZE.md).
+
+### DNS-Fallback über öffentliche Server (akzeptiertes Risiko)
+
+**Datei:** `src/net_dial.go`
+**Schweregrad:** NIEDRIG
+
+Antwortet der DNS-Server des Netzwerks nicht (Timeout/Serverfehler), gehen
+Hostnamen-Anfragen unverschlüsselt an 1.1.1.1/1.0.0.1/8.8.8.8/8.8.4.4
+(Datenschutz: die Betreiber sehen den Namen). Meldet der Netz-DNS „Name
+unbekannt“ (NXDOMAIN), wird NICHT weitergefragt. Fällt der interne DNS aus,
+kann ein interner Name öffentlich anders aufgelöst werden. Bekannte Hosts schützt known_hosts (abweichender Host-Key →
+MITM-Warnung); bei einem noch nie verbundenen Host gilt wie bisher
+Trust-on-first-use.
+
+**Maßnahme:** Akzeptiert (vom Nutzer gewünschte Funktion). Für interne Server
+IP-Adressen oder einen funktionierenden lokalen DNS verwenden.
+
+---
+
 ## Empfehlungen
 
 - Immer eine aktuelle `~/.ssh/known_hosts`-Datei pflegen

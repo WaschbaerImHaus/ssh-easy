@@ -35,5 +35,13 @@
 - Build-Nummer in src/build.txt (hochzaehlen bei Aenderung)
 - Output: build/ssh-easy (+ Varianten fuer ARM/Windows)
 
+## Build 48 (2026-10-16) - 13 Nutzerwuensche
+- Gruppen per Doppelpunkt, scrollbare Liste (15 Zeilen), Auto-Update (u, Standard aus), DNS-Fallback,
+  5-s-Timeout + Abbruch bei Netzwerkfehler, Fenstergroesse merken, Tunnel "+N weitere"/rot,
+  neue Verbindung ausgewaehlt, Shift+Einfg in Formularen (Windows NUL-Rune), Host+Benutzer bei Passwort
+- Bug "erste Taste nach Terminal verschluckt": haengender stdin-Forwarder -> terminal_input*.go
+- Alle Texte in 41 Sprachen; tests/i18n_complete_test.go + Stop-Hook .claude/hooks/check-translations.sh
+- Offen: Taste g (Keygen) ohne Funktion (BUGS.md)
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

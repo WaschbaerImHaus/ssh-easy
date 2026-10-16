@@ -10,7 +10,7 @@
 // und direkt auf os.Stdin/os.Stdout arbeiten statt auf Bubbleteas Streams.
 //
 // @author Kurt Ingwer
-// @date   2026-10-14 17:10
+// @date   2026-10-16 10:00
 package main
 
 import (
@@ -74,7 +74,7 @@ func (t *sshTerminalCmd) SetStderr(w io.Writer) { t.stderr = w }
 //  5. Terminal-Zustand wiederherstellen
 //
 // @return error - Fehler beim Starten der Session oder nil bei normalem Ende
-// @date   2026-10-14 17:10
+// @date   2026-10-16 10:00
 func (t *sshTerminalCmd) Run() error {
 	// Stdin-Puffer als ERSTES defer registrieren → wird als LETZTES ausgeführt (LIFO).
 	// Muss nach allen anderen Defers laufen: term.Restore und restoreVT können beim
@@ -173,12 +173,26 @@ func (t *sshTerminalCmd) Run() error {
 	// Shift+Insert-VT-Sequenz ab (Clipboard-Paste) und erkennt Alt+F4
 	// (Programm beenden). Beendet sich automatisch, sobald stdinPipe durch
 	// defer geschlossen wird oder Alt+F4 gedrückt wurde.
+	// Abbrechbare Eingabe: Nach Sitzungsende muss die Weiterleitung gestoppt
+	// werden, sonst verschluckt sie den ersten Tastendruck danach (siehe
+	// terminal_input.go). Ist stdin keine Konsole, wird direkt gelesen.
+	var input terminalInput
+	var source io.Reader = os.Stdin
+	if in, inErr := newTerminalInput(os.Stdin); inErr == nil {
+		input = in
+		source = in
+		defer in.Close()
+	}
+	forwarderDone := make(chan struct{})
 	var altF4Pressed atomic.Bool
-	go forwardStdinWithPaste(os.Stdin, stdinPipe, func() {
-		altF4Pressed.Store(true)
-		// Session schließen damit session.Wait() unten sofort zurückkehrt
-		session.Close()
-	}, pasteMode)
+	go func() {
+		defer close(forwarderDone)
+		forwardStdinWithPaste(source, stdinPipe, func() {
+			altF4Pressed.Store(true)
+			// Session schließen damit session.Wait() unten sofort zurückkehrt
+			session.Close()
+		}, pasteMode)
+	}()
 
 	// Terminalgröße-Änderungen weiterleiten (SIGWINCH-Äquivalent für SSH).
 	// Läuft in einer Goroutine parallel zur Shell-Session.
@@ -201,6 +215,12 @@ func (t *sshTerminalCmd) Run() error {
 	// Größen-Watcher beenden
 	close(stopResize)
 	resizeWg.Wait()
+
+	// stdin-Weiterleitung stoppen, BEVOR Bubbletea stdin wieder übernimmt -
+	// sonst landet der nächste Tastendruck noch in der beendeten Sitzung
+	if input != nil {
+		stopInputForwarder(input, forwarderDone, inputForwarderStopTimeout)
+	}
 
 	// Alt+F4 hat die Session hart geschlossen: den dadurch entstandenen
 	// Wait-Fehler nicht als Session-Fehler melden, sondern das Programm-

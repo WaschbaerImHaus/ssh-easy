@@ -1,11 +1,11 @@
 // Paket main - Tests fuer Security-Fixes aus Build 41
 //
 // Prueft die in Build 41 umgesetzten Haertungsmassnahmen:
-//  - HostKeyChangedError als typisierter Fehler (mit errors.As)
-//  - Path-Traversal-Schutz in expandTilde
-//  - Symlink-Filter + PEM-Whitelist in discoverSSHKeys
-//  - clearPassword ueberschreibt Byte-Slice mit Nullen
-//  - looksLikePEMKey erkennt nur echte PEM-Dateien
+//   - HostKeyChangedError als typisierter Fehler (mit errors.As)
+//   - Path-Traversal-Schutz in expandTilde
+//   - Symlink-Filter + PEM-Whitelist in discoverSSHKeys
+//   - clearPassword ueberschreibt Byte-Slice mit Nullen
+//   - looksLikePEMKey erkennt nur echte PEM-Dateien
 //
 // @author Kurt Ingwer
 // @date   2026-04-19 12:00
@@ -113,10 +113,10 @@ func TestLooksLikePEMKeyAcceptsPEM(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cases := map[string]string{
-		"openssh-key":  "-----BEGIN OPENSSH PRIVATE KEY-----\nfakedata\n-----END OPENSSH PRIVATE KEY-----\n",
-		"rsa-key":      "-----BEGIN RSA PRIVATE KEY-----\nfakedata\n-----END RSA PRIVATE KEY-----\n",
-		"ec-key":       "-----BEGIN EC PRIVATE KEY-----\nfakedata\n-----END EC PRIVATE KEY-----\n",
-		"private-key":  "-----BEGIN PRIVATE KEY-----\nfakedata\n-----END PRIVATE KEY-----\n",
+		"openssh-key": "-----BEGIN OPENSSH PRIVATE KEY-----\nfakedata\n-----END OPENSSH PRIVATE KEY-----\n",
+		"rsa-key":     "-----BEGIN RSA PRIVATE KEY-----\nfakedata\n-----END RSA PRIVATE KEY-----\n",
+		"ec-key":      "-----BEGIN EC PRIVATE KEY-----\nfakedata\n-----END EC PRIVATE KEY-----\n",
+		"private-key": "-----BEGIN PRIVATE KEY-----\nfakedata\n-----END PRIVATE KEY-----\n",
 	}
 
 	for name, content := range cases {
@@ -135,12 +135,12 @@ func TestLooksLikePEMKeyRejectsNonPEM(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	cases := map[string]string{
-		"config":    "Host example\n    User foo\n",
-		"empty":     "",
-		"binary":    "\x00\x01\x02\x03",
-		"text":      "Dies ist ein zufaelliger Text",
-		"short":     "AB",
-		"json":      `{"key": "value"}`,
+		"config": "Host example\n    User foo\n",
+		"empty":  "",
+		"binary": "\x00\x01\x02\x03",
+		"text":   "Dies ist ein zufaelliger Text",
+		"short":  "AB",
+		"json":   `{"key": "value"}`,
 	}
 
 	for name, content := range cases {

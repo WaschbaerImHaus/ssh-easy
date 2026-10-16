@@ -1,0 +1,562 @@
+// Paket main - Zusätzliche UI-Texte ab Build 48
+//
+// Neue Texte werden nicht mehr als Felder in allen 41 Translations-Structs
+// gepflegt, sondern als kleine Tabelle pro Sprache. JEDER Schlüssel muss in
+// JEDER Sprache aus AvailableLanguages vorhanden sein - das prüft
+// tests/i18n_complete_test.go (läuft vor jedem Build und als Claude-Code-
+// Stop-Hook). Der Fallback auf Englisch in extraText() ist nur ein
+// Sicherheitsnetz, damit nie ein leerer Text erscheint.
+//
+// @author Kurt Ingwer
+// @date   2026-10-16 10:00
+package main
+
+// textKey identifiziert einen Zusatztext.
+type textKey string
+
+const (
+	// txtMoreTunnelsOne - "+1 weiterer" (Einzahl, %d = Anzahl)
+	txtMoreTunnelsOne textKey = "more_tunnels_one"
+	// txtMoreTunnelsMany - "+3 weitere" (Mehrzahl, %d = Anzahl)
+	txtMoreTunnelsMany textKey = "more_tunnels_many"
+	// txtAutoUpdateOn - Menüzeile bei eingeschaltetem Auto-Update
+	txtAutoUpdateOn textKey = "auto_update_on"
+	// txtAutoUpdateOff - Menüzeile bei ausgeschaltetem Auto-Update
+	txtAutoUpdateOff textKey = "auto_update_off"
+	// txtUpdateChecking - Hinweis während der Update-Suche
+	txtUpdateChecking textKey = "update_checking"
+	// txtUpdateReady - Update heruntergeladen (%d = Build-Nummer)
+	txtUpdateReady textKey = "update_ready"
+	// txtUpdateCurrent - Programm ist aktuell
+	txtUpdateCurrent textKey = "update_current"
+	// txtUpdateFailed - Update-Fehler (%s = Ursache)
+	txtUpdateFailed textKey = "update_failed"
+	// txtErrGroupName - Name mit Doppelpunkt ohne Text davor/danach
+	txtErrGroupName textKey = "err_group_name"
+	// txtGroupHelp - Tastenhilfe für Gruppen
+	txtGroupHelp textKey = "group_help"
+)
+
+// extraTranslations enthält die Zusatztexte pro Sprache.
+var extraTranslations = map[Language]map[textKey]string{
+	LangDeutsch: {
+		txtMoreTunnelsOne:  "+%d weiterer",
+		txtMoreTunnelsMany: "+%d weitere",
+		txtAutoUpdateOn:    "  Auto-Update: an  (u: umschalten)",
+		txtAutoUpdateOff:   "  Auto-Update: aus  (u: umschalten)",
+		txtUpdateChecking:  "Suche nach Updates …",
+		txtUpdateReady:     "Update v0.%d heruntergeladen – wird beim Beenden installiert",
+		txtUpdateCurrent:   "Programm ist aktuell",
+		txtUpdateFailed:    "Auto-Update fehlgeschlagen: %s",
+		txtErrGroupName:    "Name mit „:“ braucht Text vor und nach dem Doppelpunkt (z. B. Büro:Server1)",
+		txtGroupHelp:       "  Enter/→: Gruppe öffnen  ←: Gruppe schließen  Bild↑/Bild↓: blättern",
+	},
+	LangEnglish: {
+		txtMoreTunnelsOne:  "+%d more",
+		txtMoreTunnelsMany: "+%d more",
+		txtAutoUpdateOn:    "  Auto-update: on  (u: toggle)",
+		txtAutoUpdateOff:   "  Auto-update: off  (u: toggle)",
+		txtUpdateChecking:  "Checking for updates …",
+		txtUpdateReady:     "Update v0.%d downloaded – will be installed on exit",
+		txtUpdateCurrent:   "Program is up to date",
+		txtUpdateFailed:    "Auto-update failed: %s",
+		txtErrGroupName:    "A name with \":\" needs text before and after the colon (e.g. Office:Server1)",
+		txtGroupHelp:       "  Enter/→: open group  ←: close group  PgUp/PgDn: page",
+	},
+	LangFrancais: {
+		txtMoreTunnelsOne:  "+%d autre",
+		txtMoreTunnelsMany: "+%d autres",
+		txtAutoUpdateOn:    "  Mise à jour auto : activée  (u : basculer)",
+		txtAutoUpdateOff:   "  Mise à jour auto : désactivée  (u : basculer)",
+		txtUpdateChecking:  "Recherche de mises à jour …",
+		txtUpdateReady:     "Mise à jour v0.%d téléchargée – installée à la fermeture",
+		txtUpdateCurrent:   "Le programme est à jour",
+		txtUpdateFailed:    "Échec de la mise à jour auto : %s",
+		txtErrGroupName:    "Un nom avec « : » doit avoir du texte avant et après (ex. Bureau:Serveur1)",
+		txtGroupHelp:       "  Entrée/→ : ouvrir le groupe  ← : fermer  PgPréc/PgSuiv : page",
+	},
+	LangAmharic: {
+		txtMoreTunnelsOne:  "+%d ተጨማሪ",
+		txtMoreTunnelsMany: "+%d ተጨማሪ",
+		txtAutoUpdateOn:    "  ራስ-ሰር ማዘመን: በርቷል  (u: ቀይር)",
+		txtAutoUpdateOff:   "  ራስ-ሰር ማዘመን: ጠፍቷል  (u: ቀይር)",
+		txtUpdateChecking:  "ዝማኔዎችን በመፈለግ ላይ …",
+		txtUpdateReady:     "ዝማኔ v0.%d ወርዷል – ሲወጡ ይጫናል",
+		txtUpdateCurrent:   "ፕሮግራሙ የቅርብ ጊዜው ነው",
+		txtUpdateFailed:    "ራስ-ሰር ማዘመን አልተሳካም: %s",
+		txtErrGroupName:    "\":\" ያለው ስም ከኮሎኑ በፊትና በኋላ ጽሑፍ ያስፈልገዋል (ለምሳሌ ቢሮ:ሰርቨር1)",
+		txtGroupHelp:       "  Enter/→: ቡድን ክፈት  ←: ቡድን ዝጋ  PgUp/PgDn: ገጽ",
+	},
+	LangArabic: {
+		txtMoreTunnelsOne:  "+%d آخر",
+		txtMoreTunnelsMany: "+%d أخرى",
+		txtAutoUpdateOn:    "  التحديث التلقائي: مفعّل  (u: تبديل)",
+		txtAutoUpdateOff:   "  التحديث التلقائي: معطّل  (u: تبديل)",
+		txtUpdateChecking:  "جارٍ البحث عن تحديثات …",
+		txtUpdateReady:     "تم تنزيل التحديث v0.%d – سيُثبَّت عند الخروج",
+		txtUpdateCurrent:   "البرنامج محدَّث",
+		txtUpdateFailed:    "فشل التحديث التلقائي: %s",
+		txtErrGroupName:    "الاسم الذي يحتوي على \":\" يحتاج إلى نص قبل النقطتين وبعدهما (مثل مكتب:خادم1)",
+		txtGroupHelp:       "  Enter/→: فتح المجموعة  ←: إغلاق المجموعة  PgUp/PgDn: صفحة",
+	},
+	LangBengali: {
+		txtMoreTunnelsOne:  "+আরও %d",
+		txtMoreTunnelsMany: "+আরও %d",
+		txtAutoUpdateOn:    "  স্বয়ংক্রিয় আপডেট: চালু  (u: পরিবর্তন)",
+		txtAutoUpdateOff:   "  স্বয়ংক্রিয় আপডেট: বন্ধ  (u: পরিবর্তন)",
+		txtUpdateChecking:  "আপডেট খোঁজা হচ্ছে …",
+		txtUpdateReady:     "আপডেট v0.%d ডাউনলোড হয়েছে – বন্ধ করার সময় ইনস্টল হবে",
+		txtUpdateCurrent:   "প্রোগ্রামটি সর্বশেষ সংস্করণে আছে",
+		txtUpdateFailed:    "স্বয়ংক্রিয় আপডেট ব্যর্থ: %s",
+		txtErrGroupName:    "\":\" যুক্ত নামে কোলনের আগে ও পরে লেখা থাকতে হবে (যেমন অফিস:সার্ভার1)",
+		txtGroupHelp:       "  Enter/→: গ্রুপ খুলুন  ←: গ্রুপ বন্ধ করুন  PgUp/PgDn: পৃষ্ঠা",
+	},
+	LangBulgarian: {
+		txtMoreTunnelsOne:  "+още %d",
+		txtMoreTunnelsMany: "+още %d",
+		txtAutoUpdateOn:    "  Автоматично обновяване: вкл.  (u: превключване)",
+		txtAutoUpdateOff:   "  Автоматично обновяване: изкл.  (u: превключване)",
+		txtUpdateChecking:  "Търсене на обновления …",
+		txtUpdateReady:     "Обновление v0.%d е изтеглено – ще се инсталира при изход",
+		txtUpdateCurrent:   "Програмата е актуална",
+		txtUpdateFailed:    "Неуспешно автоматично обновяване: %s",
+		txtErrGroupName:    "Име с „:“ изисква текст преди и след двоеточието (напр. Офис:Сървър1)",
+		txtGroupHelp:       "  Enter/→: отвори група  ←: затвори група  PgUp/PgDn: страница",
+	},
+	LangChinese: {
+		txtMoreTunnelsOne:  "+%d 个",
+		txtMoreTunnelsMany: "+%d 个",
+		txtAutoUpdateOn:    "  自动更新：开  (u：切换)",
+		txtAutoUpdateOff:   "  自动更新：关  (u：切换)",
+		txtUpdateChecking:  "正在检查更新 …",
+		txtUpdateReady:     "更新 v0.%d 已下载 – 将在退出时安装",
+		txtUpdateCurrent:   "程序已是最新版本",
+		txtUpdateFailed:    "自动更新失败：%s",
+		txtErrGroupName:    "含“:”的名称在冒号前后都需要文字（例如 办公室:服务器1）",
+		txtGroupHelp:       "  Enter/→：展开分组  ←：折叠分组  PgUp/PgDn：翻页",
+	},
+	LangCzech: {
+		txtMoreTunnelsOne:  "+%d další",
+		txtMoreTunnelsMany: "+%d dalších",
+		txtAutoUpdateOn:    "  Automatická aktualizace: zapnuto  (u: přepnout)",
+		txtAutoUpdateOff:   "  Automatická aktualizace: vypnuto  (u: přepnout)",
+		txtUpdateChecking:  "Hledám aktualizace …",
+		txtUpdateReady:     "Aktualizace v0.%d stažena – nainstaluje se při ukončení",
+		txtUpdateCurrent:   "Program je aktuální",
+		txtUpdateFailed:    "Automatická aktualizace selhala: %s",
+		txtErrGroupName:    "Název s „:“ musí mít text před i za dvojtečkou (např. Kancelář:Server1)",
+		txtGroupHelp:       "  Enter/→: otevřít skupinu  ←: zavřít skupinu  PgUp/PgDn: stránka",
+	},
+	LangDutch: {
+		txtMoreTunnelsOne:  "+%d andere",
+		txtMoreTunnelsMany: "+%d andere",
+		txtAutoUpdateOn:    "  Automatisch bijwerken: aan  (u: wisselen)",
+		txtAutoUpdateOff:   "  Automatisch bijwerken: uit  (u: wisselen)",
+		txtUpdateChecking:  "Zoeken naar updates …",
+		txtUpdateReady:     "Update v0.%d gedownload – wordt bij afsluiten geïnstalleerd",
+		txtUpdateCurrent:   "Programma is up-to-date",
+		txtUpdateFailed:    "Automatisch bijwerken mislukt: %s",
+		txtErrGroupName:    "Een naam met „:” heeft tekst vóór en na de dubbele punt nodig (bijv. Kantoor:Server1)",
+		txtGroupHelp:       "  Enter/→: groep openen  ←: groep sluiten  PgUp/PgDn: bladeren",
+	},
+	LangEspanol: {
+		txtMoreTunnelsOne:  "+%d más",
+		txtMoreTunnelsMany: "+%d más",
+		txtAutoUpdateOn:    "  Actualización automática: activada  (u: cambiar)",
+		txtAutoUpdateOff:   "  Actualización automática: desactivada  (u: cambiar)",
+		txtUpdateChecking:  "Buscando actualizaciones …",
+		txtUpdateReady:     "Actualización v0.%d descargada – se instalará al salir",
+		txtUpdateCurrent:   "El programa está actualizado",
+		txtUpdateFailed:    "Error en la actualización automática: %s",
+		txtErrGroupName:    "Un nombre con «:» necesita texto antes y después de los dos puntos (p. ej. Oficina:Servidor1)",
+		txtGroupHelp:       "  Enter/→: abrir grupo  ←: cerrar grupo  RePág/AvPág: paginar",
+	},
+	LangFilipino: {
+		txtMoreTunnelsOne:  "+%d pa",
+		txtMoreTunnelsMany: "+%d pa",
+		txtAutoUpdateOn:    "  Awtomatikong pag-update: naka-on  (u: palitan)",
+		txtAutoUpdateOff:   "  Awtomatikong pag-update: naka-off  (u: palitan)",
+		txtUpdateChecking:  "Naghahanap ng mga update …",
+		txtUpdateReady:     "Na-download ang update v0.%d – ii-install ito sa paglabas",
+		txtUpdateCurrent:   "Pinakabago na ang programa",
+		txtUpdateFailed:    "Nabigo ang awtomatikong pag-update: %s",
+		txtErrGroupName:    "Ang pangalang may \":\" ay kailangang may teksto bago at pagkatapos ng tutuldok (hal. Opisina:Server1)",
+		txtGroupHelp:       "  Enter/→: buksan ang grupo  ←: isara ang grupo  PgUp/PgDn: pahina",
+	},
+	LangGeorgian: {
+		txtMoreTunnelsOne:  "+კიდევ %d",
+		txtMoreTunnelsMany: "+კიდევ %d",
+		txtAutoUpdateOn:    "  ავტომატური განახლება: ჩართ.  (u: გადართვა)",
+		txtAutoUpdateOff:   "  ავტომატური განახლება: გამორთ.  (u: გადართვა)",
+		txtUpdateChecking:  "განახლებების ძებნა …",
+		txtUpdateReady:     "განახლება v0.%d ჩამოიტვირთა – დაინსტალირდება გასვლისას",
+		txtUpdateCurrent:   "პროგრამა განახლებულია",
+		txtUpdateFailed:    "ავტომატური განახლება ვერ მოხერხდა: %s",
+		txtErrGroupName:    "„:“-იან სახელს ორწერტილის წინ და შემდეგ ტექსტი სჭირდება (მაგ. ოფისი:სერვერი1)",
+		txtGroupHelp:       "  Enter/→: ჯგუფის გახსნა  ←: ჯგუფის დახურვა  PgUp/PgDn: გვერდი",
+	},
+	LangGreek: {
+		txtMoreTunnelsOne:  "+%d ακόμη",
+		txtMoreTunnelsMany: "+%d ακόμη",
+		txtAutoUpdateOn:    "  Αυτόματη ενημέρωση: ενεργή  (u: εναλλαγή)",
+		txtAutoUpdateOff:   "  Αυτόματη ενημέρωση: ανενεργή  (u: εναλλαγή)",
+		txtUpdateChecking:  "Αναζήτηση ενημερώσεων …",
+		txtUpdateReady:     "Η ενημέρωση v0.%d λήφθηκε – θα εγκατασταθεί κατά την έξοδο",
+		txtUpdateCurrent:   "Το πρόγραμμα είναι ενημερωμένο",
+		txtUpdateFailed:    "Η αυτόματη ενημέρωση απέτυχε: %s",
+		txtErrGroupName:    "Όνομα με «:» χρειάζεται κείμενο πριν και μετά την άνω και κάτω τελεία (π.χ. Γραφείο:Διακομιστής1)",
+		txtGroupHelp:       "  Enter/→: άνοιγμα ομάδας  ←: κλείσιμο ομάδας  PgUp/PgDn: σελίδα",
+	},
+	LangGujarati: {
+		txtMoreTunnelsOne:  "+%d વધુ",
+		txtMoreTunnelsMany: "+%d વધુ",
+		txtAutoUpdateOn:    "  સ્વચાલિત અપડેટ: ચાલુ  (u: બદલો)",
+		txtAutoUpdateOff:   "  સ્વચાલિત અપડેટ: બંધ  (u: બદલો)",
+		txtUpdateChecking:  "અપડેટ શોધી રહ્યા છીએ …",
+		txtUpdateReady:     "અપડેટ v0.%d ડાઉનલોડ થયું – બહાર નીકળતી વખતે ઇન્સ્ટોલ થશે",
+		txtUpdateCurrent:   "પ્રોગ્રામ અદ્યતન છે",
+		txtUpdateFailed:    "સ્વચાલિત અપડેટ નિષ્ફળ: %s",
+		txtErrGroupName:    "\":\" વાળા નામમાં કોલોન પહેલાં અને પછી લખાણ જરૂરી છે (દા.ત. ઓફિસ:સર્વર1)",
+		txtGroupHelp:       "  Enter/→: જૂથ ખોલો  ←: જૂથ બંધ કરો  PgUp/PgDn: પાનું",
+	},
+	LangHausa: {
+		txtMoreTunnelsOne:  "+%d ƙari",
+		txtMoreTunnelsMany: "+%d ƙari",
+		txtAutoUpdateOn:    "  Sabuntawa ta atomatik: a kunne  (u: canza)",
+		txtAutoUpdateOff:   "  Sabuntawa ta atomatik: a kashe  (u: canza)",
+		txtUpdateChecking:  "Ana neman sabuntawa …",
+		txtUpdateReady:     "An sauke sabuntawa v0.%d – za a girka shi lokacin fita",
+		txtUpdateCurrent:   "Shirin yana kan sabon salo",
+		txtUpdateFailed:    "Sabuntawa ta atomatik ta kasa: %s",
+		txtErrGroupName:    "Suna mai \":\" yana buƙatar rubutu kafin da bayan ruɓi biyu (misali Ofis:Sabar1)",
+		txtGroupHelp:       "  Enter/→: buɗe rukuni  ←: rufe rukuni  PgUp/PgDn: shafi",
+	},
+	LangHindi: {
+		txtMoreTunnelsOne:  "+%d और",
+		txtMoreTunnelsMany: "+%d और",
+		txtAutoUpdateOn:    "  स्वतः अपडेट: चालू  (u: बदलें)",
+		txtAutoUpdateOff:   "  स्वतः अपडेट: बंद  (u: बदलें)",
+		txtUpdateChecking:  "अपडेट खोजे जा रहे हैं …",
+		txtUpdateReady:     "अपडेट v0.%d डाउनलोड हो गया – बाहर निकलते समय इंस्टॉल होगा",
+		txtUpdateCurrent:   "प्रोग्राम नवीनतम है",
+		txtUpdateFailed:    "स्वतः अपडेट विफल: %s",
+		txtErrGroupName:    "\":\" वाले नाम में कोलन से पहले और बाद में पाठ होना चाहिए (जैसे कार्यालय:सर्वर1)",
+		txtGroupHelp:       "  Enter/→: समूह खोलें  ←: समूह बंद करें  PgUp/PgDn: पृष्ठ",
+	},
+	LangIgbo: {
+		txtMoreTunnelsOne:  "+%d ọzọ",
+		txtMoreTunnelsMany: "+%d ọzọ",
+		txtAutoUpdateOn:    "  Mmelite akpaaka: gbanyere  (u: gbanwee)",
+		txtAutoUpdateOff:   "  Mmelite akpaaka: gbanyụrụ  (u: gbanwee)",
+		txtUpdateChecking:  "Na-achọ mmelite …",
+		txtUpdateReady:     "Ebudatala mmelite v0.%d – a ga-etinye ya mgbe ị na-apụ",
+		txtUpdateCurrent:   "Mmemme a dị ọhụrụ",
+		txtUpdateFailed:    "Mmelite akpaaka dara: %s",
+		txtErrGroupName:    "Aha nwere \":\" chọrọ ederede tupu na mgbe kọlọn (dịka Ọfịs:Sava1)",
+		txtGroupHelp:       "  Enter/→: mepee otu  ←: mechie otu  PgUp/PgDn: peeji",
+	},
+	LangIndonesian: {
+		txtMoreTunnelsOne:  "+%d lainnya",
+		txtMoreTunnelsMany: "+%d lainnya",
+		txtAutoUpdateOn:    "  Pembaruan otomatis: aktif  (u: ubah)",
+		txtAutoUpdateOff:   "  Pembaruan otomatis: nonaktif  (u: ubah)",
+		txtUpdateChecking:  "Mencari pembaruan …",
+		txtUpdateReady:     "Pembaruan v0.%d sudah diunduh – akan dipasang saat keluar",
+		txtUpdateCurrent:   "Program sudah versi terbaru",
+		txtUpdateFailed:    "Pembaruan otomatis gagal: %s",
+		txtErrGroupName:    "Nama dengan \":\" perlu teks sebelum dan sesudah titik dua (mis. Kantor:Server1)",
+		txtGroupHelp:       "  Enter/→: buka grup  ←: tutup grup  PgUp/PgDn: halaman",
+	},
+	LangItaliano: {
+		txtMoreTunnelsOne:  "+%d altro",
+		txtMoreTunnelsMany: "+%d altri",
+		txtAutoUpdateOn:    "  Aggiornamento automatico: attivo  (u: cambia)",
+		txtAutoUpdateOff:   "  Aggiornamento automatico: disattivo  (u: cambia)",
+		txtUpdateChecking:  "Ricerca aggiornamenti …",
+		txtUpdateReady:     "Aggiornamento v0.%d scaricato – verrà installato all'uscita",
+		txtUpdateCurrent:   "Il programma è aggiornato",
+		txtUpdateFailed:    "Aggiornamento automatico non riuscito: %s",
+		txtErrGroupName:    "Un nome con «:» richiede testo prima e dopo i due punti (es. Ufficio:Server1)",
+		txtGroupHelp:       "  Invio/→: apri gruppo  ←: chiudi gruppo  PagSu/PagGiù: scorri",
+	},
+	LangJapanese: {
+		txtMoreTunnelsOne:  "+%d 件",
+		txtMoreTunnelsMany: "+%d 件",
+		txtAutoUpdateOn:    "  自動更新: オン  (u: 切り替え)",
+		txtAutoUpdateOff:   "  自動更新: オフ  (u: 切り替え)",
+		txtUpdateChecking:  "更新を確認中 …",
+		txtUpdateReady:     "更新 v0.%d をダウンロードしました – 終了時にインストールされます",
+		txtUpdateCurrent:   "最新バージョンです",
+		txtUpdateFailed:    "自動更新に失敗しました: %s",
+		txtErrGroupName:    "「:」を含む名前は、コロンの前後に文字が必要です（例: 事務所:サーバー1）",
+		txtGroupHelp:       "  Enter/→: グループを開く  ←: グループを閉じる  PgUp/PgDn: ページ送り",
+	},
+	LangKannada: {
+		txtMoreTunnelsOne:  "+%d ಇನ್ನಷ್ಟು",
+		txtMoreTunnelsMany: "+%d ಇನ್ನಷ್ಟು",
+		txtAutoUpdateOn:    "  ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್: ಆನ್  (u: ಬದಲಿಸಿ)",
+		txtAutoUpdateOff:   "  ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್: ಆಫ್  (u: ಬದಲಿಸಿ)",
+		txtUpdateChecking:  "ಅಪ್‌ಡೇಟ್‌ಗಳಿಗಾಗಿ ಹುಡುಕಲಾಗುತ್ತಿದೆ …",
+		txtUpdateReady:     "ಅಪ್‌ಡೇಟ್ v0.%d ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ – ನಿರ್ಗಮಿಸುವಾಗ ಸ್ಥಾಪಿಸಲಾಗುತ್ತದೆ",
+		txtUpdateCurrent:   "ಪ್ರೋಗ್ರಾಂ ಇತ್ತೀಚಿನದು",
+		txtUpdateFailed:    "ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್ ವಿಫಲವಾಗಿದೆ: %s",
+		txtErrGroupName:    "\":\" ಇರುವ ಹೆಸರಿನಲ್ಲಿ ಕೋಲನ್‌ನ ಮೊದಲು ಮತ್ತು ನಂತರ ಪಠ್ಯ ಬೇಕು (ಉದಾ. ಕಚೇರಿ:ಸರ್ವರ್1)",
+		txtGroupHelp:       "  Enter/→: ಗುಂಪು ತೆರೆಯಿರಿ  ←: ಗುಂಪು ಮುಚ್ಚಿ  PgUp/PgDn: ಪುಟ",
+	},
+	LangKorean: {
+		txtMoreTunnelsOne:  "+%d개 더",
+		txtMoreTunnelsMany: "+%d개 더",
+		txtAutoUpdateOn:    "  자동 업데이트: 켜짐  (u: 전환)",
+		txtAutoUpdateOff:   "  자동 업데이트: 꺼짐  (u: 전환)",
+		txtUpdateChecking:  "업데이트 확인 중 …",
+		txtUpdateReady:     "업데이트 v0.%d 다운로드 완료 – 종료 시 설치됩니다",
+		txtUpdateCurrent:   "최신 버전입니다",
+		txtUpdateFailed:    "자동 업데이트 실패: %s",
+		txtErrGroupName:    "\":\"가 포함된 이름은 콜론 앞뒤에 텍스트가 있어야 합니다 (예: 사무실:서버1)",
+		txtGroupHelp:       "  Enter/→: 그룹 열기  ←: 그룹 닫기  PgUp/PgDn: 페이지",
+	},
+	LangMarathi: {
+		txtMoreTunnelsOne:  "+आणखी %d",
+		txtMoreTunnelsMany: "+आणखी %d",
+		txtAutoUpdateOn:    "  स्वयं अपडेट: चालू  (u: बदला)",
+		txtAutoUpdateOff:   "  स्वयं अपडेट: बंद  (u: बदला)",
+		txtUpdateChecking:  "अपडेट शोधत आहे …",
+		txtUpdateReady:     "अपडेट v0.%d डाउनलोड झाले – बाहेर पडताना इंस्टॉल होईल",
+		txtUpdateCurrent:   "प्रोग्राम अद्ययावत आहे",
+		txtUpdateFailed:    "स्वयं अपडेट अयशस्वी: %s",
+		txtErrGroupName:    "\":\" असलेल्या नावात कोलनच्या आधी आणि नंतर मजकूर आवश्यक आहे (उदा. कार्यालय:सर्व्हर1)",
+		txtGroupHelp:       "  Enter/→: गट उघडा  ←: गट बंद करा  PgUp/PgDn: पान",
+	},
+	LangOromo: {
+		txtMoreTunnelsOne:  "+%d dabalataa",
+		txtMoreTunnelsMany: "+%d dabalataa",
+		txtAutoUpdateOn:    "  Haaromsa ofumaan: banaa  (u: jijjiiri)",
+		txtAutoUpdateOff:   "  Haaromsa ofumaan: cufaa  (u: jijjiiri)",
+		txtUpdateChecking:  "Haaromsa barbaadaa jira …",
+		txtUpdateReady:     "Haaromsi v0.%d buufameera – yeroo ba'an ni fe'ama",
+		txtUpdateCurrent:   "Sagantaan kan yeroo ammaa ti",
+		txtUpdateFailed:    "Haaromsi ofumaan hin milkoofne: %s",
+		txtErrGroupName:    "Maqaan \":\" qabu tuqaa lamaa dura fi booda barreeffama barbaada (fkn. Waajjira:Sarvarii1)",
+		txtGroupHelp:       "  Enter/→: garee bani  ←: garee cufi  PgUp/PgDn: fuula",
+	},
+	LangPersian: {
+		txtMoreTunnelsOne:  "+%d مورد دیگر",
+		txtMoreTunnelsMany: "+%d مورد دیگر",
+		txtAutoUpdateOn:    "  به‌روزرسانی خودکار: روشن  (u: تغییر)",
+		txtAutoUpdateOff:   "  به‌روزرسانی خودکار: خاموش  (u: تغییر)",
+		txtUpdateChecking:  "در حال جستجوی به‌روزرسانی …",
+		txtUpdateReady:     "به‌روزرسانی v0.%d دانلود شد – هنگام خروج نصب می‌شود",
+		txtUpdateCurrent:   "برنامه به‌روز است",
+		txtUpdateFailed:    "به‌روزرسانی خودکار ناموفق بود: %s",
+		txtErrGroupName:    "نامی که «:» دارد باید قبل و بعد از دونقطه متن داشته باشد (مثلاً دفتر:سرور1)",
+		txtGroupHelp:       "  Enter/→: باز کردن گروه  ←: بستن گروه  PgUp/PgDn: صفحه",
+	},
+	LangPolish: {
+		txtMoreTunnelsOne:  "+%d inny",
+		txtMoreTunnelsMany: "+%d innych",
+		txtAutoUpdateOn:    "  Automatyczna aktualizacja: wł.  (u: przełącz)",
+		txtAutoUpdateOff:   "  Automatyczna aktualizacja: wył.  (u: przełącz)",
+		txtUpdateChecking:  "Szukanie aktualizacji …",
+		txtUpdateReady:     "Aktualizacja v0.%d pobrana – zostanie zainstalowana przy wyjściu",
+		txtUpdateCurrent:   "Program jest aktualny",
+		txtUpdateFailed:    "Automatyczna aktualizacja nie powiodła się: %s",
+		txtErrGroupName:    "Nazwa z „:” wymaga tekstu przed i po dwukropku (np. Biuro:Serwer1)",
+		txtGroupHelp:       "  Enter/→: otwórz grupę  ←: zamknij grupę  PgUp/PgDn: strona",
+	},
+	LangPortugues: {
+		txtMoreTunnelsOne:  "+%d outro",
+		txtMoreTunnelsMany: "+%d outros",
+		txtAutoUpdateOn:    "  Atualização automática: ligada  (u: alternar)",
+		txtAutoUpdateOff:   "  Atualização automática: desligada  (u: alternar)",
+		txtUpdateChecking:  "Procurando atualizações …",
+		txtUpdateReady:     "Atualização v0.%d baixada – será instalada ao sair",
+		txtUpdateCurrent:   "O programa está atualizado",
+		txtUpdateFailed:    "Falha na atualização automática: %s",
+		txtErrGroupName:    "Um nome com «:» precisa de texto antes e depois dos dois-pontos (ex.: Escritório:Servidor1)",
+		txtGroupHelp:       "  Enter/→: abrir grupo  ←: fechar grupo  PgUp/PgDn: paginar",
+	},
+	LangPunjabi: {
+		txtMoreTunnelsOne:  "+%d ਹੋਰ",
+		txtMoreTunnelsMany: "+%d ਹੋਰ",
+		txtAutoUpdateOn:    "  ਆਟੋ ਅੱਪਡੇਟ: ਚਾਲੂ  (u: ਬਦਲੋ)",
+		txtAutoUpdateOff:   "  ਆਟੋ ਅੱਪਡੇਟ: ਬੰਦ  (u: ਬਦਲੋ)",
+		txtUpdateChecking:  "ਅੱਪਡੇਟ ਲੱਭੇ ਜਾ ਰਹੇ ਹਨ …",
+		txtUpdateReady:     "ਅੱਪਡੇਟ v0.%d ਡਾਊਨਲੋਡ ਹੋ ਗਿਆ – ਬਾਹਰ ਨਿਕਲਣ ਵੇਲੇ ਇੰਸਟਾਲ ਹੋਵੇਗਾ",
+		txtUpdateCurrent:   "ਪ੍ਰੋਗਰਾਮ ਨਵੀਨਤਮ ਹੈ",
+		txtUpdateFailed:    "ਆਟੋ ਅੱਪਡੇਟ ਅਸਫਲ: %s",
+		txtErrGroupName:    "\":\" ਵਾਲੇ ਨਾਮ ਵਿੱਚ ਕੋਲਨ ਤੋਂ ਪਹਿਲਾਂ ਅਤੇ ਬਾਅਦ ਲਿਖਤ ਲਾਜ਼ਮੀ ਹੈ (ਜਿਵੇਂ ਦਫ਼ਤਰ:ਸਰਵਰ1)",
+		txtGroupHelp:       "  Enter/→: ਗਰੁੱਪ ਖੋਲ੍ਹੋ  ←: ਗਰੁੱਪ ਬੰਦ ਕਰੋ  PgUp/PgDn: ਪੰਨਾ",
+	},
+	LangRomanian: {
+		txtMoreTunnelsOne:  "+încă %d",
+		txtMoreTunnelsMany: "+încă %d",
+		txtAutoUpdateOn:    "  Actualizare automată: pornită  (u: comută)",
+		txtAutoUpdateOff:   "  Actualizare automată: oprită  (u: comută)",
+		txtUpdateChecking:  "Se caută actualizări …",
+		txtUpdateReady:     "Actualizarea v0.%d a fost descărcată – se instalează la ieșire",
+		txtUpdateCurrent:   "Programul este la zi",
+		txtUpdateFailed:    "Actualizarea automată a eșuat: %s",
+		txtErrGroupName:    "Un nume cu „:” necesită text înainte și după două puncte (de ex. Birou:Server1)",
+		txtGroupHelp:       "  Enter/→: deschide grupul  ←: închide grupul  PgUp/PgDn: pagină",
+	},
+	LangRussian: {
+		txtMoreTunnelsOne:  "+ещё %d",
+		txtMoreTunnelsMany: "+ещё %d",
+		txtAutoUpdateOn:    "  Автообновление: вкл.  (u: переключить)",
+		txtAutoUpdateOff:   "  Автообновление: выкл.  (u: переключить)",
+		txtUpdateChecking:  "Поиск обновлений …",
+		txtUpdateReady:     "Обновление v0.%d загружено – будет установлено при выходе",
+		txtUpdateCurrent:   "Установлена последняя версия",
+		txtUpdateFailed:    "Ошибка автообновления: %s",
+		txtErrGroupName:    "Имя с «:» должно содержать текст до и после двоеточия (например, Офис:Сервер1)",
+		txtGroupHelp:       "  Enter/→: открыть группу  ←: закрыть группу  PgUp/PgDn: листать",
+	},
+	LangSwahili: {
+		txtMoreTunnelsOne:  "+%d zaidi",
+		txtMoreTunnelsMany: "+%d zaidi",
+		txtAutoUpdateOn:    "  Sasisho otomatiki: imewashwa  (u: badilisha)",
+		txtAutoUpdateOff:   "  Sasisho otomatiki: imezimwa  (u: badilisha)",
+		txtUpdateChecking:  "Inatafuta masasisho …",
+		txtUpdateReady:     "Sasisho v0.%d limepakuliwa – litasakinishwa wakati wa kufunga",
+		txtUpdateCurrent:   "Programu ni ya kisasa",
+		txtUpdateFailed:    "Sasisho otomatiki limeshindwa: %s",
+		txtErrGroupName:    "Jina lenye \":\" linahitaji maandishi kabla na baada ya nukta pacha (mf. Ofisi:Seva1)",
+		txtGroupHelp:       "  Enter/→: fungua kundi  ←: funga kundi  PgUp/PgDn: ukurasa",
+	},
+	LangSwedish: {
+		txtMoreTunnelsOne:  "+%d till",
+		txtMoreTunnelsMany: "+%d till",
+		txtAutoUpdateOn:    "  Automatisk uppdatering: på  (u: växla)",
+		txtAutoUpdateOff:   "  Automatisk uppdatering: av  (u: växla)",
+		txtUpdateChecking:  "Söker efter uppdateringar …",
+		txtUpdateReady:     "Uppdatering v0.%d hämtad – installeras när programmet avslutas",
+		txtUpdateCurrent:   "Programmet är uppdaterat",
+		txtUpdateFailed:    "Automatisk uppdatering misslyckades: %s",
+		txtErrGroupName:    "Ett namn med ”:” behöver text före och efter kolonet (t.ex. Kontor:Server1)",
+		txtGroupHelp:       "  Enter/→: öppna grupp  ←: stäng grupp  PgUp/PgDn: bläddra",
+	},
+	LangTamil: {
+		txtMoreTunnelsOne:  "+மேலும் %d",
+		txtMoreTunnelsMany: "+மேலும் %d",
+		txtAutoUpdateOn:    "  தானியங்கு புதுப்பிப்பு: இயக்கம்  (u: மாற்று)",
+		txtAutoUpdateOff:   "  தானியங்கு புதுப்பிப்பு: நிறுத்தம்  (u: மாற்று)",
+		txtUpdateChecking:  "புதுப்பிப்புகளைத் தேடுகிறது …",
+		txtUpdateReady:     "புதுப்பிப்பு v0.%d பதிவிறக்கப்பட்டது – வெளியேறும்போது நிறுவப்படும்",
+		txtUpdateCurrent:   "நிரல் சமீபத்தியது",
+		txtUpdateFailed:    "தானியங்கு புதுப்பிப்பு தோல்வி: %s",
+		txtErrGroupName:    "\":\" உள்ள பெயரில் முக்காற்புள்ளிக்கு முன்னும் பின்னும் உரை தேவை (எ.கா. அலுவலகம்:சர்வர்1)",
+		txtGroupHelp:       "  Enter/→: குழுவைத் திற  ←: குழுவை மூடு  PgUp/PgDn: பக்கம்",
+	},
+	LangTelugu: {
+		txtMoreTunnelsOne:  "+మరో %d",
+		txtMoreTunnelsMany: "+మరో %d",
+		txtAutoUpdateOn:    "  ఆటో అప్‌డేట్: ఆన్  (u: మార్చు)",
+		txtAutoUpdateOff:   "  ఆటో అప్‌డేట్: ఆఫ్  (u: మార్చు)",
+		txtUpdateChecking:  "అప్‌డేట్‌ల కోసం వెతుకుతోంది …",
+		txtUpdateReady:     "అప్‌డేట్ v0.%d డౌన్‌లోడ్ అయింది – నిష్క్రమించేటప్పుడు ఇన్‌స్టాల్ అవుతుంది",
+		txtUpdateCurrent:   "ప్రోగ్రామ్ తాజాగా ఉంది",
+		txtUpdateFailed:    "ఆటో అప్‌డేట్ విఫలమైంది: %s",
+		txtErrGroupName:    "\":\" ఉన్న పేరులో కోలన్‌కు ముందు, తర్వాత పాఠ్యం ఉండాలి (ఉదా. కార్యాలయం:సర్వర్1)",
+		txtGroupHelp:       "  Enter/→: సమూహం తెరువు  ←: సమూహం మూసివేయి  PgUp/PgDn: పేజీ",
+	},
+	LangThai: {
+		txtMoreTunnelsOne:  "+อีก %d",
+		txtMoreTunnelsMany: "+อีก %d",
+		txtAutoUpdateOn:    "  อัปเดตอัตโนมัติ: เปิด  (u: สลับ)",
+		txtAutoUpdateOff:   "  อัปเดตอัตโนมัติ: ปิด  (u: สลับ)",
+		txtUpdateChecking:  "กำลังตรวจหาอัปเดต …",
+		txtUpdateReady:     "ดาวน์โหลดอัปเดต v0.%d แล้ว – จะติดตั้งเมื่อปิดโปรแกรม",
+		txtUpdateCurrent:   "โปรแกรมเป็นรุ่นล่าสุดแล้ว",
+		txtUpdateFailed:    "อัปเดตอัตโนมัติล้มเหลว: %s",
+		txtErrGroupName:    "ชื่อที่มี \":\" ต้องมีข้อความทั้งก่อนและหลังเครื่องหมายทวิภาค (เช่น สำนักงาน:เซิร์ฟเวอร์1)",
+		txtGroupHelp:       "  Enter/→: เปิดกลุ่ม  ←: ปิดกลุ่ม  PgUp/PgDn: หน้า",
+	},
+	LangTurkish: {
+		txtMoreTunnelsOne:  "+%d tane daha",
+		txtMoreTunnelsMany: "+%d tane daha",
+		txtAutoUpdateOn:    "  Otomatik güncelleme: açık  (u: değiştir)",
+		txtAutoUpdateOff:   "  Otomatik güncelleme: kapalı  (u: değiştir)",
+		txtUpdateChecking:  "Güncellemeler aranıyor …",
+		txtUpdateReady:     "Güncelleme v0.%d indirildi – çıkışta yüklenecek",
+		txtUpdateCurrent:   "Program güncel",
+		txtUpdateFailed:    "Otomatik güncelleme başarısız: %s",
+		txtErrGroupName:    "\":\" içeren bir ad, iki noktanın önünde ve arkasında metin gerektirir (ör. Ofis:Sunucu1)",
+		txtGroupHelp:       "  Enter/→: grubu aç  ←: grubu kapat  PgUp/PgDn: sayfa",
+	},
+	LangUkrainian: {
+		txtMoreTunnelsOne:  "+ще %d",
+		txtMoreTunnelsMany: "+ще %d",
+		txtAutoUpdateOn:    "  Автооновлення: увімк.  (u: перемкнути)",
+		txtAutoUpdateOff:   "  Автооновлення: вимк.  (u: перемкнути)",
+		txtUpdateChecking:  "Пошук оновлень …",
+		txtUpdateReady:     "Оновлення v0.%d завантажено – буде встановлено під час виходу",
+		txtUpdateCurrent:   "Програма актуальна",
+		txtUpdateFailed:    "Помилка автооновлення: %s",
+		txtErrGroupName:    "Ім'я з «:» потребує тексту до і після двокрапки (напр. Офіс:Сервер1)",
+		txtGroupHelp:       "  Enter/→: відкрити групу  ←: закрити групу  PgUp/PgDn: сторінка",
+	},
+	LangUrdu: {
+		txtMoreTunnelsOne:  "+%d مزید",
+		txtMoreTunnelsMany: "+%d مزید",
+		txtAutoUpdateOn:    "  خودکار اپ ڈیٹ: آن  (u: تبدیل کریں)",
+		txtAutoUpdateOff:   "  خودکار اپ ڈیٹ: آف  (u: تبدیل کریں)",
+		txtUpdateChecking:  "اپ ڈیٹس تلاش کی جا رہی ہیں …",
+		txtUpdateReady:     "اپ ڈیٹ v0.%d ڈاؤن لوڈ ہو گئی – بند کرتے وقت انسٹال ہو گی",
+		txtUpdateCurrent:   "پروگرام تازہ ترین ہے",
+		txtUpdateFailed:    "خودکار اپ ڈیٹ ناکام: %s",
+		txtErrGroupName:    "\":\" والے نام میں کولن سے پہلے اور بعد متن ضروری ہے (مثلاً دفتر:سرور1)",
+		txtGroupHelp:       "  Enter/→: گروپ کھولیں  ←: گروپ بند کریں  PgUp/PgDn: صفحہ",
+	},
+	LangVietnamese: {
+		txtMoreTunnelsOne:  "+%d nữa",
+		txtMoreTunnelsMany: "+%d nữa",
+		txtAutoUpdateOn:    "  Tự động cập nhật: bật  (u: chuyển)",
+		txtAutoUpdateOff:   "  Tự động cập nhật: tắt  (u: chuyển)",
+		txtUpdateChecking:  "Đang tìm bản cập nhật …",
+		txtUpdateReady:     "Đã tải bản cập nhật v0.%d – sẽ cài đặt khi thoát",
+		txtUpdateCurrent:   "Chương trình đã là bản mới nhất",
+		txtUpdateFailed:    "Tự động cập nhật thất bại: %s",
+		txtErrGroupName:    "Tên có \":\" cần có chữ trước và sau dấu hai chấm (vd. VănPhòng:MáyChủ1)",
+		txtGroupHelp:       "  Enter/→: mở nhóm  ←: đóng nhóm  PgUp/PgDn: trang",
+	},
+	LangYoruba: {
+		txtMoreTunnelsOne:  "+%d sí i",
+		txtMoreTunnelsMany: "+%d sí i",
+		txtAutoUpdateOn:    "  Ìmúdójúìwọ̀n aládàáṣe: tàn  (u: yípadà)",
+		txtAutoUpdateOff:   "  Ìmúdójúìwọ̀n aládàáṣe: pa  (u: yípadà)",
+		txtUpdateChecking:  "Ń wá àwọn ìmúdójúìwọ̀n …",
+		txtUpdateReady:     "A ti gba ìmúdójúìwọ̀n v0.%d sílẹ̀ – a ó fi sórí ẹ̀rọ nígbà tí o bá jáde",
+		txtUpdateCurrent:   "Ètò náà ti di tuntun",
+		txtUpdateFailed:    "Ìmúdójúìwọ̀n aládàáṣe kùnà: %s",
+		txtErrGroupName:    "Orúkọ tí ó ní \":\" nílò ọ̀rọ̀ ṣáájú àti lẹ́yìn àmì àkọsílẹ̀ méjì (àpẹẹrẹ Ọ́fíìsì:Sáfà1)",
+		txtGroupHelp:       "  Enter/→: ṣí ẹgbẹ́  ←: pa ẹgbẹ́  PgUp/PgDn: ojú-ìwé",
+	},
+}
+
+// extraText liefert einen Zusatztext in der gewünschten Sprache.
+// Fallback-Kette: gewählte Sprache -> Englisch -> Schlüssel selbst.
+//
+// @param lang - Gewählte Sprache
+// @param key - Schlüssel des Textes
+// @return string - Übersetzter Text
+// @date   2026-10-16 10:00
+func extraText(lang Language, key textKey) string {
+	if texts, ok := extraTranslations[lang]; ok {
+		if text, ok := texts[key]; ok {
+			return text
+		}
+	}
+	if text, ok := extraTranslations[LangEnglish][key]; ok {
+		return text
+	}
+	return string(key)
+}
+
+// tr liefert einen Zusatztext in der Sprache des Modells.
+//
+// @param key - Schlüssel des Textes
+// @return string - Übersetzter Text
+// @date   2026-10-16 10:00
+func (m AppModel) tr(key textKey) string {
+	return extraText(m.language, key)
+}

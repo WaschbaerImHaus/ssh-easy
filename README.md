@@ -14,6 +14,13 @@ A simple SSH connection manager with Terminal UI (TUI) for managing and establis
 - SSH keepalive (every 30 seconds)
 - Colored TUI with status display
 - Copy from remote programs: OSC 52 clipboard sequences (e.g. Claude Code, vim, tmux) are written to the local clipboard — also on the Windows console, which does not support OSC 52 itself
+- Groups: a colon in the name groups connections (`Office:Server1`, `Office:NAS` → group *Office*), groups can be expanded and collapsed
+- Scrollable list: more than 15 entries are shown in a scrolling window (`↑ +N` / `↓ +N` show the hidden rows)
+- Fast failure for unreachable hosts: 5-second connect timeout, no repeated waiting per SSH key
+- DNS fallback: if the network's DNS server fails, names are resolved via 1.1.1.1, 1.0.0.1, 8.8.8.8 and 8.8.4.4 (rotating)
+- Optional auto-update from GitHub releases (off by default, toggle with `u`)
+- Remembers the window size (Windows console, unless maximized/fullscreen; Windows Terminal remembers it itself)
+- 41 UI languages
 - Logging to `~/.ssh-easy/ssh-easy.log`
 - Cross-platform: Linux (x86/ARM), Windows (x86/ARM)
 
@@ -57,8 +64,12 @@ Start the program:
 | `x` | Disconnect |
 | `g` | Generate SSH key (Ed25519) |
 | `j/k` or arrow keys | Navigate |
+| `→` / `Enter` on a group | Expand group |
+| `←` | Collapse group (also from a group member) |
+| `PgUp` / `PgDn` / `Home` / `End` | Page through long lists |
+| `u` | Toggle auto-update (shown in the last menu line) |
 | `Tab` | Next form field |
-| `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field (e.g. password) |
+| `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
 | `Esc` | Back / Cancel |
 | `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
@@ -101,6 +112,27 @@ localhost:8080 -> remote:8080
 4. Press `Enter` to generate
 5. The public key is displayed and can be added to `~/.ssh/authorized_keys` on the target server
 
+### Groups
+
+A colon in the connection name is a group separator. `Office:Server1` and `Office:NAS` appear as group **Office** with the entries *Server1* and *NAS*. Only the first colon splits (`Office:Rack:1` → group *Office*, entry *Rack:1*). Text is required before and after the colon. A green dot on a group means at least one member is connected. A newly created connection is selected right away (its group is expanded).
+
+### Tunnel display
+
+The list shows the first two tunnel ports, further ports only as a count: `[Tunnel: 3306,8080 +3 more]`. After connecting, ports whose tunnel could not be opened (e.g. port already in use) are shown in red — in the list and in the status view. Details are in the log file.
+
+### Password prompt
+
+If automatic authentication fails, ssh-easy asks for the password and shows the host and — on the line below — the user name, so you know which password is meant.
+
+### Auto-Update
+
+Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit:
+
+- Linux, or Windows with write access to the program folder: the binary is replaced
+- Windows installed in *Program Files*: the setup runs silently with administrator rights (Windows asks via UAC); the desktop shortcut is kept
+
+Every download is checked against the SHA-256 checksum published by GitHub, its size and its file format — right after the download and again just before installation.
+
 ### Auto-Reconnect
 
 On connection loss, ssh-easy automatically attempts to reconnect (max. 5 attempts, 3 seconds apart).
@@ -116,6 +148,8 @@ Log file:
 
 Passwords are **never** stored and must be entered on each connection attempt.
 
+Further settings in `connections.json`: `language`, `font_size`, `window_cols` / `window_rows` (last window size, Windows only) and `auto_update`.
+
 ## Security
 
 - Passwords are only held in memory at runtime
@@ -126,6 +160,8 @@ Passwords are **never** stored and must be entered on each connection attempt.
 - Configuration file permissions are set to `0600`
 - Atomic config file writes
 - OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
+- Auto-update: downloads only from this repository's GitHub releases, mandatory SHA-256 check (re-checked before installing), size and format check
+- DNS fallback servers are only used when the network's DNS fails; host keys are still verified against known_hosts
 - Shift+Insert paste uses bracketed paste when the remote shell enables it (`ESC[?2004h`): pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded markers are removed, so multi-line clipboard content is not executed line by line
 
 ## Building from Source

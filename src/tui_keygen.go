@@ -22,12 +22,11 @@ import (
 // @date   2026-03-07 21:00
 func (m AppModel) handleKeygenKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Einfügen aus der Zwischenablage ins fokussierte Feld (Strg+V / Shift+Einf)
-	if isPasteShortcut(msg.String()) {
-		if text, ok := readClipboardLine(); ok {
-			var cmd tea.Cmd
-			m.keygenInputs[m.keygenFocused], cmd = m.keygenInputs[m.keygenFocused].Update(makePasteKeyMsg(text))
-			return m, cmd
-		}
+	if isPasteKey(msg) {
+		return m.pasteIntoFocusedInput()
+	}
+	// NUL-Runen (Windows: Einfg ohne Shift, Strg+Plus) nie ins Feld schreiben
+	if isNulKey(msg) {
 		return m, nil
 	}
 

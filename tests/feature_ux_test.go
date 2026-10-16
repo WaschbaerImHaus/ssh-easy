@@ -5,6 +5,7 @@
 //   - Alt+F4-Erkennung im stdin-Forwarder (Programm beenden wie PuTTY)
 //   - Schriftgroessen-Logik (Clamping, i18n-Fallback, Config-Persistierung)
 //   - AppConfig.FontSize JSON-Roundtrip
+//
 // Fenster-Fokus (SetForegroundWindow) und Scroll-Snap (SetConsoleWindowInfo)
 // sind reine Windows-API-Aufrufe ohne testbare Logik auf Linux.
 //

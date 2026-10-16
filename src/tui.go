@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-03-08 00:00
+// @date   2026-10-16 10:00
 package main
 
 import (
@@ -217,6 +217,20 @@ type AppModel struct {
 	lang Translations
 	// Cursor-Position in der Sprachauswahl-Liste
 	langCursor int
+	// Erste sichtbare Zeile der (scrollbaren) Verbindungsliste
+	listOffset int
+	// Aufgeklappte Gruppen der Verbindungsliste (Schlüssel = Kleinbuchstaben)
+	expandedGroups map[string]bool
+	// Auto-Update eingeschaltet? (Config auto_update, Standard: aus)
+	autoUpdate bool
+	// Updater für GitHub-Releases (nil = Auto-Update nicht verfügbar)
+	updater *Updater
+	// Läuft gerade eine Update-Suche?
+	updateChecking bool
+	// Ergebnis der letzten Update-Suche (Anzeige unter dem Schalter)
+	updateStatus string
+	// Laufende Nummer der letzten Fenstergrößen-Änderung (Entprellen)
+	windowSaveSeq int
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -230,10 +244,11 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	cache := NewConfigCache(configPath)
 
 	m := AppModel{
-		sshManager:  sshManager,
-		configCache: cache,
-		configPath:  configPath,
-		buildNumber: buildNumber,
+		sshManager:     sshManager,
+		configCache:    cache,
+		configPath:     configPath,
+		buildNumber:    buildNumber,
+		expandedGroups: make(map[string]bool),
 	}
 
 	// Konfiguration über Cache laden
@@ -247,6 +262,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	} else {
 		m.connections = sortConnectionsByName(cfg.Connections)
 		m.language = cfg.Language
+		m.autoUpdate = cfg.AutoUpdate
 	}
 
 	// Sprache initialisieren
@@ -344,11 +360,15 @@ func createKeygenInputs() []textinput.Model {
 }
 
 // Init ist die Bubbletea-Initialisierungsfunktion.
+// Ist Auto-Update eingeschaltet, startet hier die Update-Suche im Hintergrund.
 //
 // @return tea.Cmd - Initiales Kommando
-// @date   2026-03-07 21:00
+// @date   2026-10-16 10:00
 func (m AppModel) Init() tea.Cmd {
-	return textinput.Blink
+	if m.updateChecking {
+		return tea.Batch(textinput.Blink, windowPollCmd(), m.updateCheckCmd())
+	}
+	return tea.Batch(textinput.Blink, windowPollCmd())
 }
 
 // Update verarbeitet eingehende Nachrichten und aktualisiert das Modell.
@@ -356,7 +376,7 @@ func (m AppModel) Init() tea.Cmd {
 // @param msg - Eingehende Nachricht
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-03-07 21:00
+// @date   2026-10-16 10:00
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -366,7 +386,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Terminalgroeße merken für SSH-PTY-Sessions
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
-		return m, nil
+		m.clampListCursor()
+		// Fenstergröße verzögert speichern (beim Ziehen kommen viele Ereignisse)
+		return m.scheduleWindowSave()
+
+	case windowSaveMsg:
+		return m.handleWindowSave(msg)
+
+	case windowPollMsg:
+		return m.handleWindowPoll()
+
+	case updateResultMsg:
+		return m.handleUpdateResult(msg)
 
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
@@ -470,6 +501,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = ViewKeygenResult
 		m.errorMsg = ""
 		return m, nil
+	}
+
+	// Shift+Einfg aus Unix-Terminals (ESC[2;2~ als unbekannte CSI-Sequenz)
+	if isShiftInsertSequence(msg) {
+		return m.pasteIntoFocusedInput()
 	}
 
 	return m.updateInputs(msg)
@@ -599,4 +635,5 @@ func (m *AppModel) reloadConfig() {
 		return
 	}
 	m.connections = sortConnectionsByName(cfg.Connections)
+	m.clampListCursor()
 }

@@ -6,7 +6,7 @@
 // generiert und auf dem Remote-Server deployed.
 //
 // @author Kurt Ingwer
-// @date   2026-03-08 00:00
+// @date   2026-10-16 10:00
 package main
 
 import (
@@ -17,6 +17,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // handleFormKeys verarbeitet Tasten im Formular (Erstellen/Bearbeiten).
@@ -27,12 +28,11 @@ import (
 // @date   2026-03-07 21:00
 func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Einfügen aus der Zwischenablage ins fokussierte Feld (Strg+V / Shift+Einf)
-	if isPasteShortcut(msg.String()) {
-		if text, ok := readClipboardLine(); ok {
-			var cmd tea.Cmd
-			m.inputs[m.focusedInput], cmd = m.inputs[m.focusedInput].Update(makePasteKeyMsg(text))
-			return m, cmd
-		}
+	if isPasteKey(msg) {
+		return m.pasteIntoFocusedInput()
+	}
+	// NUL-Runen (Windows: Einfg ohne Shift, Strg+Plus) nie ins Feld schreiben
+	if isNulKey(msg) {
 		return m, nil
 	}
 
@@ -68,6 +68,12 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Doppelpunkt = Gruppentrennzeichen: davor und danach muss Text stehen
+		if !validGroupName(conn.Name) {
+			m.errorMsg = m.tr(txtErrGroupName)
+			return m, nil
+		}
+
 		// Doppelte Namen verbieten: Name muss in der Liste eindeutig sein.
 		// Beim Bearbeiten wird die eigene Verbindung (m.activeID) ausgenommen.
 		for _, existing := range m.connections {
@@ -96,6 +102,9 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = ViewList
 		m.successMsg = m.lang.SavedMsg
 		m.errorMsg = ""
+		// Neue bzw. bearbeitete Verbindung in der Liste markieren
+		// (Gruppe wird dafür aufgeklappt, Scroll-Fenster folgt)
+		m.selectConnectionByID(conn.ID)
 		return m, nil
 	}
 
@@ -113,12 +122,11 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // @date   2026-03-08 00:00
 func (m AppModel) handleConnectKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Passwort aus der Zwischenablage einfügen (Strg+V / Shift+Einf)
-	if isPasteShortcut(msg.String()) {
-		if text, ok := readClipboardLine(); ok {
-			var cmd tea.Cmd
-			m.passwordInput, cmd = m.passwordInput.Update(makePasteKeyMsg(text))
-			return m, cmd
-		}
+	if isPasteKey(msg) {
+		return m.pasteIntoFocusedInput()
+	}
+	// NUL-Runen (Windows: Einfg ohne Shift, Strg+Plus) nie ins Feld schreiben
+	if isNulKey(msg) {
 		return m, nil
 	}
 
@@ -216,22 +224,30 @@ func (m AppModel) renderForm(s *strings.Builder, title string) {
 
 // renderConnect rendert die Passwort-Eingabe.
 // Wird angezeigt wenn Auto-Auth (Agent + alle Keys) fehlgeschlagen ist.
+// Zeigt Host und Benutzername, damit klar ist, welches Passwort gefragt ist.
 // Nach erfolgreicher Anmeldung wird automatisch ein SSH-Key generiert
 // und auf dem Server deployed, sodass die nächste Verbindung ohne Passwort klappt.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-03-08 00:00
+// @date   2026-10-16 10:00
 func (m AppModel) renderConnect(s *strings.Builder) {
-	name := ""
+	var conn Connection
 	for _, c := range m.connections {
 		if c.ID == m.activeID {
-			name = c.Name
+			conn = c
 			break
 		}
 	}
 
-	s.WriteString(titleStyle.Render(fmt.Sprintf(m.lang.ConnectingTitle, name)))
+	s.WriteString(titleStyle.Render(fmt.Sprintf(m.lang.ConnectingTitle, conn.Name)))
 	s.WriteString("\n\n")
+	// Host und - in der Zeile darunter - Benutzer anzeigen, damit klar ist,
+	// für welches Konto das Passwort eingegeben werden muss
+	if conn.Host != "" {
+		s.WriteString(formatLabeledLine(m.lang.LabelHost, fmt.Sprintf("%s:%d", conn.Host, conn.Port), m.lang.LabelUser))
+		s.WriteString(formatLabeledLine(m.lang.LabelUser, conn.User, m.lang.LabelHost))
+		s.WriteString("\n")
+	}
 	s.WriteString(m.lang.NoKeyFound + "\n")
 	s.WriteString("  " + m.passwordInput.View())
 	s.WriteString("\n")
@@ -312,4 +328,22 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 
 	conn.UpdatedAt = time.Now().Format(time.RFC3339)
 	return conn, nil
+}
+
+// formatLabeledLine formatiert eine Zeile "  <Beschriftung> <Wert>" und
+// richtet den Wert an der längeren der beiden Beschriftungen aus, damit
+// Host und Benutzer untereinander stehen.
+//
+// @param label - Beschriftung dieser Zeile (z.B. "Host:")
+// @param value - Anzuzeigender Wert
+// @param otherLabel - Beschriftung der Nachbarzeile (für die Ausrichtung)
+// @return string - Formatierte Zeile mit Zeilenumbruch
+// @date   2026-10-16 10:00
+func formatLabeledLine(label, value, otherLabel string) string {
+	width := lipgloss.Width(label)
+	if w := lipgloss.Width(otherLabel); w > width {
+		width = w
+	}
+	padding := strings.Repeat(" ", width-lipgloss.Width(label))
+	return "  " + label + padding + " " + value + "\n"
 }

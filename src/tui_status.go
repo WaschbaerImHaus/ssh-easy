@@ -4,7 +4,7 @@
 // Ermöglicht über 't' das Öffnen einer interaktiven Remote-Shell.
 //
 // @author Kurt Ingwer
-// @date   2026-03-08 00:00
+// @date   2026-10-16 10:00
 package main
 
 import (
@@ -84,7 +84,7 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // renderStatus rendert die Statusanzeige einer aktiven Verbindung.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-03-07 21:00
+// @date   2026-10-16 10:00
 func (m AppModel) renderStatus(s *strings.Builder) {
 	var conn *Connection
 	for i := range m.connections {
@@ -121,26 +121,37 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 		if !t.Enabled {
 			continue
 		}
-		var tunnelStatus string
-		if status != nil {
-			if otherConn, conflict := usedPorts[t.LocalPort]; conflict {
-				// Port wird von einer anderen aktiven Verbindung verwendet –
-				// Konflikt hat Vorrang vor dem raw listen-Fehler
-				tunnelStatus = errorStyle.Render(fmt.Sprintf(m.lang.TunnelPortConflict, otherConn))
-			} else if errMsg, ok := status.TunnelErrors[t.LocalPort]; ok {
-				// Sonstiger Tunnel-Startfehler (kein Konflikt mit bekannter Verbindung)
-				tunnelStatus = errorStyle.Render(m.lang.TunnelErrPrefix + errMsg)
-			} else {
-				tunnelStatus = connectedStyle.Render(m.lang.TunnelActive)
-			}
-		} else {
-			tunnelStatus = connectedStyle.Render(m.lang.TunnelActive)
+		line := fmt.Sprintf("  localhost:%d -> remote:%d", t.LocalPort, t.RemotePort)
+		if tunnelFailed(status, t.LocalPort, usedPorts) {
+			// Nicht verbundener Tunnel: ganze Zeile rot, OHNE Fehlermeldung
+			// dahinter (Details stehen im Log ~/.ssh-easy/ssh-easy.log)
+			info.WriteString(errorStyle.Render(line) + "\n")
+			continue
 		}
-		info.WriteString(fmt.Sprintf("  localhost:%d -> remote:%d  %s\n",
-			t.LocalPort, t.RemotePort, tunnelStatus))
+		info.WriteString(fmt.Sprintf("%s  %s\n", line, connectedStyle.Render(m.lang.TunnelActive)))
 	}
 
 	s.WriteString(infoBoxStyle.Render(info.String()))
 
 	s.WriteString(helpStyle.Render("\n\n" + m.lang.StatusHelp))
+}
+
+// tunnelFailed prüft ob ein Tunnel-Port nicht aufgebaut werden konnte:
+// entweder Startfehler (z.B. Port belegt) oder der Port wird bereits von
+// einer anderen aktiven Verbindung genutzt.
+//
+// @param status - Status der Verbindung (nil = unbekannt, nie fehlgeschlagen)
+// @param port - Lokaler Tunnel-Port
+// @param usedPorts - Von anderen Verbindungen belegte Ports
+// @return bool - true wenn der Tunnel nicht läuft
+// @date   2026-10-16 10:00
+func tunnelFailed(status *ConnectionStatus, port int, usedPorts map[int]string) bool {
+	if status == nil {
+		return false
+	}
+	if _, conflict := usedPorts[port]; conflict {
+		return true
+	}
+	_, failed := status.TunnelErrors[port]
+	return failed
 }

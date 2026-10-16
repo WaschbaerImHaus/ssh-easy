@@ -10,7 +10,7 @@
 ;   makensis /DARCH=arm64 /DVERSION=0.15 /DBUILD=15 ssh-easy-setup.nsi
 ;
 ; @author Kurt Ingwer
-; @date   2026-03-14
+; @date   2026-10-16
 
 ;----------------------------------------------------------------------
 ; Default values (overridden by command-line /D defines)
@@ -104,7 +104,12 @@ Function DesktopIconPage
 
   ${NSD_CreateCheckbox} 10u 30u 100% 14u "Create Desktop shortcut"
   Pop $DesktopIconCheckbox
-  ${NSD_SetState} $DesktopIconCheckbox ${BST_UNCHECKED}
+  ; Vorbelegung: angehakt, wenn bereits eine Verknüpfung existierte (.onInit)
+  ${If} $DesktopIconState == ${BST_CHECKED}
+    ${NSD_SetState} $DesktopIconCheckbox ${BST_CHECKED}
+  ${Else}
+    ${NSD_SetState} $DesktopIconCheckbox ${BST_UNCHECKED}
+  ${EndIf}
 
   nsDialogs::Show
 FunctionEnd
@@ -118,6 +123,13 @@ FunctionEnd
 ;----------------------------------------------------------------------
 
 Function .onInit
+  ; Vorhandene Desktop-Verknüpfung merken, BEVOR der alte Deinstaller sie
+  ; löscht. Wichtig für das stille Auto-Update (/S): Dort wird die Seite mit
+  ; der Checkbox übersprungen - ohne dieses Merken ginge das Icon verloren.
+  ${If} ${FileExists} "$DESKTOP\ssh-easy.lnk"
+    StrCpy $DesktopIconState ${BST_CHECKED}
+  ${EndIf}
+
   ; $R0 = UninstallString aus der Registry (bereits gequotet: "C:\...\Uninstall.exe")
   ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ssh-easy" "UninstallString"
   ${If} $R0 != ""

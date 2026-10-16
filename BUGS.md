@@ -2,9 +2,17 @@
 
 ## Offen
 
-Keine bekannten Bugs.
+- **Taste `g` (SSH-Key erzeugen) ohne Funktion** (gefunden 2026-10-16 bei Build 48): README und Hilfe nennen `g`, die Listenansicht verarbeitet die Taste aber nicht – `ViewKeygen` ist im Code nicht erreichbar. Fundstellen: `src/tui_list.go` (`handleListKeys`, kein `case "g"`), `src/tui_keygen.go`. Entscheidung offen: Taste ergänzen oder Funktion/Doku entfernen (Keys werden inzwischen nach Passwort-Login automatisch erzeugt).
+
+- **Fenster per X schließen während einer SSH-Sitzung** (bekannte Einschränkung, Build 48): Während `tea.Exec` verarbeitet Bubbletea keine Ereignisse; Windows beendet den Prozess nach ca. 5 s. Dann werden weder Fenstergröße/Schriftgröße gespeichert noch ein heruntergeladenes Update installiert (passiert beim nächsten regulären Beenden). Schließen per X in der Liste funktioniert.
 
 ## Behoben
+
+- [Build 48] Erster Tastendruck nach Verlassen des SSH-Terminals wurde verschluckt (z.B. erst das zweite `x` trennte). Ursache: Die stdin-Weiterleitung blieb nach Sitzungsende in einem blockierenden Read hängen und fing die nächste Taste ab (der Fix aus Build 38 – Puffer leeren – konnte das nicht verhindern). Fix: abbrechbare Eingabe (`src/terminal_input*.go`), Stopp der Weiterleitung vor Rückgabe an Bubbletea.
+- [Build 48] Bei verbundenem, ausgewähltem Host war nur der Zeilenanfang mit dem grünen Punkt markiert, der Name blieb schwarz hinterlegt. Ursache: Der separat gerenderte Punkt beendete mit seinem Reset-Code den Auswahl-Hintergrund. Fix: segmentweises Rendern mit gemeinsamem Grundstil.
+- [Build 48] Shift+Einfg fügte unter Windows im Formular/Passwortfeld nichts ein. Ursache: Bubbletea v1 bildet VK_INSERT nicht ab, die Taste kommt als NUL-Rune an – der Vergleich auf "shift+insert" griff nie. Fix: NUL-Rune + echter Shift-Zustand (GetAsyncKeyState).
+- [Build 48] Ausgeschalteter Ziel-PC blockierte das Programm sehr lange. Ursache: Agent und jeder SSH-Key wurden einzeln mit je 10 s Timeout probiert. Fix: 5 s Timeout beim ersten Verbinden, Abbruch beim ersten Netzwerkfehler.
+- [Build 48] Mehrere Meldungen (u.a. „This name is already in use“, „Key removed · Connection closed“, „No SSH key configured“) waren in allen Sprachen englisch, die Schriftgrößen-Meldungen fehlten in 38 Sprachen. Fix: vollständig übersetzt, neuer Vollständigkeitstest.
 
 - [Build 47] Einfügen per Shift+Einfg ignorierte den Bracketed-Paste-Modus der Remote-Shell: Mehrzeiliger Text wurde Zeile für Zeile sofort ausgeführt. Fix: Modus wird aus der Session-Ausgabe erkannt, eingefügter Text eingeschlossen und von eingebetteten Markern befreit (siehe SECURITY_FIXED.md).
 - [Build 46] Hauptmenü zeigte in installierten Versionen „ssh-easy vdev“ statt des Builds. Ursache: `readBuildNumber()` las `build.txt` zur Laufzeit neben der EXE bzw. unter `../src/` – die Setups liefern diese Datei nicht mit. Fix: `build.txt` wird per `go:embed` in die Binary eingebaut; Titel jetzt „ssh-easy v0.46 (Build 46)“.
