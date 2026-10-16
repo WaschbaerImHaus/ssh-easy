@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.49] – Build 49
+- **Security** DNS fallback hardening (automated security review of Build 48): local-only names (no dot, `.local`, `.lan`, `.internal`, `.home.arpa`, `.fritz.box`, …) are never sent to public DNS servers. If an address came from the public fallback DNS and the host key is still unknown, it is no longer trusted automatically (no trust-on-first-use) — ssh-easy explains that you should connect once via the local network or by IP. Known hosts are unaffected and still protected by known_hosts
+- **Security** Windows auto-update via setup: every setup is downloaded into its own freshly created, owner-only subfolder; right before the elevated start ssh-easy verifies that nothing but the setup is in that folder (protection against DLL planting next to an elevated installer)
+- **Added** 9 new tests (279 total, all green)
+
 ## [v0.48] – Build 48
 - **Added** connection groups: a colon in the name is a group separator (`Office:Server1`, `Office:NAS` → expandable group *Office*). Only the first colon splits; names need text before and after the colon. A group shows a green dot when any member is connected
 - **Added** scrollable connection list: at most 15 rows are visible (fewer in small windows), `↑ +N` / `↓ +N` show hidden rows; PgUp/PgDn/Home/End page through long lists

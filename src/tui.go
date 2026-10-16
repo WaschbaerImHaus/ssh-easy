@@ -481,6 +481,11 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case sshErrorMsg:
 		m.errorMsg = m.lang.ConnErrPrefix + msg.err.Error()
+		// Unbekannter Host über öffentlichen Fallback-DNS: verständlich erklären
+		var untrusted *untrustedHostError
+		if errors.As(msg.err, &untrusted) {
+			m.errorMsg = fmt.Sprintf(m.tr(txtErrUntrustedHost), untrusted.Hostname)
+		}
 		// Bei Passwort-Fehler: in ViewConnect bleiben statt zur Liste zurück
 		if msg.returnToConnect {
 			m.state = ViewConnect

@@ -75,7 +75,12 @@ Windows zeigt die Benutzerkontensteuerung beim Setup „Unbekannter Herausgeber�
 veröffentlichen, die alle Auto-Update-Nutzer installieren (unter Windows mit
 Adminrechten). Token mit minimalen Rechten und kurzer Laufzeit verwenden.
 
-**Maßnahme:** Optional später: Releases signieren und Schlüssel einbetten (OPTIMIZE.md).
+Restrisiko Windows-Setup: Der Setup-Ordner gehört dem Benutzer. Schadsoftware
+mit Benutzerrechten könnte im Bruchteil einer Sekunde zwischen Ordnerprüfung
+und Start eine DLL ablegen; NSIS 3 lädt System-DLLs jedoch nur aus System32.
+
+**Maßnahme:** Optional später: Releases signieren (Authenticode bzw. minisign)
+und Signatur vor dem Start prüfen (OPTIMIZE.md).
 
 ### DNS-Fallback über öffentliche Server (akzeptiertes Risiko)
 
@@ -87,8 +92,10 @@ Hostnamen-Anfragen unverschlüsselt an 1.1.1.1/1.0.0.1/8.8.8.8/8.8.4.4
 (Datenschutz: die Betreiber sehen den Namen). Meldet der Netz-DNS „Name
 unbekannt“ (NXDOMAIN), wird NICHT weitergefragt. Fällt der interne DNS aus,
 kann ein interner Name öffentlich anders aufgelöst werden. Bekannte Hosts schützt known_hosts (abweichender Host-Key →
-MITM-Warnung); bei einem noch nie verbundenen Host gilt wie bisher
-Trust-on-first-use.
+MITM-Warnung). Seit Build 49 wird einem noch unbekannten Host-Key nicht
+automatisch vertraut, wenn die Adresse vom Fallback stammt; interne Namen
+gehen nie an öffentliche Server. Die Anfrage selbst bleibt unverschlüsselt
+(kein DoH/DoT).
 
 **Maßnahme:** Akzeptiert (vom Nutzer gewünschte Funktion). Für interne Server
 IP-Adressen oder einen funktionierenden lokalen DNS verwenden.

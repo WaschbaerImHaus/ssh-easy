@@ -161,7 +161,7 @@ Further settings in `connections.json`: `language`, `font_size`, `window_cols` /
 - Atomic config file writes
 - OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
 - Auto-update: downloads only from this repository's GitHub releases, mandatory SHA-256 check (re-checked before installing), size and format check
-- DNS fallback servers are only used when the network's DNS fails; host keys are still verified against known_hosts
+- DNS fallback servers are only used when the network's DNS does not answer and never for local names (`.local`, `.lan`, names without a dot, …); an unknown host key reached via fallback DNS is not trusted automatically
 - Shift+Insert paste uses bracketed paste when the remote shell enables it (`ESC[?2004h`): pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded markers are removed, so multi-line clipboard content is not executed line by line
 
 ## Building from Source

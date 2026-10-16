@@ -68,7 +68,7 @@ func TestFallbackDNSServerList(t *testing.T) {
 func TestResolveIPLiteralSkipsDNS(t *testing.T) {
 	r, calls := fakeResolver(errors.New("kaputt"))
 	for _, ip := range []string{"192.168.1.10", "::1", "[fe80::1]"} {
-		got, err := r.resolve(context.Background(), ip)
+		got, _, err := r.resolve(context.Background(), ip)
 		if err != nil || len(got) != 1 {
 			t.Errorf("resolve(%q) = %v, %v", ip, got, err)
 		}
@@ -81,7 +81,7 @@ func TestResolveIPLiteralSkipsDNS(t *testing.T) {
 // TestResolveSystemDNSFirst prüft dass ohne Fehler kein Fallback genutzt wird.
 func TestResolveSystemDNSFirst(t *testing.T) {
 	r, calls := fakeResolver(nil)
-	got, err := r.resolve(context.Background(), "server.local")
+	got, _, err := r.resolve(context.Background(), "server.local")
 	if err != nil || len(got) != 1 || got[0] != "10.1.1.1" {
 		t.Fatalf("resolve = %v, %v", got, err)
 	}
@@ -95,7 +95,7 @@ func TestResolveSystemDNSFirst(t *testing.T) {
 func TestResolveRotatesFallbackServers(t *testing.T) {
 	r, calls := fakeResolver(errors.New("system-dns tot"), "8.8.8.8")
 
-	got, err := r.resolve(context.Background(), "example.org")
+	got, _, err := r.resolve(context.Background(), "example.org")
 	if err != nil || got[0] != "10.2.2.2" {
 		t.Fatalf("resolve = %v, %v", got, err)
 	}
@@ -104,7 +104,7 @@ func TestResolveRotatesFallbackServers(t *testing.T) {
 	}
 
 	*calls = nil
-	if _, err := r.resolve(context.Background(), "example.org"); err != nil {
+	if _, _, err := r.resolve(context.Background(), "example.org"); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(*calls, ",") != "system,8.8.8.8" {
@@ -116,7 +116,7 @@ func TestResolveRotatesFallbackServers(t *testing.T) {
 func TestResolveRotationWrapsAround(t *testing.T) {
 	r, calls := fakeResolver(errors.New("tot"), "1.0.0.1")
 	r.next = 3 // zuletzt erfolgreich: 8.8.4.4
-	if _, err := r.resolve(context.Background(), "x.org"); err != nil {
+	if _, _, err := r.resolve(context.Background(), "x.org"); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Join(*calls, ",") != "system,8.8.4.4,1.1.1.1,1.0.0.1" {
@@ -131,7 +131,7 @@ func TestResolveRotationWrapsAround(t *testing.T) {
 // wird und als Netzwerkfehler erkennbar ist.
 func TestResolveAllFail(t *testing.T) {
 	r, calls := fakeResolver(errors.New("lookup x.org: no such host"))
-	_, err := r.resolve(context.Background(), "x.org")
+	_, _, err := r.resolve(context.Background(), "x.org")
 	if err == nil {
 		t.Fatal("Fehler erwartet")
 	}
@@ -150,8 +150,8 @@ func TestResolveAllFail(t *testing.T) {
 // Netzwerks funktioniert, kennt den Namen aber nicht) KEINE öffentlichen
 // Server gefragt werden: Datenschutz und kein Umweg bei Split-Horizon-DNS.
 func TestResolveNotFoundSkipsFallback(t *testing.T) {
-	r, calls := fakeResolver(&net.DNSError{Err: "no such host", Name: "intern.lan", IsNotFound: true}, "1.1.1.1")
-	_, err := r.resolve(context.Background(), "intern.lan")
+	r, calls := fakeResolver(&net.DNSError{Err: "no such host", Name: "unbekannt.example.com", IsNotFound: true}, "1.1.1.1")
+	_, _, err := r.resolve(context.Background(), "unbekannt.example.com")
 	if err == nil || !IsNetworkError(err) {
 		t.Fatalf("erwartet Netzwerkfehler, bekommen %v", err)
 	}
@@ -164,7 +164,7 @@ func TestResolveNotFoundSkipsFallback(t *testing.T) {
 // antwortet nicht) den Fallback auslöst.
 func TestResolveTimeoutUsesFallback(t *testing.T) {
 	r, _ := fakeResolver(&net.DNSError{Err: "i/o timeout", Name: "x.org", IsTimeout: true}, "1.1.1.1")
-	got, err := r.resolve(context.Background(), "x.org")
+	got, _, err := r.resolve(context.Background(), "x.org")
 	if err != nil || got[0] != "10.2.2.2" {
 		t.Errorf("Timeout muss Fallback nutzen: %v, %v", got, err)
 	}
@@ -182,7 +182,7 @@ func TestDNSTimeoutsBounded(t *testing.T) {
 // TestResolveEmptyHost prüft die Fehlermeldung bei leerem Host.
 func TestResolveEmptyHost(t *testing.T) {
 	r, _ := fakeResolver(nil)
-	if _, err := r.resolve(context.Background(), ""); err == nil {
+	if _, _, err := r.resolve(context.Background(), ""); err == nil {
 		t.Error("leerer Host muss fehlschlagen")
 	}
 }
@@ -206,7 +206,7 @@ func TestDialResolvedPrefersIPv4AndFallsBack(t *testing.T) {
 		}
 		return nil, errors.New("connection refused")
 	}
-	conn, err := dialResolved(context.Background(), r, dial, "host.example", 22, time.Second)
+	conn, _, err := dialResolved(context.Background(), r, dial, "host.example", 22, time.Second)
 	if err != nil {
 		t.Fatalf("dialResolved: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestDialResolvedWrapsNetworkError(t *testing.T) {
 	dial := func(ctx context.Context, network, addr string) (net.Conn, error) {
 		return nil, errors.New("exotischer fehler")
 	}
-	_, err := dialResolved(context.Background(), r, dial, "10.9.9.9", 22, time.Second)
+	_, _, err := dialResolved(context.Background(), r, dial, "10.9.9.9", 22, time.Second)
 	if err == nil || !IsNetworkError(err) {
 		t.Errorf("Fehler muss als Netzwerkfehler erkennbar sein: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestDialResolvedUsesTimeout(t *testing.T) {
 		remaining = time.Until(deadline)
 		return nil, os.ErrDeadlineExceeded
 	}
-	_, _ = dialResolved(context.Background(), r, dial, "10.9.9.9", 22, InitialConnectTimeout)
+	_, _, _ = dialResolved(context.Background(), r, dial, "10.9.9.9", 22, InitialConnectTimeout)
 	if remaining > InitialConnectTimeout || remaining < InitialConnectTimeout-time.Second {
 		t.Errorf("Frist = %v, erwartet ca. %v", remaining, InitialConnectTimeout)
 	}
@@ -382,5 +382,50 @@ func TestConnectAutoWithoutKeysReachableAsksPassword(t *testing.T) {
 	_, err := m.ConnectAuto(conn)
 	if err == nil || IsNetworkError(err) {
 		t.Errorf("erreichbarer Host ohne Schlüssel: erwartet Nicht-Netzwerkfehler (-> Passwortabfrage), bekommen %v", err)
+	}
+}
+
+// TestIsInternalHostName prüft die Erkennung interner Namen, die nie an
+// öffentliche DNS-Server gehen dürfen (Sicherheitsreview Build 48).
+func TestIsInternalHostName(t *testing.T) {
+	internal := []string{"nas", "PC-BUERO", "drucker.local", "srv.lan", "a.b.internal", "x.home.arpa", "fritz.box", "nas.fritz.box", "host.localdomain", "srv.intranet", "srv.corp", "srv.home", "router.lan."}
+	for _, h := range internal {
+		if !isInternalHostName(h) {
+			t.Errorf("isInternalHostName(%q) = false, erwartet true", h)
+		}
+	}
+	public := []string{"example.org", "github.com", "server.example.de", "local.example.com", "lan.example.net"}
+	for _, h := range public {
+		if isInternalHostName(h) {
+			t.Errorf("isInternalHostName(%q) = true, erwartet false", h)
+		}
+	}
+}
+
+// TestResolveInternalNameSkipsFallback prüft dass interne Namen auch bei
+// ausgefallenem Netz-DNS nicht an öffentliche Server gehen.
+func TestResolveInternalNameSkipsFallback(t *testing.T) {
+	r, calls := fakeResolver(&net.DNSError{Err: "i/o timeout", Name: "nas.lan", IsTimeout: true}, "1.1.1.1")
+	if _, _, err := r.resolve(context.Background(), "nas.lan"); err == nil {
+		t.Error("Fehler erwartet")
+	}
+	if strings.Join(*calls, ",") != "system" {
+		t.Errorf("interner Name ging an öffentliche Server: %v", *calls)
+	}
+}
+
+// TestResolveReportsFallbackUsage prüft die Kennzeichnung "über Fallback
+// aufgelöst" - davon hängt ab, ob unbekannte Host-Keys vertraut werden.
+func TestResolveReportsFallbackUsage(t *testing.T) {
+	r, _ := fakeResolver(nil)
+	if _, via, _ := r.resolve(context.Background(), "a.example.org"); via {
+		t.Error("System-DNS darf nicht als Fallback gelten")
+	}
+	if _, via, _ := r.resolve(context.Background(), "10.0.0.1"); via {
+		t.Error("IP-Adresse darf nicht als Fallback gelten")
+	}
+	r, _ = fakeResolver(errors.New("tot"), "1.0.0.1")
+	if _, via, err := r.resolve(context.Background(), "a.example.org"); err != nil || !via {
+		t.Errorf("Fallback-Auflösung nicht gekennzeichnet (via=%v, err=%v)", via, err)
 	}
 }

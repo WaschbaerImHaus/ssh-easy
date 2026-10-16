@@ -148,5 +148,5 @@ Weitere Einstellungen in `connections.json`: `language`, `font_size`, `window_co
 - Atomares Schreiben der Konfiguration
 - OSC-52-Zwischenablage: Remote-Programme duerfen nur **schreiben** (max. 1 MiB); Leseanfragen werden nie beantwortet
 - Auto-Update: lädt nur aus den GitHub-Releases dieses Repositorys, SHA-256-Prüfung ist Pflicht (vor der Installation erneut), dazu Größen- und Formatprüfung
-- Die DNS-Fallback-Server werden nur genutzt, wenn der DNS des Netzwerks versagt; Host-Keys werden weiterhin gegen known_hosts geprüft
+- Die DNS-Fallback-Server werden nur genutzt, wenn der DNS des Netzwerks nicht antwortet, und nie für lokale Namen (`.local`, `.lan`, Namen ohne Punkt …); einem unbekannten Host-Key, der über den Fallback-DNS erreicht wurde, wird nicht automatisch vertraut
 - Einfügen per Shift+Einfg nutzt Bracketed Paste, sobald die Remote-Shell es aktiviert (`ESC[?2004h`): Der Text wird in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker werden entfernt – mehrzeiliger Inhalt wird nicht Zeile für Zeile sofort ausgeführt

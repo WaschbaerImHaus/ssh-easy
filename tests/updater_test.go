@@ -327,7 +327,7 @@ func TestCheckAndDownloadWindowsSetupFallback(t *testing.T) {
 	if pending.kind != updateRunSetup {
 		t.Errorf("kind = %v, erwartet updateRunSetup", pending.kind)
 	}
-	if filepath.Dir(pending.path) != u.downloadDir || !strings.HasSuffix(pending.path, "ssh-easy-setup-amd64.exe") {
+	if filepath.Dir(filepath.Dir(pending.path)) != u.downloadDir || !strings.HasSuffix(pending.path, "ssh-easy-setup-amd64.exe") {
 		t.Errorf("Setup-Pfad = %s", pending.path)
 	}
 }
@@ -584,5 +584,59 @@ func TestDownloadReplacesPlantedSymlink(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(victim); string(data) != "unverändert" {
 		t.Errorf("Symlink-Ziel wurde überschrieben: %q", data)
+	}
+}
+
+// TestSetupDownloadGetsFreshDirectory prüft dass jedes Setup in einem frisch
+// angelegten, leeren Unterordner landet (Schutz vor DLL-Hijacking: das Setup
+// läuft mit Adminrechten und dürfte keine untergeschobenen DLLs finden).
+func TestSetupDownloadGetsFreshDirectory(t *testing.T) {
+	pe := append([]byte("MZ"), []byte("setup-49")...)
+	srv := startReleaseServer(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy-setup-amd64.exe", content: pe})
+	u, _ := newTestUpdater(t, srv, "47", "windows")
+	u.canWriteDir = func(string) bool { return false }
+	_ = os.MkdirAll(u.downloadDir, 0o700)
+	_ = os.WriteFile(filepath.Join(u.downloadDir, "version.dll"), []byte("boese"), 0o600)
+
+	pending, err := u.CheckAndDownload(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Dir(pending.path)
+	if dir == u.downloadDir || filepath.Dir(dir) != u.downloadDir {
+		t.Fatalf("Setup liegt nicht in eigenem Unterordner: %s", pending.path)
+	}
+	entries, _ := os.ReadDir(dir)
+	if len(entries) != 1 {
+		t.Errorf("Setup-Ordner enthält weitere Dateien: %v", entries)
+	}
+}
+
+// TestCheckSetupDirectoryClean prüft die Kontrolle vor dem Start.
+func TestCheckSetupDirectoryClean(t *testing.T) {
+	dir := t.TempDir()
+	setup := filepath.Join(dir, "ssh-easy-setup-amd64.exe")
+	_ = os.WriteFile(setup, []byte("MZ"), 0o600)
+	if err := checkSetupDirectoryClean(setup); err != nil {
+		t.Errorf("sauberer Ordner abgelehnt: %v", err)
+	}
+	_ = os.WriteFile(filepath.Join(dir, "version.dll"), []byte("boese"), 0o600)
+	if err := checkSetupDirectoryClean(setup); err == nil {
+		t.Error("untergeschobene DLL im Setup-Ordner nicht erkannt")
+	}
+}
+
+// TestCleanupRemovesSetupDirectories prüft das Aufräumen der Unterordner.
+func TestCleanupRemovesSetupDirectories(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "ssh-easy.exe")
+	_ = os.WriteFile(exe, []byte("x"), 0o755)
+	downloadDir := filepath.Join(dir, "update")
+	sub := filepath.Join(downloadDir, "setup-123")
+	_ = os.MkdirAll(sub, 0o700)
+	_ = os.WriteFile(filepath.Join(sub, "ssh-easy-setup-amd64.exe"), []byte("MZ"), 0o600)
+	cleanupUpdateLeftovers(exe, downloadDir)
+	if _, err := os.Stat(sub); !os.IsNotExist(err) {
+		t.Error("Setup-Unterordner wurde nicht aufgeräumt")
 	}
 }

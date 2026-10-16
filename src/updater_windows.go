@@ -52,6 +52,10 @@ func runVerifiedSetupInstaller(path, sha256 string) error {
 	if err := verifyReaderSHA256(locked, sha256); err != nil {
 		return err
 	}
+	// Im Ordner darf nur das Setup liegen (keine untergeschobenen DLLs)
+	if err := checkSetupDirectoryClean(path); err != nil {
+		return err
+	}
 
 	verb, err := windows.UTF16PtrFromString("runas")
 	if err != nil {

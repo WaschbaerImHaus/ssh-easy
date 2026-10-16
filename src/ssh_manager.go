@@ -247,7 +247,7 @@ func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *Con
 	// Dann wenigstens die Erreichbarkeit prüfen - sonst würde bei einem
 	// ausgeschalteten Ziel-PC erst nach der Passworteingabe ein Fehler kommen.
 	if !attempted {
-		probe, err := dialResolved(context.Background(), m.resolver, m.dialTCP, conn.Host, conn.Port, InitialConnectTimeout)
+		probe, _, err := dialResolved(context.Background(), m.resolver, m.dialTCP, conn.Host, conn.Port, InitialConnectTimeout)
 		if err != nil {
 			m.logger.Info("%s nicht erreichbar: %v", conn.Name, err)
 			return nil, nil, "", err
@@ -451,19 +451,22 @@ func (m *SSHManager) Connect(conn Connection, password string) (*ConnectionStatu
 // @return error - Fehler beim Verbinden (Netzwerkfehler als *networkError)
 // @date   2026-10-16 10:00
 func (m *SSHManager) dialSSH(conn Connection, methods []ssh.AuthMethod, timeout time.Duration) (context.Context, *ConnectionStatus, error) {
-	hostKeyCallback, err := m.getHostKeyCallback()
-	if err != nil {
-		return nil, nil, fmt.Errorf("HostKey-Prüfung fehlgeschlagen: %w", err)
+	// Konfiguration erst nach der Namensauflösung bauen: Stammt die Adresse
+	// vom öffentlichen Fallback-DNS, wird keinem unbekannten Host-Key vertraut
+	newConfig := func(viaFallback bool) (*ssh.ClientConfig, error) {
+		hostKeyCallback, err := m.getHostKeyCallback(!viaFallback)
+		if err != nil {
+			return nil, fmt.Errorf("HostKey-Prüfung fehlgeschlagen: %w", err)
+		}
+		return &ssh.ClientConfig{
+			User:            conn.User,
+			Auth:            methods,
+			HostKeyCallback: hostKeyCallback,
+			Timeout:         timeout,
+		}, nil
 	}
 
-	config := &ssh.ClientConfig{
-		User:            conn.User,
-		Auth:            methods,
-		HostKeyCallback: hostKeyCallback,
-		Timeout:         timeout,
-	}
-
-	client, err := dialSSHClient(m.resolver, m.dialTCP, conn.Host, conn.Port, timeout, config)
+	client, err := dialSSHClient(m.resolver, m.dialTCP, conn.Host, conn.Port, timeout, newConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -857,13 +860,15 @@ func (m *SSHManager) getAgentAuth() (ssh.AuthMethod, error) {
 }
 
 // getHostKeyCallback erstellt einen HostKey-Callback.
-// known_hosts MUSS existieren. Neue Hosts werden automatisch hinzugefügt,
-// aber geänderte Keys werden abgelehnt (MITM-Schutz).
+// known_hosts MUSS existieren. Neue Hosts werden automatisch hinzugefügt
+// (nur wenn allowNewHosts), geänderte Keys werden abgelehnt (MITM-Schutz).
 //
+// @param allowNewHosts - false wenn die Adresse vom öffentlichen Fallback-
+//   DNS stammt: dann wird ein unbekannter Key abgelehnt (untrustedHostError)
 // @return ssh.HostKeyCallback - Callback-Funktion
 // @return error - Fehler wenn known_hosts nicht verfügbar
-// @date   2026-03-15 00:00
-func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
+// @date   2026-10-16 11:00
+func (m *SSHManager) getHostKeyCallback(allowNewHosts bool) (ssh.HostKeyCallback, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("Home-Verzeichnis nicht ermittelbar: %w", err)
@@ -900,6 +905,12 @@ func (m *SSHManager) getHostKeyCallback() (ssh.HostKeyCallback, error) {
 		if err != nil {
 			knownHostsErr, ok := err.(*knownhosts.KeyError)
 			if ok && len(knownHostsErr.Want) == 0 {
+				// Neuer Host über öffentlichen Fallback-DNS: Adresse könnte
+				// gefälscht sein -> nicht automatisch vertrauen
+				if !allowNewHosts {
+					m.logger.Warn("Unbekannter Host-Key für %s über Fallback-DNS - abgelehnt", hostname)
+					return &untrustedHostError{Hostname: hostname}
+				}
 				// Neuer Host - Key speichern
 				m.logger.Info("Neuer Host-Key gespeichert für %s", hostname)
 				return appendKnownHost(knownHostsPath, hostname, key)

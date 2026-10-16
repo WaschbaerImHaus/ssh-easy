@@ -154,7 +154,9 @@ func NewUpdater(currentBuild string) *Updater {
 		if err != nil {
 			return nil, err
 		}
-		return dialResolved(ctx, resolver, defaultTCPDial, host, port, 15*time.Second)
+		// TLS prüft das Zertifikat - eine Fallback-Adresse ist hier unkritisch
+		conn, _, err := dialResolved(ctx, resolver, defaultTCPDial, host, port, 15*time.Second)
+		return conn, err
 	}
 
 	return &Updater{
@@ -340,9 +342,24 @@ func (u *Updater) CheckAndDownload(ctx context.Context) (*pendingUpdate, error) 
 			info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
 			return nil, fmt.Errorf("Update-Verzeichnis %s ist kein normaler Ordner", u.downloadDir)
 		}
-		target = filepath.Join(u.downloadDir, assetName)
+		// Eigener, frisch angelegter (leerer) Unterordner pro Setup: Ein mit
+		// Adminrechten gestartetes Setup darf neben sich keine untergeschobenen
+		// DLLs finden (DLL-Hijacking). Vor dem Start wird erneut geprüft.
+		setupDir, err := os.MkdirTemp(u.downloadDir, "setup-")
+		if err != nil {
+			return nil, fmt.Errorf("Update-Verzeichnis: %w", err)
+		}
+		// Unix: MkdirTemp legt bereits 0700 an. Windows: DACL nur für den
+		// Besitzer (0700 wirkt dort nicht)
+		if runtime.GOOS == "windows" {
+			_ = restrictFilePermissions(setupDir)
+		}
+		target = filepath.Join(setupDir, assetName)
 	}
 	if err := u.downloadAsset(ctx, *asset, target); err != nil {
+		if kind == updateRunSetup {
+			_ = os.Remove(filepath.Dir(target))
+		}
 		return nil, err
 	}
 
@@ -596,10 +613,41 @@ func cleanupUpdateLeftovers(exePath, downloadDir string) {
 		return
 	}
 	for _, e := range entries {
-		if e.Type().IsRegular() && strings.HasPrefix(e.Name(), "ssh-easy-setup-") {
-			_ = os.Remove(filepath.Join(downloadDir, e.Name()))
+		path := filepath.Join(downloadDir, e.Name())
+		switch {
+		case e.Type().IsRegular() && strings.HasPrefix(e.Name(), "ssh-easy-setup-"):
+			// Altes Ablageformat (Setup direkt im Update-Ordner)
+			_ = os.Remove(path)
+		case e.IsDir() && strings.HasPrefix(e.Name(), "setup-"):
+			// Unterordner eines früheren Setups (seit Build 49)
+			_ = os.RemoveAll(path)
 		}
 	}
+}
+
+// checkSetupDirectoryClean prüft vor dem Start des Setups, dass in seinem
+// Ordner NUR das Setup selbst liegt - keine untergeschobenen DLLs oder
+// anderen Dateien (Schutz vor DLL-Hijacking beim Start mit Adminrechten).
+//
+// @param setupPath - Pfad des Setups
+// @return error - Fehler wenn weitere Einträge im Ordner liegen
+// @date   2026-10-16 11:00
+func checkSetupDirectoryClean(setupPath string) error {
+	dir := filepath.Dir(setupPath)
+	if info, err := os.Lstat(dir); err != nil || !info.IsDir() ||
+		info.Mode()&(os.ModeSymlink|os.ModeIrregular) != 0 {
+		return fmt.Errorf("Setup-Ordner %s ist kein normaler Ordner", dir)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("Setup-Ordner: %w", err)
+	}
+	for _, e := range entries {
+		if e.Name() != filepath.Base(setupPath) {
+			return fmt.Errorf("unerwartete Datei %q im Setup-Ordner - Installation abgebrochen", e.Name())
+		}
+	}
+	return nil
 }
 
 // --- TUI-Anbindung ---
