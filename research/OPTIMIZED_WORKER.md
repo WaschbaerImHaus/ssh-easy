@@ -49,3 +49,15 @@ Unterstuetzung und Keepalive. Die TUI ist modular in Views aufgeteilt.
 - Neue UI-Texte nur über Schlüssel in i18n_extra.go und sofort in alle 41 Sprachen; Stop-Hook prüft das.
 - Für jedes Feature: Test zuerst, danach Gegenprobe (Fix zurücknehmen → Test muss rot werden).
 - Nach Implementierung echten TUI-Lauf in tmux mit temporärem HOME (capture-pane) – findet UX-Lücken, die Unit-Tests nicht sehen.
+
+## Stand 2026-10-17 (Build 51)
+
+### Gelernt
+- Eine Prüfsumme aus derselben Quelle wie die Datei (GitHub-API) schützt nur gegen Übertragungsfehler, nicht gegen ein kompromittiertes Konto. Vertrauensanker muss außerhalb von GitHub liegen: eingebetteter Ed25519-Schlüssel, privater Schlüssel nur auf dem Build-Rechner.
+- Signierte Listen immer an das Release binden (Kopfzeile mit Tag) und mit Kontext-Präfix signieren – sonst lassen sich alte, echte Listen wiederverwenden.
+- Scanner-Funde zu „Zero-Width Characters“ in Übersetzungen sind bei indischen Schriften/Persisch fast immer ZWNJ (U+200C) und legitim. Statt sie zu entfernen (bricht die Schreibweise): Test, der Bidi/ZWSP/BOM verbietet und ZWNJ/ZWJ auf Übersetzungstexte begrenzt.
+- `git checkout -- <datei>` beim Zurücknehmen einer Mutationsprobe verwirft ALLE uncommitteten Änderungen der Datei. Für Mutationsproben vorher eine Sicherung im Scratchpad anlegen und daraus zurückkopieren.
+- Export-Dateien: O_EXCL + 0600 (kein Überschreiben, kein Symlink-Folgen), relative Pfade gegen den Home-Ordner auflösen (unter Windows ist das Arbeitsverzeichnis oft der Programme-Ordner).
+
+### Arbeitsweise
+- Bei Scanner-Berichten zuerst die Zeichen/Code-Stellen selbst prüfen, dann über triage_cli.py pro Befund (nicht per globaler Regel) bewerten.

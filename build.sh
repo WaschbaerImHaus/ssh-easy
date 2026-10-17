@@ -92,6 +92,31 @@ else
     echo ">>> NSIS not found – installer skipped (apt-get install nsis)"
 fi
 
+# --- Signierte Prüfsummenliste (seit Build 51) ---
+# Der Auto-Updater installiert nur Dateien, deren SHA-256 in der mit Ed25519
+# signierten Liste steht. Der private Schlüssel liegt nur auf dem
+# Build-Rechner (nie im Repo, nie bei GitHub). Ohne Schlüssel entsteht ein
+# Build ohne Signatur - installierte Versionen lehnen ihn als Update ab.
+SIGNING_KEY="${SSH_EASY_SIGNING_KEY:-$HOME/.config/ssh-easy/release-signing.key}"
+RELEASE_FILES=(
+    "$BUILD_DIR/ssh-easy"
+    "$BUILD_DIR/ssh-easy-linux-arm64"
+    "$BUILD_DIR/ssh-easy-windows-amd64.exe"
+    "$BUILD_DIR/ssh-easy-windows-arm64.exe"
+    "$BUILD_DIR/ssh-easy-setup-amd64.exe"
+    "$BUILD_DIR/ssh-easy-setup-arm64.exe"
+)
+rm -f "$BUILD_DIR/ssh-easy-SHA256SUMS" "$BUILD_DIR/ssh-easy-SHA256SUMS.sig"
+if [ -f "$SIGNING_KEY" ]; then
+    echo ">>> Signing release files..."
+    (cd "$SRC_DIR" && $GO run ./cmd/release-sign -key "$SIGNING_KEY" -tag "v0.${MINOR}" \
+        -out "$BUILD_DIR" "${RELEASE_FILES[@]}")
+    echo "    OK: build/ssh-easy-SHA256SUMS + .sig"
+else
+    echo ">>> WARNING: signing key $SIGNING_KEY missing – release NOT signed,"
+    echo "    auto-update will reject it"
+fi
+
 echo ""
 echo "=== Build complete ==="
 ls -lh "$BUILD_DIR"/

@@ -26,8 +26,9 @@ const maxVisibleListRows = 15
 const minVisibleListRows = 3
 
 // listChromeLines - Zeilen, die außer der Liste selbst auf dem Bildschirm
-// stehen (Titel, Bildlauf-Hinweise, Meldungen, Hilfe, Auto-Update-Zeile).
-const listChromeLines = 11
+// stehen (Titel, Bildlauf-Hinweise, Meldungen, Hilfe, Export-Hinweis,
+// Auto-Update-Zeile).
+const listChromeLines = 12
 
 // listRowKind unterscheidet die Zeilentypen der Liste.
 type listRowKind int

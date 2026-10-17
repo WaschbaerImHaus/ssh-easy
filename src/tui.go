@@ -12,6 +12,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -45,6 +46,8 @@ const (
 	ViewKeygenResult
 	// ViewLanguage - Sprachauswahl (beim ersten Start und über 'l' erreichbar)
 	ViewLanguage
+	// ViewExport - Export der Verbindungsliste (Taste 'E')
+	ViewExport
 )
 
 // Eingabefeld-Indizes für das Verbindungsformular.
@@ -231,6 +234,15 @@ type AppModel struct {
 	updateStatus string
 	// Laufende Nummer der letzten Fenstergrößen-Änderung (Entprellen)
 	windowSaveSeq int
+	// Export: gewählte Verbindungs-IDs
+	exportSelected map[string]bool
+	// Export: Cursor und erste sichtbare Zeile
+	exportCursor, exportOffset int
+	// Export: Dateinamenfeld und ob es den Fokus hat
+	exportPathInput textinput.Model
+	exportFocusPath bool
+	// Export: Bezugsordner für relative Dateinamen (Home-Ordner)
+	exportHomeDir string
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -249,6 +261,9 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		configPath:     configPath,
 		buildNumber:    buildNumber,
 		expandedGroups: make(map[string]bool),
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		m.exportHomeDir = home
 	}
 
 	// Konfiguration über Cache laden
@@ -568,6 +583,8 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleKeygenKeys(msg)
 	case ViewKeygenResult:
 		return m.handleKeygenResultKeys(msg)
+	case ViewExport:
+		return m.handleExportKeys(msg)
 	}
 
 	return m, nil
@@ -589,6 +606,8 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.passwordInput, cmd = m.passwordInput.Update(msg)
 	case ViewKeygen:
 		m.keygenInputs[m.keygenFocused], cmd = m.keygenInputs[m.keygenFocused].Update(msg)
+	case ViewExport:
+		m.exportPathInput, cmd = m.exportPathInput.Update(msg)
 	}
 
 	return m, cmd
@@ -624,6 +643,8 @@ func (m AppModel) View() string {
 		m.renderKeygen(&s)
 	case ViewKeygenResult:
 		m.renderKeygenResult(&s)
+	case ViewExport:
+		m.renderExport(&s)
 	}
 
 	return s.String()

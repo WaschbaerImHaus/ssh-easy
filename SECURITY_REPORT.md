@@ -1,5 +1,5 @@
 # Sicherheitsreport - ssh-easy
-**Scan-Zeitpunkt:** 2026-10-15 19:13:51
+**Scan-Zeitpunkt:** 2026-10-17 14:34:09
 **Scanner-Version:** 2.0.0
 **Scan-Modus:** vollstaendig
 
@@ -19,11 +19,11 @@
 | Schweregrad | Anzahl |
 |-------------|--------|
 | KRITISCH    | 0 |
-| HOCH        | 0 |
-| MITTEL      | 10 |
-| NIEDRIG     | 44 |
-| INFO        | 17 |
-| **GESAMT**  | **71** |
+| HOCH        | 25 |
+| MITTEL      | 28 |
+| NIEDRIG     | 76 |
+| INFO        | 19 |
+| **GESAMT**  | **148** |
 
 ### Findings bewerten (False Positive / Irrelevant)
 
@@ -39,17 +39,718 @@ Status-Aliase: `fp` = False Positive, `ignoriert` = irrelevant, `bestaetigt` = e
 
 ## Statische Code-Analyse (SAST)
 
-## [2026-10-15 19:23:23] - Scan-Ergebnis für ssh-easy
+## [2026-10-17 14:44:42] - Scan-Ergebnis für ssh-easy
 
-**Gefundene Schwachstellen:** 68
+**Gefundene Schwachstellen:** 144
 
-- **MITTEL:** 7
-- **NIEDRIG:** 44
-- **INFO:** 17
+- **HOCH:** 25
+- **MITTEL:** 24
+- **NIEDRIG:** 76
+- **INFO:** 19
 
 ---
 
-### 1. [2026-10-15 19:23:23] - MITTEL - Verwendung von SHA1 (kryptographisch gebrochen)
+### 1. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n.go`
+**Zeile:** 2322
+
+#### Betroffener Code
+```
+FontSizeUnsupported: "ಅಕ್ಷರ ಗಾತ್ರವನ್ನು Windows ನಲ್ಲಿ ಮಾತ್ರ ಬದಲಾಯಿಸಬಹುದು (ಇತರೆಡೆ: ಟರ್ಮಿನಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳನ್ನು ಬಳಸಿ)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 2. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n.go`
+**Zeile:** 3366
+
+#### Betroffener Code
+```
+FontSizeUnsupported: "ఫాంట్ పరిమాణాన్ని Windowsలో మాత్రమే మార్చగలరు (ఇతర చోట్ల: టెర్మినల్ సెట్టింగ్‌లు వాడండి)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 3. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 343
+
+#### Betroffener Code
+```
+txtAutoUpdateOn:     "  ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್: ಆನ್  (u: ಬದಲಿಸಿ)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 4. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 344
+
+#### Betroffener Code
+```
+txtAutoUpdateOff:    "  ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್: ಆಫ್  (u: ಬದಲಿಸಿ)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 5. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 345
+
+#### Betroffener Code
+```
+txtUpdateChecking:   "ಅಪ್‌ಡೇಟ್‌ಗಳಿಗಾಗಿ ಹುಡುಕಲಾಗುತ್ತಿದೆ …",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 6. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 346
+
+#### Betroffener Code
+```
+txtUpdateReady:      "ಅಪ್‌ಡೇಟ್ v0.%d ಡೌನ್‌ಲೋಡ್ ಆಗಿದೆ – ನಿರ್ಗಮಿಸುವಾಗ ಸ್ಥಾಪಿಸಲಾಗುತ್ತದೆ",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 7. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 348
+
+#### Betroffener Code
+```
+txtUpdateFailed:     "ಸ್ವಯಂ ಅಪ್‌ಡೇಟ್ ವಿಫಲವಾಗಿದೆ: %s",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 8. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 349
+
+#### Betroffener Code
+```
+txtErrGroupName:     "\":\" ಇರುವ ಹೆಸರಿನಲ್ಲಿ ಕೋಲನ್‌ನ ಮೊದಲು ಮತ್ತು ನಂತರ ಪಠ್ಯ ಬೇಕು (ಉದಾ. ಕಚೇರಿ:ಸರ್ವರ್1)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 9. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 351
+
+#### Betroffener Code
+```
+txtErrUntrustedHost: "%s ನ ಹೋಸ್ಟ್ ಕೀ ಅಪರಿಚಿತವಾಗಿದೆ ಮತ್ತು ವಿಳಾಸ ಸಾರ್ವಜನಿಕ DNS ನಿಂದ ಮಾತ್ರ ಬಂದಿದೆ (ಸ್ಥಳೀಯ DNS ಲಭ್ಯವಿಲ್ಲ) – ಸ್ವಯಂಚಾಲಿತವಾಗಿ ನಂಬಲಾಗುವುದಿಲ್ಲ. ಒಮ್ಮೆ ಸ್ಥಳೀಯ ನೆಟ್‌ವರ್ಕ್ ಅಥವಾ IP ವಿಳಾಸದ ಮೂಲಕ ಸಂಪರ್
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 10. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 399
+
+#### Betroffener Code
+```
+txtAutoUpdateOn:     "  به‌روزرسانی خودکار: روشن  (u: تغییر)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 11. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 400
+
+#### Betroffener Code
+```
+txtAutoUpdateOff:    "  به‌روزرسانی خودکار: خاموش  (u: تغییر)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 12. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 401
+
+#### Betroffener Code
+```
+txtUpdateChecking:   "در حال جستجوی به‌روزرسانی …",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 13. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 402
+
+#### Betroffener Code
+```
+txtUpdateReady:      "به‌روزرسانی v0.%d دانلود شد – هنگام خروج نصب می‌شود",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 14. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 403
+
+#### Betroffener Code
+```
+txtUpdateCurrent:    "برنامه به‌روز است",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 15. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 404
+
+#### Betroffener Code
+```
+txtUpdateFailed:     "به‌روزرسانی خودکار ناموفق بود: %s",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 16. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 407
+
+#### Betroffener Code
+```
+txtErrUntrustedHost: "کلید میزبان %s ناشناخته است و نشانی فقط از DNS عمومی به دست آمده (DNS محلی در دسترس نیست) – به‌طور خودکار اعتماد نمی‌شود. یک بار از طریق شبکهٔ محلی یا نشانی IP وصل شوید.",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 17. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 525
+
+#### Betroffener Code
+```
+txtAutoUpdateOn:     "  ఆటో అప్‌డేట్: ఆన్  (u: మార్చు)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 18. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 526
+
+#### Betroffener Code
+```
+txtAutoUpdateOff:    "  ఆటో అప్‌డేట్: ఆఫ్  (u: మార్చు)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 19. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 527
+
+#### Betroffener Code
+```
+txtUpdateChecking:   "అప్‌డేట్‌ల కోసం వెతుకుతోంది …",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 20. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 528
+
+#### Betroffener Code
+```
+txtUpdateReady:      "అప్‌డేట్ v0.%d డౌన్‌లోడ్ అయింది – నిష్క్రమించేటప్పుడు ఇన్‌స్టాల్ అవుతుంది",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 21. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 530
+
+#### Betroffener Code
+```
+txtUpdateFailed:     "ఆటో అప్‌డేట్ విఫలమైంది: %s",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 22. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 531
+
+#### Betroffener Code
+```
+txtErrGroupName:     "\":\" ఉన్న పేరులో కోలన్‌కు ముందు, తర్వాత పాఠ్యం ఉండాలి (ఉదా. కార్యాలయం:సర్వర్1)",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 23. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 533
+
+#### Betroffener Code
+```
+txtErrUntrustedHost: "%s హోస్ట్ కీ తెలియదు, చిరునామా పబ్లిక్ DNS నుండి మాత్రమే వచ్చింది (స్థానిక DNS అందుబాటులో లేదు) – స్వయంచాలకంగా నమ్మబడదు. ఒకసారి స్థానిక నెట్‌వర్క్ లేదా IP చిరునామా ద్వారా కనెక్ట్
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 24. [2026-10-17 14:44:42] - HOCH - Unsichtbare Unicode-Zeichen (Zero-Width Characters)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 7.5
+**Kategorie:** Supply Chain
+**CWE:** CWE-116
+**Betroffene Datei:** `src/i18n_extra.go`
+**Zeile:** 534
+
+#### Betroffener Code
+```
+txtNoTunnels:        "టన్నెల్‌లు లేవు",
+```
+
+#### Beschreibung
+Unsichtbare Unicode-Zeichen (Zero-Width Space, Zero-Width Joiner, BOM, Soft-Hyphen etc.) koennen zum Verstecken von boesartigen Instruktionen verwendet werden. Bei MCP Tool-Poisoning werden versteckte Anweisungen in Tool-Beschreibungen eingebettet.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um supply chain-basierte Angriffe durchzuführen.
+
+#### Lösung
+Datei auf unsichtbare Unicode-Zeichen pruefen. In Konfigurationsdateien und Tool-Beschreibungen entfernen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/116.html
+
+---
+
+### 25. [2026-10-17 14:44:42] - HOCH - Auto-Update ohne Signaturpruefung (CVE-2026-3502)
+
+**Schweregrad:** HOCH
+**CVSS Score:** 8.0
+**Kategorie:** Insecure Update
+**CWE:** CWE-494
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 348
+
+#### Betroffener Code
+```
+setupDir, err := os.MkdirTemp(u.downloadDir, "setup-")
+```
+
+#### Beschreibung
+Software-Update wird heruntergeladen und ausgefuehrt, ohne die Integritaet zu pruefen (fehlende Hash-/Signatur-Validierung). CVE-2026-3502 (TrueConf): Angreifer schiebt manipuliertes Update unter, fuehrt zu RCE. Aktiv durch APT-Gruppen ausgenutzt.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um insecure update-basierte Angriffe durchzuführen.
+
+#### Lösung
+Downloads vor Ausfuehrung kryptographisch pruefen: Ed25519/RSA-Signatur oder SHA-256 Hash gegen pinned/embedded Wert vergleichen. TUF (The Update Framework) oder Sigstore fuer sichere Updates.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/494.html
+
+---
+
+### 26. [2026-10-17 14:44:42] - MITTEL - Verwendung von SHA1 (kryptographisch gebrochen)
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 5.3
@@ -77,7 +778,7 @@ crypto/sha256 oder crypto/sha512 verwenden.
 
 ---
 
-### 2. [2026-10-15 19:23:23] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
+### 27. [2026-10-17 14:44:42] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 5.3
@@ -109,7 +810,7 @@ io.LimitReader() verwenden um die maximale Datenmenge zu begrenzen: io.Copy(dst,
 
 ---
 
-### 3. [2026-10-15 19:23:23] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
+### 28. [2026-10-17 14:44:42] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 5.3
@@ -141,7 +842,7 @@ io.LimitReader() verwenden um die maximale Datenmenge zu begrenzen: io.Copy(dst,
 
 ---
 
-### 4. [2026-10-15 19:23:23] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+### 29. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 4.3
@@ -169,7 +870,7 @@ Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { ret
 
 ---
 
-### 5. [2026-10-15 19:23:23] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+### 30. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 4.3
@@ -197,14 +898,98 @@ Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { ret
 
 ---
 
-### 6. [2026-10-15 19:23:23] - MITTEL - context.Background() ohne Timeout/Deadline
+### 31. [2026-10-17 14:44:42] - MITTEL - context.Background() ohne Timeout/Deadline
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Context-Handling
+**CWE:** CWE-400
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 330
+
+#### Betroffener Code
+```
+conn, viaFallback, err := dialResolved(context.Background(), resolver, dial, host, port, timeout)
+```
+
+#### Beschreibung
+context.Background() hat kein Timeout und kein Deadline. In externen Aufrufen kann dies zu unbegrenztem Warten fuehren (Goroutine-Leak, DoS).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-handling-basierte Angriffe durchzuführen.
+
+#### Lösung
+context.WithTimeout() oder context.WithDeadline() verwenden. In HTTP-Handlern r.Context() statt context.Background() nutzen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/400.html
+
+---
+
+### 32. [2026-10-17 14:44:42] - MITTEL - context.Background() statt Request-Context
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.0
+**Kategorie:** Context-Analyse
+**CWE:** CWE-404
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 330
+
+#### Betroffener Code
+```
+	conn, viaFallback, err := dialResolved(context.Background(), resolver, dial, host, port, timeout)
+```
+
+#### Beschreibung
+context.Background() wird verwendet. Pruefen ob ein spezifischerer Context verfuegbar ist.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-analyse-basierte Angriffe durchzuführen.
+
+#### Lösung
+In HTTP-Handlern r.Context() oder c.Request().Context() statt context.Background() verwenden.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 33. [2026-10-17 14:44:42] - MITTEL - context.Background() ohne Timeout/Deadline
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 4.3
 **Kategorie:** Context-Handling
 **CWE:** CWE-400
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 430
+**Zeile:** 250
+
+#### Betroffener Code
+```
+probe, _, err := dialResolved(context.Background(), m.resolver, m.dialTCP, conn.Host, conn.Port, InitialConnectTimeout)
+```
+
+#### Beschreibung
+context.Background() hat kein Timeout und kein Deadline. In externen Aufrufen kann dies zu unbegrenztem Warten fuehren (Goroutine-Leak, DoS).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-handling-basierte Angriffe durchzuführen.
+
+#### Lösung
+context.WithTimeout() oder context.WithDeadline() verwenden. In HTTP-Handlern r.Context() statt context.Background() nutzen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/400.html
+
+---
+
+### 34. [2026-10-17 14:44:42] - MITTEL - context.Background() ohne Timeout/Deadline
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Context-Handling
+**CWE:** CWE-400
+**Betroffene Datei:** `src/ssh_manager.go`
+**Zeile:** 474
 
 #### Betroffener Code
 ```
@@ -225,14 +1010,42 @@ context.WithTimeout() oder context.WithDeadline() verwenden. In HTTP-Handlern r.
 
 ---
 
-### 7. [2026-10-15 19:23:23] - MITTEL - context.Background() statt Request-Context
+### 35. [2026-10-17 14:44:42] - MITTEL - context.Background() statt Request-Context
 
 **Schweregrad:** MITTEL
 **CVSS Score:** 4.0
 **Kategorie:** Context-Analyse
 **CWE:** CWE-404
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 430
+**Zeile:** 250
+
+#### Betroffener Code
+```
+		probe, _, err := dialResolved(context.Background(), m.resolver, m.dialTCP, conn.Host, conn.Port, InitialConnectTimeout)
+```
+
+#### Beschreibung
+context.Background() wird verwendet. Pruefen ob ein spezifischerer Context verfuegbar ist.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-analyse-basierte Angriffe durchzuführen.
+
+#### Lösung
+In HTTP-Handlern r.Context() oder c.Request().Context() statt context.Background() verwenden.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 36. [2026-10-17 14:44:42] - MITTEL - context.Background() statt Request-Context
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.0
+**Kategorie:** Context-Analyse
+**CWE:** CWE-404
+**Betroffene Datei:** `src/ssh_manager.go`
+**Zeile:** 474
 
 #### Betroffener Code
 ```
@@ -253,7 +1066,379 @@ In HTTP-Handlern r.Context() oder c.Request().Context() statt context.Background
 
 ---
 
-### 8. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 37. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 361
+
+#### Betroffener Code
+```
+_ = os.Remove(filepath.Dir(target))
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 38. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 438
+
+#### Betroffener Code
+```
+_ = os.Remove(target)
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 39. [2026-10-17 14:44:42] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 5.3
+**Kategorie:** Denial of Service
+**CWE:** CWE-770
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 453
+
+#### Betroffener Code
+```
+written, err := io.Copy(io.MultiWriter(f, hash, head), io.LimitReader(resp.Body, asset.Size+1))
+```
+
+#### Beschreibung
+io.Copy() kopiert ohne Begrenzung bis EOF. Bei Netzwerk-Streams kann ein Angreifer unbegrenzt Daten senden und den Speicher des Servers erschöpfen (Out of Memory).
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- io.Copy ohne Größenlimit (DoS-Risiko)
+- io.Copy() ohne Größenlimit
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um denial of service-basierte Angriffe durchzuführen.
+
+#### Lösung
+io.LimitReader() verwenden um die maximale Datenmenge zu begrenzen: io.Copy(dst, io.LimitReader(src, maxBytes)). Alternativ io.CopyN() mit explizitem Limit nutzen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/770.html
+
+---
+
+### 40. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 525
+
+#### Betroffener Code
+```
+_ = os.Remove(pending.path)
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 41. [2026-10-17 14:44:42] - MITTEL - io.Copy ohne Größenlimit (DoS-Risiko)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 5.3
+**Kategorie:** Denial of Service
+**CWE:** CWE-770
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 554
+
+#### Betroffener Code
+```
+if _, err := io.Copy(hash, io.LimitReader(r, maxUpdateBytes+1)); err != nil {
+```
+
+#### Beschreibung
+io.Copy() kopiert ohne Begrenzung bis EOF. Bei Netzwerk-Streams kann ein Angreifer unbegrenzt Daten senden und den Speicher des Servers erschöpfen (Out of Memory).
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- io.Copy ohne Größenlimit (DoS-Risiko)
+- io.Copy() ohne Größenlimit
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um denial of service-basierte Angriffe durchzuführen.
+
+#### Lösung
+io.LimitReader() verwenden um die maximale Datenmenge zu begrenzen: io.Copy(dst, io.LimitReader(src, maxBytes)). Alternativ io.CopyN() mit explizitem Limit nutzen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/770.html
+
+---
+
+### 42. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 584
+
+#### Betroffener Code
+```
+_ = os.Remove(oldPath)
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 43. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 605
+
+#### Betroffener Code
+```
+_ = os.Remove(exePath + ".old")
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 44. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 606
+
+#### Betroffener Code
+```
+_ = os.Remove(exePath + ".new")
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 45. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 620
+
+#### Betroffener Code
+```
+_ = os.Remove(path)
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 46. [2026-10-17 14:44:42] - MITTEL - Fehler-Rückgabewert ignoriert (Blank Identifier)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 623
+
+#### Betroffener Code
+```
+_ = os.RemoveAll(path)
+```
+
+#### Beschreibung
+Fehler-Rückgabewerte werden mit _ ignoriert. Dies kann zu unerwartetem Verhalten und 'Fail Open'-Szenarien führen (OWASP 2025 A10: Mishandling of Exceptional Conditions).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Alle Fehler-Rückgabewerte prüfen und angemessen behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 47. [2026-10-17 14:44:42] - MITTEL - context.Background() ohne Timeout/Deadline
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Context-Handling
+**CWE:** CWE-400
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 675
+
+#### Betroffener Code
+```
+ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
+```
+
+#### Beschreibung
+context.Background() hat kein Timeout und kein Deadline. In externen Aufrufen kann dies zu unbegrenztem Warten fuehren (Goroutine-Leak, DoS).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-handling-basierte Angriffe durchzuführen.
+
+#### Lösung
+context.WithTimeout() oder context.WithDeadline() verwenden. In HTTP-Handlern r.Context() statt context.Background() nutzen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/400.html
+
+---
+
+### 48. [2026-10-17 14:44:42] - MITTEL - context.Background() statt Request-Context
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.0
+**Kategorie:** Context-Analyse
+**CWE:** CWE-404
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 675
+
+#### Betroffener Code
+```
+		ctx, cancel := context.WithTimeout(context.Background(), updateCheckTimeout)
+```
+
+#### Beschreibung
+context.Background() wird verwendet. Pruefen ob ein spezifischerer Context verfuegbar ist.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um context-analyse-basierte Angriffe durchzuführen.
+
+#### Lösung
+In HTTP-Handlern r.Context() oder c.Request().Context() statt context.Background() verwenden.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 49. [2026-10-17 14:44:42] - MITTEL - time.Sleep in Goroutine (mögliches Goroutine-Leak)
+
+**Schweregrad:** MITTEL
+**CVSS Score:** 4.3
+**Kategorie:** Nebenläufigkeit / Performance
+**CWE:** CWE-404
+**Betroffene Datei:** `src/terminal_input_windows.go`
+**Zeile:** 82
+
+#### Betroffener Code
+```
+time.Sleep(consolePollInterval)
+```
+
+#### Beschreibung
+time.Sleep() in Goroutinen blockiert ohne Abbruchmöglichkeit. Bei Signal oder Shutdown kann die Goroutine hängen bleiben.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit / performance-basierte Angriffe durchzuführen.
+
+#### Lösung
+select mit context.Done() und time.After() verwenden statt time.Sleep() für abbrechbares Warten.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 50. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -281,7 +1466,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 9. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 51. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -309,7 +1494,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 10. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 52. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -337,7 +1522,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 11. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 53. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -365,7 +1550,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 12. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 54. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -393,7 +1578,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 13. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 55. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -425,7 +1610,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 14. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 56. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -457,7 +1642,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 15. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: fmt.Fprintf()
+### 57. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: fmt.Fprintf()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -485,7 +1670,7 @@ Error-Rueckgabewert von fmt.Fprintf() pruefen und angemessen behandeln.
 
 ---
 
-### 16. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 58. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -517,7 +1702,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 17. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 59. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -549,7 +1734,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 18. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: w.out.Write()
+### 60. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: w.out.Write()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -577,7 +1762,7 @@ Error-Rueckgabewert von w.out.Write() pruefen und angemessen behandeln.
 
 ---
 
-### 19. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 61. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -605,7 +1790,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 20. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 62. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -633,14 +1818,42 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 21. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 63. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 2.0
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 184
+
+#### Betroffener Code
+```
+defer in.Close()
+```
+
+#### Beschreibung
+defer file.Close() ignoriert den Fehler-Rückgabewert. Bei Schreiboperationen können Daten verloren gehen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 64. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
 **Kategorie:** Fehlerbehandlung
 **CWE:** CWE-252
 **Betroffene Datei:** `src/ssh_terminal.go`
-**Zeile:** 236
+**Zeile:** 256
 
 #### Betroffener Code
 ```
@@ -665,7 +1878,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 22. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: setConsoleWindowInfo()
+### 65. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: setConsoleWindowInfo()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -693,7 +1906,7 @@ Error-Rueckgabewert von setConsoleWindowInfo() pruefen und angemessen behandeln.
 
 ---
 
-### 23. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: SaveConfig()
+### 66. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: SaveConfig()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -721,7 +1934,7 @@ Error-Rueckgabewert von SaveConfig() pruefen und angemessen behandeln.
 
 ---
 
-### 24. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 67. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -749,7 +1962,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 25. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 68. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -777,7 +1990,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 26. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 69. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -809,7 +2022,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 27. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 70. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
@@ -837,7 +2050,7 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 28. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
+### 71. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -865,7 +2078,7 @@ Error-Rueckgabewert von restrictFilePermissions() pruefen und angemessen behande
 
 ---
 
-### 29. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: cmd.Process.Release()
+### 72. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: cmd.Process.Release()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -893,7 +2106,7 @@ Error-Rueckgabewert von cmd.Process.Release() pruefen und angemessen behandeln.
 
 ---
 
-### 30. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 73. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -925,7 +2138,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 31. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 74. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -953,7 +2166,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 32. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 75. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -981,7 +2194,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 33. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 76. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1013,7 +2226,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 34. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 77. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1045,7 +2258,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 35. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 78. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1077,7 +2290,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 36. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 79. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1109,7 +2322,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 37. [2026-10-15 19:23:23] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+### 80. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1141,7 +2354,7 @@ Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) 
 
 ---
 
-### 38. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 81. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1169,7 +2382,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 39. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 82. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1197,7 +2410,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 40. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 83. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1225,7 +2438,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 41. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 84. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1253,7 +2466,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 42. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 85. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1281,7 +2494,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 43. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 86. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1309,7 +2522,319 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 44. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
+### 87. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/tui_list.go`
+**Zeile:** 427
+
+#### Betroffener Code
+```
+prefix, suffix, _ := strings.Cut(m.lang.TunnelInfo, "%s")
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 88. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 56
+
+#### Betroffener Code
+```
+hwnd, _, _ := procGetConsoleWindow.Call()
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 89. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 60
+
+#### Betroffener Code
+```
+if zoomed, _, _ := procIsZoomed.Call(hwnd); zoomed != 0 {
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 90. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 63
+
+#### Betroffener Code
+```
+if iconic, _, _ := procIsIconic.Call(hwnd); iconic != 0 {
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 91. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 67
+
+#### Betroffener Code
+```
+if ret, _, _ := procGetConsoleDisplayMode.Call(uintptr(unsafe.Pointer(&displayMode))); ret != 0 && displayMode&consoleFullscreenMode != 0 {
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 92. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 99
+
+#### Betroffener Code
+```
+if largest, _, _ := procGetLargestConsoleWindowSize.Call(uintptr(handle)); largest != 0 {
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 93. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 155
+
+#### Betroffener Code
+```
+ret, _, _ := procSetConsoleScreenBufferSize.Call(uintptr(handle), coord)
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 94. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 172
+
+#### Betroffener Code
+```
+hwnd, _, _ := procGetConsoleWindow.Call()
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 95. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/window_size_windows.go`
+**Zeile:** 177
+
+#### Betroffener Code
+```
+n, _, _ := procGetClassNameW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 96. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/list_tree.go`
+**Zeile:** 153
+
+#### Betroffener Code
+```
+_, child, _ := splitGroupName(conns[idx].Name)
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+- Ignorierter Error-Rueckgabewert: splitGroupName()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 97. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: splitGroupName()
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.0
+**Kategorie:** Error Handling
+**CWE:** CWE-252
+**Betroffene Datei:** `src/list_tree.go`
+**Zeile:** 91
+
+#### Betroffener Code
+```
+	_, _, ok := splitGroupName(name)
+```
+
+#### Beschreibung
+Der Fehler-Rueckgabewert von splitGroupName() wird mit '_' ignoriert. Unbehandelte Fehler koennen zu unerwartetem Verhalten und Sicherheitsproblemen fuehren.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um error handling-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Rueckgabewert von splitGroupName() pruefen und angemessen behandeln.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 98. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
@@ -1337,7 +2862,7 @@ Error-Rueckgabewert von restrictFilePermissions() pruefen und angemessen behande
 
 ---
 
-### 45. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 99. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1365,7 +2890,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 46. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 100. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1393,7 +2918,7 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 47. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 101. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
@@ -1421,14 +2946,134 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 48. [2026-10-15 19:23:23] - NIEDRIG - defer Close() ohne Fehlerprüfung
+### 102. [2026-10-17 14:44:42] - NIEDRIG - Hardcodierte IP-Adresse im Quellcode
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 2.0
+**Kategorie:** Hardcodierte Konfiguration
+**CWE:** CWE-547
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 51
+
+#### Betroffener Code
+```
+var fallbackDNSServers = []string{"1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4"}
+```
+
+#### Beschreibung
+IP-Adressen im Quellcode erschweren die Portabilitaet und koennen bei Infrastruktur-Aenderungen zu Ausfaellen fuehren. Ausnahme: 127.0.0.1/0.0.0.0 sind akzeptable Defaults.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um hardcodierte konfiguration-basierte Angriffe durchzuführen.
+
+#### Lösung
+IP-Adressen in Umgebungsvariablen oder Konfigurationsdateien auslagern. DNS-Namen statt IP-Adressen verwenden.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/547.html
+
+---
+
+### 103. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 288
+
+#### Betroffener Code
+```
+deadline, _ := dialCtx.Deadline()
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 104. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 341
+
+#### Betroffener Code
+```
+_ = conn.SetDeadline(time.Now().Add(sshHandshakeTimeout))
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: conn.SetDeadline()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 105. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/net_dial.go`
+**Zeile:** 353
+
+#### Betroffener Code
+```
+_ = conn.SetDeadline(time.Time{})
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: conn.SetDeadline()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 106. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
 **Kategorie:** Fehlerbehandlung
 **CWE:** CWE-754
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 286
+**Zeile:** 326
 
 #### Betroffener Code
 ```
@@ -1449,14 +3094,14 @@ defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
 
 ---
 
-### 49. [2026-10-15 19:23:23] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+### 107. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.7
 **Kategorie:** Fehlerbehandlung
 **CWE:** CWE-252
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 289
+**Zeile:** 329
 
 #### Betroffener Code
 ```
@@ -1477,14 +3122,14 @@ Error-Wert prüfen und behandeln: if err != nil { return err }
 
 ---
 
-### 50. [2026-10-15 19:23:23] - NIEDRIG - Hardcodierte IP-Adresse im Quellcode
+### 108. [2026-10-17 14:44:42] - NIEDRIG - Hardcodierte IP-Adresse im Quellcode
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 2.0
 **Kategorie:** Hardcodierte Konfiguration
 **CWE:** CWE-547
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 730
+**Zeile:** 779
 
 #### Betroffener Code
 ```
@@ -1505,14 +3150,14 @@ IP-Adressen in Umgebungsvariablen oder Konfigurationsdateien auslagern. DNS-Name
 
 ---
 
-### 51. [2026-10-15 19:23:23] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
+### 109. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
 
 **Schweregrad:** NIEDRIG
 **CVSS Score:** 3.0
 **Kategorie:** Error Handling
 **CWE:** CWE-252
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 840
+**Zeile:** 891
 
 #### Betroffener Code
 ```
@@ -1533,7 +3178,496 @@ Error-Rueckgabewert von restrictFilePermissions() pruefen und angemessen behande
 
 ---
 
-### 52. [2026-10-15 19:23:23] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
+### 110. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 2.0
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater_windows.go`
+**Zeile:** 51
+
+#### Betroffener Code
+```
+defer locked.Close()
+```
+
+#### Beschreibung
+defer file.Close() ignoriert den Fehler-Rückgabewert. Bei Schreiboperationen können Daten verloren gehen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 111. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/keystate_windows.go`
+**Zeile:** 25
+
+#### Betroffener Code
+```
+state, _, _ := procGetAsyncKeyState.Call(uintptr(vk))
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 112. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 307
+
+#### Betroffener Code
+```
+build, _ := parseReleaseBuild(rel.TagName)
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 113. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 361
+
+#### Betroffener Code
+```
+_ = os.Remove(filepath.Dir(target))
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 114. [2026-10-17 14:44:42] - NIEDRIG - Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 366
+
+#### Betroffener Code
+```
+wantDigest, _ := strings.CutPrefix(asset.Digest, "sha256:")
+```
+
+#### Beschreibung
+Der Error-Rückgabewert einer Funktion wird explizit mit _ verworfen. Fehler können unbemerkt bleiben und zu unerwartetem Verhalten führen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Wert prüfen und behandeln: if err != nil { return err }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 115. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 438
+
+#### Betroffener Code
+```
+_ = os.Remove(target)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 116. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 525
+
+#### Betroffener Code
+```
+_ = os.Remove(pending.path)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 117. [2026-10-17 14:44:42] - NIEDRIG - defer Close() ohne Fehlerprüfung
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 2.0
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-754
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 541
+
+#### Betroffener Code
+```
+defer f.Close()
+```
+
+#### Beschreibung
+defer file.Close() ignoriert den Fehler-Rückgabewert. Bei Schreiboperationen können Daten verloren gehen.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+defer func() { if err := f.Close(); err != nil { log.Error(err) } }()
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/754.html
+
+---
+
+### 118. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 584
+
+#### Betroffener Code
+```
+_ = os.Remove(oldPath)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 119. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 590
+
+#### Betroffener Code
+```
+_ = os.Rename(oldPath, exePath)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Rename()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 120. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 605
+
+#### Betroffener Code
+```
+_ = os.Remove(exePath + ".old")
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 121. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 606
+
+#### Betroffener Code
+```
+_ = os.Remove(exePath + ".new")
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 122. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 620
+
+#### Betroffener Code
+```
+_ = os.Remove(path)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.Remove()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 123. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 623
+
+#### Betroffener Code
+```
+_ = os.RemoveAll(path)
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 2 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Ignorierter Error-Rueckgabewert: os.RemoveAll()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 124. [2026-10-17 14:44:42] - NIEDRIG - Ignorierter Error-Rueckgabewert: restrictFilePermissions()
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.0
+**Kategorie:** Error Handling
+**CWE:** CWE-252
+**Betroffene Datei:** `src/updater.go`
+**Zeile:** 355
+
+#### Betroffener Code
+```
+			_ = restrictFilePermissions(setupDir)
+```
+
+#### Beschreibung
+Der Fehler-Rueckgabewert von restrictFilePermissions() wird mit '_' ignoriert. Unbehandelte Fehler koennen zu unerwartetem Verhalten und Sicherheitsproblemen fuehren.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um error handling-basierte Angriffe durchzuführen.
+
+#### Lösung
+Error-Rueckgabewert von restrictFilePermissions() pruefen und angemessen behandeln.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 125. [2026-10-17 14:44:42] - NIEDRIG - Error-Rückgabewert ignoriert (_)
+
+**Schweregrad:** NIEDRIG
+**CVSS Score:** 3.7
+**Kategorie:** Fehlerbehandlung
+**CWE:** CWE-252
+**Betroffene Datei:** `src/terminal_input_windows.go`
+**Zeile:** 98
+
+#### Betroffener Code
+```
+_, _ = coninput.ReadNConsoleInputs(c.handle, uint32(len(records)))
+```
+
+#### Beschreibung
+Error-Rückgabewerte werden mit _ ignoriert (CWE-252). Unbehandelte Fehler können zu undefiniertem Verhalten führen.
+
+Mehrfach gemeldet: 3 Muster melden diese Stelle als denselben Sachverhalt. Zusammengefasst zu einem Befund (hoechster Schweregrad und CVSS der Gruppe):
+- Error-Rückgabewert ignoriert (_)
+- Go Error-Wert mit _ ignoriert (OWASP A10:2025)
+- Ignorierter Error-Rueckgabewert: coninput.ReadNConsoleInputs()
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um fehlerbehandlung-basierte Angriffe durchzuführen.
+
+#### Lösung
+Fehler prüfen und angemessen behandeln: if err != nil { return fmt.Errorf(...) }
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/252.html
+
+---
+
+### 126. [2026-10-17 14:44:42] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1561,7 +3695,7 @@ go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden
 
 ---
 
-### 53. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+### 127. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1589,7 +3723,7 @@ sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass 
 
 ---
 
-### 54. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 128. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1617,7 +3751,7 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 55. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+### 129. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1645,7 +3779,7 @@ sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass 
 
 ---
 
-### 56. [2026-10-15 19:23:23] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
+### 130. [2026-10-17 14:44:42] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1673,7 +3807,7 @@ go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden
 
 ---
 
-### 57. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+### 131. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1701,7 +3835,7 @@ sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass 
 
 ---
 
-### 58. [2026-10-15 19:23:23] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
+### 132. [2026-10-17 14:44:42] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1729,7 +3863,7 @@ go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden
 
 ---
 
-### 59. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+### 133. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1757,98 +3891,14 @@ sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass 
 
 ---
 
-### 60. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+### 134. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
 **Kategorie:** Nebenläufigkeit
 **CWE:** CWE-404
-**Betroffene Datei:** `src/ssh_terminal.go`
-**Zeile:** 177
-
-#### Betroffener Code
-```
-go forwardStdinWithPaste(os.Stdin, stdinPipe, func() {
-```
-
-#### Beschreibung
-Goroutinen ohne ordnungsgemäßes Lifecycle-Management können zu Goroutine-Leaks führen (Speicher und CPU werden nie freigegeben).
-
-#### Auswirkung
-Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
-
-#### Lösung
-sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass alle Goroutinen beendet werden können.
-
-#### Referenzen
-- https://cwe.mitre.org/data/definitions/404.html
-
----
-
-### 61. [2026-10-15 19:23:23] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
-
-**Schweregrad:** INFO
-**CVSS Score:** 0.0
-**Kategorie:** Nebenläufigkeit
-**CWE:** CWE-362
-**Betroffene Datei:** `src/ssh_terminal.go`
-**Zeile:** 188
-
-#### Betroffener Code
-```
-go func() {
-```
-
-#### Beschreibung
-Goroutinen greifen möglicherweise auf geteilte Variablen zu. Ohne Synchronisation (Mutex, Channel, atomic) können Race Conditions auftreten (OWASP: CWE-362).
-
-#### Auswirkung
-Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
-
-#### Lösung
-go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden. Shared State vermeiden wo möglich.
-
-#### Referenzen
-- https://cwe.mitre.org/data/definitions/362.html
-
----
-
-### 62. [2026-10-15 19:23:23] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
-
-**Schweregrad:** INFO
-**CVSS Score:** 0.0
-**Kategorie:** Nebenläufigkeit
-**CWE:** CWE-404
-**Betroffene Datei:** `src/ssh_terminal.go`
-**Zeile:** 188
-
-#### Betroffener Code
-```
-go func() {
-```
-
-#### Beschreibung
-Goroutinen ohne ordnungsgemäßes Lifecycle-Management können zu Goroutine-Leaks führen (Speicher und CPU werden nie freigegeben).
-
-#### Auswirkung
-Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
-
-#### Lösung
-sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass alle Goroutinen beendet werden können.
-
-#### Referenzen
-- https://cwe.mitre.org/data/definitions/404.html
-
----
-
-### 63. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
-
-**Schweregrad:** INFO
-**CVSS Score:** 0.0
-**Kategorie:** Nebenläufigkeit
-**CWE:** CWE-404
-**Betroffene Datei:** `src/ssh_terminal.go`
-**Zeile:** 228
+**Betroffene Datei:** `src/terminal_input.go`
+**Zeile:** 81
 
 #### Betroffener Code
 ```
@@ -1869,7 +3919,147 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 64. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 135. [2026-10-17 14:44:42] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
+
+**Schweregrad:** INFO
+**CVSS Score:** 0.0
+**Kategorie:** Nebenläufigkeit
+**CWE:** CWE-362
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 188
+
+#### Betroffener Code
+```
+go func() {
+```
+
+#### Beschreibung
+Goroutinen greifen möglicherweise auf geteilte Variablen zu. Ohne Synchronisation (Mutex, Channel, atomic) können Race Conditions auftreten (OWASP: CWE-362).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
+
+#### Lösung
+go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden. Shared State vermeiden wo möglich.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/362.html
+
+---
+
+### 136. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+
+**Schweregrad:** INFO
+**CVSS Score:** 0.0
+**Kategorie:** Nebenläufigkeit
+**CWE:** CWE-404
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 188
+
+#### Betroffener Code
+```
+go func() {
+```
+
+#### Beschreibung
+Goroutinen ohne ordnungsgemäßes Lifecycle-Management können zu Goroutine-Leaks führen (Speicher und CPU werden nie freigegeben).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
+
+#### Lösung
+sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass alle Goroutinen beendet werden können.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 137. [2026-10-17 14:44:42] - INFO - Goroutine gefunden - Race-Condition-Prüfung empfohlen
+
+**Schweregrad:** INFO
+**CVSS Score:** 0.0
+**Kategorie:** Nebenläufigkeit
+**CWE:** CWE-362
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 202
+
+#### Betroffener Code
+```
+go func() {
+```
+
+#### Beschreibung
+Goroutinen greifen möglicherweise auf geteilte Variablen zu. Ohne Synchronisation (Mutex, Channel, atomic) können Race Conditions auftreten (OWASP: CWE-362).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
+
+#### Lösung
+go test -race ausführen. sync.Mutex oder Channels für geteilte Daten verwenden. Shared State vermeiden wo möglich.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/362.html
+
+---
+
+### 138. [2026-10-17 14:44:42] - INFO - Goroutine-Aufruf - Lifecycle-Prüfung empfohlen
+
+**Schweregrad:** INFO
+**CVSS Score:** 0.0
+**Kategorie:** Nebenläufigkeit
+**CWE:** CWE-404
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 202
+
+#### Betroffener Code
+```
+go func() {
+```
+
+#### Beschreibung
+Goroutinen ohne ordnungsgemäßes Lifecycle-Management können zu Goroutine-Leaks führen (Speicher und CPU werden nie freigegeben).
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
+
+#### Lösung
+sync.WaitGroup oder context.Context mit cancel() verwenden. Sicherstellen, dass alle Goroutinen beendet werden können.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 139. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
+
+**Schweregrad:** INFO
+**CVSS Score:** 0.0
+**Kategorie:** Nebenläufigkeit
+**CWE:** CWE-404
+**Betroffene Datei:** `src/ssh_terminal.go`
+**Zeile:** 248
+
+#### Betroffener Code
+```
+select {
+```
+
+#### Beschreibung
+Ein select-Statement ohne case <-ctx.Done() kann nicht von außen abgebrochen werden, was zu Goroutine-Leaks führen kann.
+
+#### Auswirkung
+Ein Angreifer könnte diese Schwachstelle nutzen um nebenläufigkeit-basierte Angriffe durchzuführen.
+
+#### Lösung
+case <-ctx.Done(): return zum select-Statement hinzufügen.
+
+#### Referenzen
+- https://cwe.mitre.org/data/definitions/404.html
+
+---
+
+### 140. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1897,7 +4087,7 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 65. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 141. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
@@ -1925,14 +4115,14 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 66. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 142. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
 **Kategorie:** Nebenläufigkeit
 **CWE:** CWE-404
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 110
+**Zeile:** 117
 
 #### Betroffener Code
 ```
@@ -1953,14 +4143,14 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 67. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 143. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
 **Kategorie:** Nebenläufigkeit
 **CWE:** CWE-404
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 880
+**Zeile:** 937
 
 #### Betroffener Code
 ```
@@ -1981,14 +4171,14 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ---
 
-### 68. [2026-10-15 19:23:23] - INFO - select ohne ctx.Done()-Case prüfen
+### 144. [2026-10-17 14:44:42] - INFO - select ohne ctx.Done()-Case prüfen
 
 **Schweregrad:** INFO
 **CVSS Score:** 0.0
 **Kategorie:** Nebenläufigkeit
 **CWE:** CWE-404
 **Betroffene Datei:** `src/ssh_manager.go`
-**Zeile:** 948
+**Zeile:** 1005
 
 #### Betroffener Code
 ```
@@ -2012,7 +4202,7 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ## Dependency-Analyse
 
-## [2026-10-15 19:23:23] - Dependency-Analyse für ssh-easy
+## [2026-10-17 14:44:42] - Dependency-Analyse für ssh-easy
 
 **Geprüfte Abhängigkeiten:** 27
 **Gefundene Probleme:** 1
@@ -2032,14 +4222,14 @@ case <-ctx.Done(): return zum select-Statement hinzufügen.
 
 ## Secrets-Scan
 
-## [2026-10-15 19:23:23] - Secrets-Scan für ssh-easy
+## [2026-10-17 14:44:42] - Secrets-Scan für ssh-easy
 
 Keine hardcodierten Geheimnisse gefunden.
 
 
 ## Konfigurationsanalyse
 
-## [2026-10-15 19:23:23] - Konfigurationsanalyse für ssh-easy
+## [2026-10-17 14:44:42] - Konfigurationsanalyse für ssh-easy
 
 Keine Konfigurationsprobleme gefunden.
 
@@ -2054,6 +4244,12 @@ Keine Konfigurationsprobleme gefunden.
 
 ### MITTEL - CodeQL: go/unhandled-writable-file-close (go/unhandled-writable-file-close)
 **Datei:** /home/claude-code/project/ssh-easy/src/ssh.go:138
+**CWE:** CWE-252
+**Beschreibung:** CodeQL (go/unhandled-writable-file-close): File handle may be writable as a result of data flow from a [call to OpenFile](1) and closing it may result in data loss upon failure, which is not handled explicitly. Writable file handle closed without error handling
+**Loesung:** Siehe CodeQL-Dokumentation fuer Regel go/unhandled-writable-file-close.
+
+### MITTEL - CodeQL: go/unhandled-writable-file-close (go/unhandled-writable-file-close)
+**Datei:** /home/claude-code/project/ssh-easy/src/updater.go:446
 **CWE:** CWE-252
 **Beschreibung:** CodeQL (go/unhandled-writable-file-close): File handle may be writable as a result of data flow from a [call to OpenFile](1) and closing it may result in data loss upon failure, which is not handled explicitly. Writable file handle closed without error handling
 **Loesung:** Siehe CodeQL-Dokumentation fuer Regel go/unhandled-writable-file-close.

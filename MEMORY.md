@@ -43,5 +43,15 @@
 - Alle Texte in 41 Sprachen; tests/i18n_complete_test.go + Stop-Hook .claude/hooks/check-translations.sh
 - Offen: Taste g (Keygen) ohne Funktion (BUGS.md)
 
+## Build 51 (2026-10-17) - Signierte Releases + Export
+- Scanner 2.0.0: 25 HOCH -> 24 FP (ZWNJ in Kannada/Telugu/Persisch), 1 echt: Auto-Update ohne Signatur
+- Fix: src/releasesig (Ed25519, Liste ssh-easy-SHA256SUMS + .sig, Kopfzeile bindet an Release-Tag),
+  Signierwerkzeug src/cmd/release-sign, build.sh signiert automatisch
+- Privater Schluessel: ~/.config/ssh-easy/release-signing.key (0600, NICHT im Repo, sichern!)
+- Oeffentlicher Schluessel eingebettet in src/updater.go (releaseSigningPublicKeyHex)
+- Releases haben jetzt 8 Assets (6 Binaries/Setups + SHA256SUMS + .sig) - ohne die beiden lehnt der Updater ab
+- Export der Verbindungsliste (Taste E): alle/Auswahl/Gruppe, ohne key_path, AuthType key -> password, 0600, O_EXCL
+- tests/source_hygiene_test.go verbietet Bidi/ZWSP/BOM im Quellcode
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

@@ -4,8 +4,10 @@
 //  1. Beim Start: neuestes Release über die GitHub-API abfragen
 //     (https://api.github.com/repos/WaschbaerImHaus/ssh-easy/releases/latest)
 //  2. Ist das Release neuer als der eigene Build (Schema v0.<Build>), wird
-//     die passende Datei im Hintergrund heruntergeladen und geprüft:
-//     SHA-256 (aus der API), Größe, Dateiformat (ELF bzw. PE)
+//     die signierte Prüfsummenliste (ssh-easy-SHA256SUMS + .sig) geladen und
+//     mit dem eingebetteten Ed25519-Schlüssel geprüft. Danach wird die
+//     passende Datei im Hintergrund heruntergeladen und geprüft:
+//     SHA-256 (aus der signierten Liste), Größe, Dateiformat (ELF bzw. PE)
 //  3. Beim Beenden wird installiert:
 //     - Programmverzeichnis beschreibbar: Binary ersetzen
 //     (Linux: atomarer Rename; Windows: laufende EXE -> .old umbenennen)
@@ -13,16 +15,19 @@
 //     Administratorrechten starten
 //
 // Sicherheit: Es wird nur von der Release-Adresse dieses Repositorys geladen
-// (allowedURLPrefix), die Prüfsumme ist Pflicht, Antworten sind größen-
-// begrenzt.
+// (allowedURLPrefix), die signierte Prüfsumme ist Pflicht, Antworten sind
+// größenbegrenzt. Seit Build 51 reicht der Zugriff auf das GitHub-Konto
+// nicht mehr, um ein Update unterzuschieben: Ohne den privaten Schlüssel
+// (nur auf dem Build-Rechner) entsteht keine gültige Signatur.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-17 22:40
 package main
 
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -40,6 +45,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"ssh-easy/releasesig"
 )
 
 const (
@@ -55,7 +62,23 @@ const (
 	maxUpdateBytes = 200 << 20
 	// updateCheckTimeout - Gesamtfrist für Suche und Download
 	updateCheckTimeout = 5 * time.Minute
+	// releaseSigningPublicKeyHex - öffentlicher Ed25519-Schlüssel, mit dem
+	// die Prüfsummenliste jedes Releases signiert ist (privater Schlüssel:
+	// ~/.config/ssh-easy/release-signing.key auf dem Build-Rechner)
+	releaseSigningPublicKeyHex = "e548b36992f95417e386183b3b57929b97fdd6801def9aee90b3489dccd7192f"
 )
+
+// releaseSigningKey liefert den eingebetteten öffentlichen Schlüssel.
+//
+// @return ed25519.PublicKey - Schlüssel (nil bei ungültigem Eintrag)
+// @date   2026-10-17 22:40
+func releaseSigningKey() ed25519.PublicKey {
+	key, err := hex.DecodeString(releaseSigningPublicKeyHex)
+	if err != nil || len(key) != ed25519.PublicKeySize {
+		return nil
+	}
+	return ed25519.PublicKey(key)
+}
 
 // updateKind beschreibt, wie ein Update beim Beenden installiert wird.
 type updateKind int
@@ -119,6 +142,8 @@ type Updater struct {
 	downloadDir string
 	// Prüft ob ein Verzeichnis beschreibbar ist (austauschbar für Tests)
 	canWriteDir func(dir string) bool
+	// Öffentlicher Schlüssel für die Prüfsummenliste (austauschbar für Tests)
+	signingKey ed25519.PublicKey
 	// Mutex für pending
 	mu sync.Mutex
 	// Heruntergeladenes Update, das beim Beenden installiert wird
@@ -169,6 +194,7 @@ func NewUpdater(currentBuild string) *Updater {
 		exePath:          exe,
 		downloadDir:      downloadDir,
 		canWriteDir:      dirWritable,
+		signingKey:       releaseSigningKey(),
 	}
 }
 
@@ -331,6 +357,16 @@ func (u *Updater) CheckAndDownload(ctx context.Context) (*pendingUpdate, error) 
 		return nil, fmt.Errorf("Release %s enthält keine Datei %s", rel.TagName, assetName)
 	}
 
+	// Maßgebliche Prüfsumme aus der signierten Liste; die Angabe der API
+	// muss (falls vorhanden) damit übereinstimmen
+	wantDigest, err := u.fetchSignedDigest(ctx, rel, assetName)
+	if err != nil {
+		return nil, err
+	}
+	if apiDigest, ok := strings.CutPrefix(asset.Digest, "sha256:"); ok && !strings.EqualFold(apiDigest, wantDigest) {
+		return nil, fmt.Errorf("Prüfsumme der GitHub-API weicht von der signierten ab - Update abgelehnt")
+	}
+
 	target := u.exePath + ".new"
 	if kind == updateRunSetup {
 		if err := os.MkdirAll(u.downloadDir, 0o700); err != nil {
@@ -356,15 +392,14 @@ func (u *Updater) CheckAndDownload(ctx context.Context) (*pendingUpdate, error) 
 		}
 		target = filepath.Join(setupDir, assetName)
 	}
-	if err := u.downloadAsset(ctx, *asset, target); err != nil {
+	if err := u.downloadAsset(ctx, *asset, target, wantDigest); err != nil {
 		if kind == updateRunSetup {
 			_ = os.Remove(filepath.Dir(target))
 		}
 		return nil, err
 	}
 
-	wantDigest, _ := strings.CutPrefix(asset.Digest, "sha256:")
-	pending := &pendingUpdate{build: build, path: target, kind: kind, sha256: strings.ToLower(wantDigest)}
+	pending := &pendingUpdate{build: build, path: target, kind: kind, sha256: wantDigest}
 	u.mu.Lock()
 	u.pending = pending
 	u.mu.Unlock()
@@ -399,39 +434,125 @@ func (u *Updater) fetchLatestRelease(ctx context.Context) (*releaseInfo, error) 
 	return &rel, nil
 }
 
+// fetchSignedDigest lädt die signierte Prüfsummenliste des Releases, prüft
+// die Signatur mit dem eingebetteten Schlüssel und liefert die SHA-256 der
+// gewünschten Datei.
+//
+// @param ctx - Kontext
+// @param rel - Release-Daten
+// @param assetName - Gesuchte Datei
+// @return string - SHA-256 (hex, klein)
+// @return error - Liste fehlt, Signatur ungültig, Datei nicht enthalten
+// @date   2026-10-17 22:40
+func (u *Updater) fetchSignedDigest(ctx context.Context, rel *releaseInfo, assetName string) (string, error) {
+	var manifestAsset, sigAsset *releaseAsset
+	for i := range rel.Assets {
+		switch rel.Assets[i].Name {
+		case releasesig.ManifestName:
+			manifestAsset = &rel.Assets[i]
+		case releasesig.SignatureName:
+			sigAsset = &rel.Assets[i]
+		}
+	}
+	if manifestAsset == nil || sigAsset == nil {
+		return "", fmt.Errorf("Release %s ist nicht signiert - Update abgelehnt", rel.TagName)
+	}
+	manifest, err := u.fetchSmallAsset(ctx, *manifestAsset)
+	if err != nil {
+		return "", err
+	}
+	sig, err := u.fetchSmallAsset(ctx, *sigAsset)
+	if err != nil {
+		return "", err
+	}
+	if err := releasesig.Verify(u.signingKey, manifest, sig); err != nil {
+		return "", fmt.Errorf("%w - Update abgelehnt", err)
+	}
+	sums, err := releasesig.ParseManifest(manifest, rel.TagName)
+	if err != nil {
+		return "", err
+	}
+	sum, ok := sums[assetName]
+	if !ok {
+		return "", fmt.Errorf("signierte Prüfsummenliste enthält %s nicht", assetName)
+	}
+	return sum, nil
+}
+
+// fetchSmallAsset lädt eine kleine Release-Datei (Liste, Signatur) in den
+// Speicher - nur von der erlaubten Adresse und größenbegrenzt.
+//
+// @param ctx - Kontext
+// @param asset - Release-Datei laut API
+// @return []byte - Inhalt
+// @return error - Adress-, HTTP- oder Größenfehler
+// @date   2026-10-17 22:40
+func (u *Updater) fetchSmallAsset(ctx context.Context, asset releaseAsset) ([]byte, error) {
+	resp, err := u.getAsset(ctx, asset)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, releasesig.MaxManifestBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("Download abgebrochen: %w", err)
+	}
+	if len(data) > releasesig.MaxManifestBytes {
+		return nil, fmt.Errorf("%s ist zu groß", asset.Name)
+	}
+	return data, nil
+}
+
+// getAsset startet den Download einer Release-Datei nach Prüfung der
+// Adresse. Der Aufrufer schließt resp.Body.
+//
+// @param ctx - Kontext
+// @param asset - Release-Datei laut API
+// @return *http.Response - Antwort mit Status 200
+// @return error - Adress- oder HTTP-Fehler
+// @date   2026-10-17 22:40
+func (u *Updater) getAsset(ctx context.Context, asset releaseAsset) (*http.Response, error) {
+	if !strings.HasPrefix(asset.URL, u.allowedURLPrefix) {
+		return nil, fmt.Errorf("unerwartete Download-Adresse %q", asset.URL)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, asset.URL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "ssh-easy/"+strings.TrimSpace(u.currentBuild))
+	resp, err := u.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("Download antwortet mit HTTP %d", resp.StatusCode)
+	}
+	return resp, nil
+}
+
 // downloadAsset lädt eine Release-Datei nach target und prüft Adresse,
 // Größe, SHA-256 und Dateiformat. Bei jedem Fehler wird die Datei gelöscht.
 //
 // @param ctx - Kontext
 // @param asset - Release-Datei laut API
 // @param target - Zielpfad
+// @param wantDigest - Erwartete SHA-256 (hex) aus der signierten Liste
 // @return error - Fehler bei Download oder Prüfung
-// @date   2026-10-16 10:00
-func (u *Updater) downloadAsset(ctx context.Context, asset releaseAsset, target string) (err error) {
-	if !strings.HasPrefix(asset.URL, u.allowedURLPrefix) {
-		return fmt.Errorf("unerwartete Download-Adresse %q", asset.URL)
-	}
-	wantDigest, ok := strings.CutPrefix(asset.Digest, "sha256:")
-	if !ok || len(wantDigest) != sha256.Size*2 {
+// @date   2026-10-17 22:40
+func (u *Updater) downloadAsset(ctx context.Context, asset releaseAsset, target, wantDigest string) (err error) {
+	if len(wantDigest) != sha256.Size*2 {
 		return fmt.Errorf("Release-Datei %s hat keine SHA-256-Prüfsumme", asset.Name)
 	}
 	if asset.Size <= 0 || asset.Size > maxUpdateBytes {
 		return fmt.Errorf("unplausible Größe %d für %s", asset.Size, asset.Name)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, asset.URL, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("User-Agent", "ssh-easy/"+strings.TrimSpace(u.currentBuild))
-	resp, err := u.client.Do(req)
+	resp, err := u.getAsset(ctx, asset)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Download antwortet mit HTTP %d", resp.StatusCode)
-	}
 
 	// Vorhandene Datei bzw. untergeschobenen Symlink entfernen und exklusiv
 	// neu anlegen - O_EXCL folgt keinem Symlink am Zielpfad

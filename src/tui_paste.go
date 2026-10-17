@@ -172,6 +172,10 @@ func (m AppModel) pasteIntoFocusedInput() (tea.Model, tea.Cmd) {
 		m.passwordInput, cmd = m.passwordInput.Update(paste)
 	case ViewKeygen:
 		m.keygenInputs[m.keygenFocused], cmd = m.keygenInputs[m.keygenFocused].Update(paste)
+	case ViewExport:
+		if m.exportFocusPath {
+			m.exportPathInput, cmd = m.exportPathInput.Update(paste)
+		}
 	}
 	return m, cmd
 }

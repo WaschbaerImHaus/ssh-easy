@@ -44,10 +44,12 @@
 - [x] Host und Benutzer bei der Passwortabfrage (Build 48)
 - [x] Alle Texte in allen 41 Sprachen, Vollständigkeitstest + Claude-Code-Stop-Hook (Build 48)
 - [x] Statusseite zeigt „Keine Tunnel“ statt leerer Tunnel-Überschrift (Build 50)
+- [x] Export der Verbindungsliste: alle oder Auswahl (einzeln oder ganze Gruppe), Taste `E`, ohne SSH-Schlüssel und Schlüsselpfade, Format von connections.json, Rechte 0600, kein Überschreiben (Build 51)
+- [x] Signierte Releases: Ed25519-signierte Prüfsummenliste, Auto-Update prüft gegen eingebetteten öffentlichen Schlüssel (Build 51)
 - [x] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h/l` wird erkannt, Inhalt in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker entfernt) (Build 47)
 
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
-- [ ] Verbindungen exportieren/importieren
+- [ ] Verbindungen importieren (Gegenstück zum Export aus Build 51: Datei wählen, Dubletten erkennen, Auswahl übernehmen)
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)

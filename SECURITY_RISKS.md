@@ -59,28 +59,35 @@ Deaktivieren von OSC 52.
 
 ---
 
-### Auto-Update: Vertrauen in GitHub-Konto und -API (akzeptiertes Risiko)
+### Auto-Update: Signaturschlüssel und Altversionen (akzeptiertes Risiko)
 
-**Datei:** `src/updater.go`
+**Datei:** `src/updater.go`, `src/releasesig/`
 **Schweregrad:** NIEDRIG (nur wenn vom Nutzer eingeschaltet, Standard: aus)
 
-Prüfsumme und Download stammen beide von GitHub. Wer das GitHub-Konto bzw.
-ein Release-Token kontrolliert, könnte eine manipulierte Binary samt passender
-Prüfsumme veröffentlichen. Gegenmaßnahmen: TLS, nur Release-Adresse dieses
-Repositorys, SHA-256-Pflicht (zweite Prüfung direkt vor der Installation gegen
-Austausch auf der Platte), Größen- und Formatprüfung, Standard aus. Unter
-Windows zeigt die Benutzerkontensteuerung beim Setup „Unbekannter Herausgeber“
-(nicht signiert). Das GitHub-Token liegt im Klartext in lokalen Notizen
-(`.claude/CLAUDE.md`, nicht im Repo) – wer es erbeutet, kann Releases
-veröffentlichen, die alle Auto-Update-Nutzer installieren (unter Windows mit
-Adminrechten). Token mit minimalen Rechten und kurzer Laufzeit verwenden.
+Seit Build 51 ist jedes Release mit Ed25519 signiert; ein gestohlener
+GitHub-Token allein reicht nicht mehr für ein Schad-Update. Verbleibend:
+
+- **Privater Schlüssel auf dem Build-Rechner** (`~/.config/ssh-easy/release-signing.key`,
+  0600, nicht im Repo, nicht bei GitHub). Wer diesen LXC übernimmt, hat Schlüssel
+  und Token zugleich. Geht der Schlüssel verloren, können installierte Versionen
+  keine Updates mehr prüfen – sie müssen einmal von Hand aktualisiert werden.
+  **Schlüssel sicher (offline) sichern.** Eine Rotation ohne Neuinstallation
+  ist noch nicht vorgesehen (OPTIMIZE.md).
+- **Builds bis einschließlich 50** kennen die Signatur noch nicht und prüfen nur
+  die SHA-256 der GitHub-API. Für sie gilt das alte Risiko (Konto/Token →
+  manipuliertes Update), bis sie einmal auf Build 51+ aktualisiert sind.
+- Das GitHub-Token liegt weiterhin im Klartext in lokalen Notizen
+  (`.claude/CLAUDE.md`, nicht im Repo). Token mit minimalen Rechten und kurzer
+  Laufzeit verwenden.
+- Unter Windows zeigt die Benutzerkontensteuerung beim Setup „Unbekannter
+  Herausgeber“ (keine Authenticode-Signatur).
 
 Restrisiko Windows-Setup: Der Setup-Ordner gehört dem Benutzer. Schadsoftware
 mit Benutzerrechten könnte im Bruchteil einer Sekunde zwischen Ordnerprüfung
 und Start eine DLL ablegen; NSIS 3 lädt System-DLLs jedoch nur aus System32.
 
-**Maßnahme:** Optional später: Releases signieren (Authenticode bzw. minisign)
-und Signatur vor dem Start prüfen (OPTIMIZE.md).
+**Maßnahme:** Signatur umgesetzt (Build 51). Optional später: Schlüsselrotation
+und Authenticode (OPTIMIZE.md).
 
 ### DNS-Fallback über öffentliche Server (akzeptiertes Risiko)
 

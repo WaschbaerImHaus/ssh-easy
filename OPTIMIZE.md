@@ -17,6 +17,6 @@
 - **Terminal-Groesse**: TUI an Fenstergroesse anpassen (responsive Layout)
 - **Verbindungs-Timeout konfigurierbar**: Seit Build 48 fest 5 s (erster Verbindungsaufbau) bzw. 10 s (Reconnect) – ggf. in connections.json einstellbar machen
 - **Auth-Methoden in einem Handshake**: ConnectAuto baut für jeden Schlüssel eine eigene SSH-Verbindung auf (wegen Auth-Cache-Zuordnung). Ein einziger Handshake mit allen Methoden + PublicKeysCallback, der den erfolgreichen Signer merkt, spart bei vielen Keys deutlich Zeit
-- **Auto-Update signieren**: Releases zusätzlich signieren (z.B. minisign/cosign) und den öffentlichen Schlüssel einbetten – schützt auch bei kompromittiertem GitHub-Konto
+- ~~**Auto-Update signieren**~~ – erledigt in Build 51 (Ed25519-signierte Prüfsummenliste, `src/releasesig`). Offen: Schlüsselrotation (zweiten öffentlichen Schlüssel einbetten, damit ein Schlüsselwechsel ohne Neuinstallation möglich ist) und Authenticode-Signatur der Windows-EXEs gegen die UAC-Meldung „Unbekannter Herausgeber“
 - **Fenstergröße unter Linux**: Optional per xterm-Sequenz `CSI 8;h;w t` wiederherstellen (nur Terminals, die das unterstützen)
 - **i18n vereinheitlichen**: Translations-Struct (41 × ~80 Felder) schrittweise in die Schlüssel-Tabelle aus i18n_extra.go überführen

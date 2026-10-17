@@ -143,6 +143,10 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Auto-Update ein-/ausschalten (Menüzeile ganz unten)
 		return m.toggleAutoUpdate()
 
+	case "E":
+		// Verbindungsliste exportieren (alle oder Auswahl, ohne Schlüssel)
+		return m.openExport()
+
 	case "l":
 		// Sprache wechseln
 		m.state = ViewLanguage
@@ -324,6 +328,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 	if hasGroups {
 		s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtGroupHelp)))
 	}
+	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtHelpExport)))
 
 	// Auto-Update-Schalter ganz unten im Menü
 	s.WriteString("\n" + m.renderAutoUpdateLine())

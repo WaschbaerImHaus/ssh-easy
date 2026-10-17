@@ -128,18 +128,22 @@ func handleTunnelConnection(localConn net.Conn, client *ssh.Client, remoteAddr s
 // @param path - Pfad zur known_hosts-Datei
 // @param hostname - Hostname des Servers
 // @param key - Öffentlicher Schlüssel des Servers
-// @return error - Fehler beim Schreiben
-// @date   2026-03-07 21:00
+// @return error - Fehler beim Schreiben oder Schließen
+// @date   2026-10-17 22:40
 func appendKnownHost(path string, hostname string, key ssh.PublicKey) error {
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return fmt.Errorf("known_hosts konnte nicht geöffnet werden: %w", err)
 	}
-	defer f.Close()
 
 	line := knownhosts.Line([]string{hostname}, key)
-	_, err = fmt.Fprintf(f, "%s\n", line)
-	return err
+	if _, err := fmt.Fprintf(f, "%s\n", line); err != nil {
+		f.Close()
+		return err
+	}
+	// Close-Fehler melden: sonst gälte ein nicht vollständig geschriebener
+	// Host-Key als gespeichert
+	return f.Close()
 }
 
 // DisconnectSSH beendet eine aktive SSH-Verbindung und alle zugehörigen Tunnel.

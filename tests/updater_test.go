@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -23,6 +24,8 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+
+	"ssh-easy/releasesig"
 )
 
 // fakeELF ist ein minimaler Inhalt, der wie eine Linux-Binary aussieht.
@@ -38,6 +41,15 @@ type fakeRelease struct {
 	apiStatus  int    // 0 = 200
 	assetPath  string // Pfad des Assets auf dem Server
 	extraAsset string // zusätzliches Asset (z.B. Setup)
+
+	// Signierte Prüfsummenliste (seit Build 51)
+	unsigned     bool               // true = Release ohne Liste/Signatur
+	noSignature  bool               // true = Liste ohne Signaturdatei
+	manifestTag  string             // leer = rel.tag (sonst: Liste eines anderen Releases)
+	manifestSum  string             // leer = korrekte SHA-256 des Assets
+	omitInList   bool               // true = Asset fehlt in der Liste
+	signWith     ed25519.PrivateKey // nil = testSigningKey
+	manifestPath string             // Pfad der Liste auf dem Server (leer = /download/...)
 }
 
 // startReleaseServer startet einen Server mit /latest (API) und dem Asset.
@@ -46,6 +58,7 @@ func startReleaseServer(t *testing.T, rel fakeRelease) *httptest.Server {
 	if rel.assetPath == "" {
 		rel.assetPath = "/download/" + rel.assetName
 	}
+	manifest, signature := signedManifestFor(rel)
 	mux := http.NewServeMux()
 	var srv *httptest.Server
 	mux.HandleFunc("/latest", func(w http.ResponseWriter, r *http.Request) {
@@ -78,14 +91,63 @@ func startReleaseServer(t *testing.T, rel fakeRelease) *httptest.Server {
 				"browser_download_url": srv.URL + "/download/" + rel.extraAsset,
 			})
 		}
+		if !rel.unsigned {
+			manifestURL := srv.URL + "/download/" + releasesig.ManifestName
+			if rel.manifestPath != "" {
+				manifestURL = srv.URL + rel.manifestPath
+			}
+			assets = append(assets, map[string]any{
+				"name": releasesig.ManifestName, "size": len(manifest), "browser_download_url": manifestURL,
+			})
+			if !rel.noSignature {
+				assets = append(assets, map[string]any{
+					"name": releasesig.SignatureName, "size": len(signature),
+					"browser_download_url": srv.URL + "/download/" + releasesig.SignatureName,
+				})
+			}
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"tag_name": rel.tag, "assets": assets})
 	})
-	mux.HandleFunc("/download/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write(rel.content)
-	})
+	serveFile := func(w http.ResponseWriter, r *http.Request) {
+		switch filepath.Base(r.URL.Path) {
+		case releasesig.ManifestName:
+			_, _ = w.Write(manifest)
+		case releasesig.SignatureName:
+			_, _ = w.Write(signature)
+		default:
+			_, _ = w.Write(rel.content)
+		}
+	}
+	mux.HandleFunc("/download/", serveFile)
+	mux.HandleFunc("/fremd/", serveFile)
 	srv = httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// signedManifestFor erzeugt Prüfsummenliste und Signatur wie build.sh.
+func signedManifestFor(rel fakeRelease) (manifest, signature []byte) {
+	sum := hexSum(rel.content)
+	if rel.manifestSum != "" {
+		sum = rel.manifestSum
+	}
+	sums := map[string]string{"ssh-easy-unbeteiligt": hexSum([]byte("x"))}
+	if !rel.omitInList {
+		sums[rel.assetName] = sum
+	}
+	if rel.extraAsset != "" {
+		sums[rel.extraAsset] = hexSum(rel.content)
+	}
+	tag := rel.tag
+	if rel.manifestTag != "" {
+		tag = rel.manifestTag
+	}
+	key := rel.signWith
+	if key == nil {
+		key = testSigningKey
+	}
+	manifest = releasesig.BuildManifest(tag, sums)
+	return manifest, releasesig.Sign(key, manifest)
 }
 
 // newTestUpdater erstellt einen Updater mit temporärer "installierter" Binary.
@@ -107,6 +169,7 @@ func newTestUpdater(t *testing.T, srv *httptest.Server, build, goos string) (*Up
 	u.goos = goos
 	u.goarch = "amd64"
 	u.downloadDir = filepath.Join(dir, "update")
+	u.signingKey = testSigningPub
 	return u, exe
 }
 
@@ -258,10 +321,66 @@ func TestCheckAndDownloadDigestMismatch(t *testing.T) {
 		digest: "sha256:" + strings.Repeat("0", 64)}, "Prüfsumme")
 }
 
-// TestCheckAndDownloadMissingDigest prüft dass ohne Prüfsumme nicht
-// installiert wird.
-func TestCheckAndDownloadMissingDigest(t *testing.T) {
-	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, digest: "-"}, "Prüfsumme")
+// TestCheckAndDownloadWithoutAPIDigest prüft dass die Prüfsumme der API
+// nur noch zum Gegenprüfen dient: Maßgeblich ist die signierte Liste, ein
+// fehlendes API-Feld verhindert das Update deshalb nicht.
+func TestCheckAndDownloadWithoutAPIDigest(t *testing.T) {
+	srv := startReleaseServer(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, digest: "-"})
+	u, _ := newTestUpdater(t, srv, "47", "linux")
+	pending, err := u.CheckAndDownload(context.Background())
+	if err != nil || pending == nil {
+		t.Fatalf("ohne API-Prüfsumme: pending=%+v err=%v", pending, err)
+	}
+	if pending.sha256 != hexSum(fakeELF) {
+		t.Errorf("pending.sha256 = %q, erwartet die signierte Prüfsumme", pending.sha256)
+	}
+}
+
+// --- Signierte Prüfsummenliste (Build 51) ---
+
+// TestCheckAndDownloadUnsignedRelease prüft dass ein Release ohne
+// signierte Liste nicht installiert wird - auch wenn die API-Prüfsumme
+// stimmt (die könnte ein Angreifer mit Zugriff auf das Konto mitliefern).
+func TestCheckAndDownloadUnsignedRelease(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, unsigned: true}, "signiert")
+}
+
+// TestCheckAndDownloadMissingSignature prüft Liste ohne Signaturdatei.
+func TestCheckAndDownloadMissingSignature(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, noSignature: true}, "signiert")
+}
+
+// TestCheckAndDownloadForeignSignature prüft eine mit fremdem Schlüssel
+// signierte Liste (Angreifer kennt den privaten Schlüssel nicht).
+func TestCheckAndDownloadForeignSignature(t *testing.T) {
+	evil := ed25519.NewKeyFromSeed([]byte("angreifer-schluessel-0123456789!"))
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, signWith: evil}, "Signatur")
+}
+
+// TestCheckAndDownloadReplayedManifest prüft dass eine echte, aber für ein
+// anderes Release signierte Liste nicht gilt (z.B. alte Version mit Lücke
+// als "neue" ausgeben).
+func TestCheckAndDownloadReplayedManifest(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, manifestTag: "v0.40"}, "v0.48")
+}
+
+// TestCheckAndDownloadAssetNotInManifest prüft eine Liste ohne die Datei.
+func TestCheckAndDownloadAssetNotInManifest(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, omitInList: true}, "ssh-easy")
+}
+
+// TestCheckAndDownloadContentNotMatchingSignedSum prüft den eigentlichen
+// Angriff: Binary und API-Prüfsumme ausgetauscht, signierte Liste echt.
+func TestCheckAndDownloadContentNotMatchingSignedSum(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF,
+		manifestSum: hexSum([]byte("die echte, signierte Version"))}, "Prüfsumme")
+}
+
+// TestCheckAndDownloadManifestForeignURL prüft dass auch die Liste nur von
+// der erlaubten Adresse geladen wird.
+func TestCheckAndDownloadManifestForeignURL(t *testing.T) {
+	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF,
+		manifestPath: "/fremd/" + releasesig.ManifestName}, "Adresse")
 }
 
 // TestCheckAndDownloadSizeMismatch prüft die Größenprüfung.
