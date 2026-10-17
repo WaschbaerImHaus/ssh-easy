@@ -46,10 +46,10 @@
 - [x] Statusseite zeigt „Keine Tunnel“ statt leerer Tunnel-Überschrift (Build 50)
 - [x] Export der Verbindungsliste: alle oder Auswahl (einzeln oder ganze Gruppe), Taste `E`, ohne SSH-Schlüssel und Schlüsselpfade, Format von connections.json, Rechte 0600, kein Überschreiben (Build 51)
 - [x] Signierte Releases: Ed25519-signierte Prüfsummenliste, Auto-Update prüft gegen eingebetteten öffentlichen Schlüssel (Build 51)
+- [x] Import von Verbindungen (Taste `I`, auch bei leerer Liste): Datei wählen, Auswahl wie beim Export, vorhandene Namen markiert und nur auf Wunsch ersetzt; Datei als nicht vertrauenswürdig geprüft (1 MiB, Validate, keine Steuerzeichen, keine Schlüsselpfade, neue IDs) (Build 52)
 - [x] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h/l` wird erkannt, Inhalt in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker entfernt) (Build 47)
 
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
-- [ ] Verbindungen importieren (Gegenstück zum Export aus Build 51: Datei wählen, Dubletten erkennen, Auswahl übernehmen)
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)

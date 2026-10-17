@@ -48,6 +48,10 @@ const (
 	ViewLanguage
 	// ViewExport - Export der Verbindungsliste (Taste 'E')
 	ViewExport
+	// ViewImportFile - Import Schritt 1: Datei wählen (Taste 'I')
+	ViewImportFile
+	// ViewImportSelect - Import Schritt 2: Verbindungen auswählen
+	ViewImportSelect
 )
 
 // Eingabefeld-Indizes für das Verbindungsformular.
@@ -104,8 +108,8 @@ type sshHostKeyChangedMsg struct {
 
 // sshErrorMsg wird gesendet bei SSH-Verbindungsfehlern
 type sshErrorMsg struct {
-	id             string
-	err            error
+	id              string
+	err             error
 	returnToConnect bool // Fehler im Passwort-Modus -> in ViewConnect bleiben
 }
 
@@ -234,15 +238,23 @@ type AppModel struct {
 	updateStatus string
 	// Laufende Nummer der letzten Fenstergrößen-Änderung (Entprellen)
 	windowSaveSeq int
-	// Export: gewählte Verbindungs-IDs
-	exportSelected map[string]bool
-	// Export: Cursor und erste sichtbare Zeile
-	exportCursor, exportOffset int
+	// Export: Auswahlliste der Verbindungen
+	exportList connChecklist
 	// Export: Dateinamenfeld und ob es den Fokus hat
 	exportPathInput textinput.Model
 	exportFocusPath bool
-	// Export: Bezugsordner für relative Dateinamen (Home-Ordner)
+	// Export/Import: Bezugsordner für relative Dateinamen (Home-Ordner)
 	exportHomeDir string
+	// Import: Dateinamenfeld (Schritt 1)
+	importPathInput textinput.Model
+	// Import: Auswahlliste der Verbindungen aus der Datei (Schritt 2)
+	importList connChecklist
+	// Import: Namen vorhandener Verbindungen (Kleinbuchstaben)
+	importExisting map[string]bool
+	// Import: Zahl übersprungener (ungültiger/doppelter) Einträge der Datei
+	importSkipped int
+	// Import: geladene Datei (Anzeige)
+	importFile string
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -585,6 +597,10 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleKeygenResultKeys(msg)
 	case ViewExport:
 		return m.handleExportKeys(msg)
+	case ViewImportFile:
+		return m.handleImportFileKeys(msg)
+	case ViewImportSelect:
+		return m.handleImportSelectKeys(msg)
 	}
 
 	return m, nil
@@ -608,6 +624,8 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.keygenInputs[m.keygenFocused], cmd = m.keygenInputs[m.keygenFocused].Update(msg)
 	case ViewExport:
 		m.exportPathInput, cmd = m.exportPathInput.Update(msg)
+	case ViewImportFile:
+		m.importPathInput, cmd = m.importPathInput.Update(msg)
 	}
 
 	return m, cmd
@@ -645,6 +663,10 @@ func (m AppModel) View() string {
 		m.renderKeygenResult(&s)
 	case ViewExport:
 		m.renderExport(&s)
+	case ViewImportFile:
+		m.renderImportFile(&s)
+	case ViewImportSelect:
+		m.renderImportSelect(&s)
 	}
 
 	return s.String()

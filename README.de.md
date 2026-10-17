@@ -18,6 +18,7 @@ Ein einfacher SSH-Verbindungsmanager mit Terminal-UI (TUI) zum Verwalten und Auf
 - DNS-Fallback: Versagt der DNS-Server des Netzwerks, wird über 1.1.1.1, 1.0.0.1, 8.8.8.8 und 8.8.4.4 aufgelöst (rotierend)
 - Optionales Auto-Update über GitHub-Releases (Standard: aus, Taste `u`); jedes Release ist signiert (Ed25519)
 - Export der Verbindungsliste – alle Verbindungen oder eine Auswahl, SSH-Schlüssel werden nie exportiert (`E`)
+- Import von Verbindungen aus einer Exportdatei – Einträge auswählbar, vorhandene Namen werden erkannt (`I`)
 - Merkt sich die Fenstergröße (Windows-Konsole, außer maximiert/Vollbild; Windows Terminal merkt sie selbst)
 - 41 Oberflächensprachen
 - Logging nach ~/.ssh-easy/ssh-easy.log
@@ -57,6 +58,7 @@ Programm starten:
 | `Bild↑` / `Bild↓` / `Pos1` / `Ende` | In langen Listen blättern |
 | `u` | Auto-Update ein-/ausschalten (letzte Menüzeile) |
 | `E` | Verbindungen exportieren (alle oder Auswahl) |
+| `I` | Verbindungen aus einer Exportdatei importieren |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
 | `Strg+Hoch` / `Strg+Runter` | Schriftgroesse aendern (Windows, wird gespeichert; Strg+Mausrad geht auch) |
@@ -120,6 +122,15 @@ Die Liste zeigt die ersten zwei Tunnel-Ports, weitere nur noch als Anzahl: `[Tun
 
 Die Datei hat das Format von `connections.json` und kann damit auf einem anderen Rechner als Konfiguration dienen. Sie wird mit den Rechten `0600` geschrieben und überschreibt nie eine vorhandene Datei. **SSH-Schlüssel sind nicht Teil des Exports** – weder die Schlüsseldateien noch ihr Pfad; Verbindungen mit Schlüssel werden als Passwort-Verbindung exportiert (die automatische Anmeldung probiert SSH-Agent und alle Schlüssel in `~/.ssh/` trotzdem zuerst).
 
+### Verbindungen importieren
+
+`I` (Shift+I) in der Liste drücken – das geht auch bei leerer Liste, z. B. auf einem neuen Rechner.
+
+1. Dateinamen eingeben (Vorschlag: die neueste `ssh-easy-export-*.json` im Home-Ordner) und `Enter` drücken.
+2. Die Verbindungen der Datei erscheinen mit Häkchen wie beim Export (`Leertaste`, `a`, Gruppen schalten alle Mitglieder). Namen, die es schon gibt, sind mit **(vorhanden)** markiert und anfangs *nicht* gewählt. Wer sie wählt, ersetzt die vorhandene Verbindung (Host, Port, Benutzer und Tunnel kommen aus der Datei; die lokale ID und eine lokale SSH-Schlüssel-Einstellung bleiben). `Enter` importiert, `Esc` geht zurück.
+
+Die Datei gilt als nicht vertrauenswürdig: höchstens 1 MiB, jeder Eintrag wird geprüft (Name, Host, Port, Benutzer, Tunnel), Einträge mit Steuerzeichen (z. B. Terminal-Escape-Sequenzen) und doppelte Namen innerhalb der Datei werden übersprungen, Schlüsselpfade werden nie übernommen. Importiert werden nur Verbindungen – Einstellungen wie Sprache oder Auto-Update bleiben unverändert.
+
 ### Passwortabfrage
 
 Schlägt die automatische Anmeldung fehl, fragt ssh-easy nach dem Passwort und zeigt dabei Host und – in der Zeile darunter – den Benutzernamen, damit klar ist, welches Passwort gemeint ist.
@@ -162,5 +173,6 @@ Weitere Einstellungen in `connections.json`: `language`, `font_size`, `window_co
 - OSC-52-Zwischenablage: Remote-Programme duerfen nur **schreiben** (max. 1 MiB); Leseanfragen werden nie beantwortet
 - Auto-Update: lädt nur aus den GitHub-Releases dieses Repositorys; die SHA-256 muss zur Ed25519-signierten Prüfsummenliste genau dieses Releases passen (öffentlicher Schlüssel eingebaut, privater nur auf dem Build-Rechner), vor der Installation erneut geprüft, dazu Größen- und Formatprüfung
 - Export: keine SSH-Schlüssel oder Schlüsselpfade, Dateirechte `0600`, überschreibt nie und folgt keinem Symlink
+- Import: Größenlimit, jeder Eintrag geprüft, keine Steuer-/Formatzeichen, Schlüsselpfade aus der Datei werden ignoriert, neue IDs
 - Die DNS-Fallback-Server werden nur genutzt, wenn der DNS des Netzwerks nicht antwortet, und nie für lokale Namen (`.local`, `.lan`, Namen ohne Punkt …); einem unbekannten Host-Key, der über den Fallback-DNS erreicht wurde, wird nicht automatisch vertraut
 - Einfügen per Shift+Einfg nutzt Bracketed Paste, sobald die Remote-Shell es aktiviert (`ESC[?2004h`): Der Text wird in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker werden entfernt – mehrzeiliger Inhalt wird nicht Zeile für Zeile sofort ausgeführt

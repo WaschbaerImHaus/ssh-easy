@@ -10,7 +10,7 @@
 // Passwort-Verbindung exportiert (wie nach "Key entfernen"); der Auto-
 // Connect probiert Agent und vorhandene Schlüssel trotzdem zuerst.
 //
-// Bedienung der Exportansicht:
+// Bedienung der Exportansicht (Auswahlliste: checklist.go):
 //   - ↑/↓, Bild↑/Bild↓, Pos1/Ende: Zeile wählen
 //   - Leertaste: Eintrag an/aus (auf einer Gruppe: alle Mitglieder)
 //   - a: alle an bzw. alle aus
@@ -18,7 +18,7 @@
 //   - Enter: exportieren, Esc: abbrechen
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 23:10
+// @date   2026-10-17 23:40
 package main
 
 import (
@@ -144,26 +144,11 @@ func defaultExportFileName() string {
 
 // --- TUI ---
 
-// exportRows liefert die Zeilen der Exportansicht: wie die Liste, aber
-// mit allen Gruppen aufgeklappt.
-//
-// @return []listRow - Zeilen
-// @date   2026-10-17 23:10
-func (m AppModel) exportRows() []listRow {
-	expanded := make(map[string]bool)
-	for _, row := range buildListRows(m.connections, nil) {
-		if row.kind == rowGroup {
-			expanded[row.groupKey] = true
-		}
-	}
-	return buildListRows(m.connections, expanded)
-}
-
 // openExport öffnet die Exportansicht mit allen Verbindungen ausgewählt.
 //
 // @return tea.Model - Modell in ViewExport (bzw. Liste mit Fehler)
-// @return tea.Cmd - Cursor-Blinken des Dateinamenfelds
-// @date   2026-10-17 23:10
+// @return tea.Cmd - immer nil
+// @date   2026-10-17 23:40
 func (m AppModel) openExport() (tea.Model, tea.Cmd) {
 	m.successMsg = ""
 	if len(m.connections) == 0 {
@@ -172,51 +157,24 @@ func (m AppModel) openExport() (tea.Model, tea.Cmd) {
 	}
 	m.errorMsg = ""
 	m.state = ViewExport
-	m.exportSelected = make(map[string]bool, len(m.connections))
-	for _, conn := range m.connections {
-		m.exportSelected[conn.ID] = true
-	}
-	m.exportCursor = 0
-	m.exportOffset = 0
+	m.exportList = newConnChecklist(m.connections, func(Connection) bool { return true })
 	m.exportFocusPath = false
+	m.exportPathInput = newPathInput(defaultExportFileName())
+	return m, nil
+}
+
+// newPathInput erzeugt ein Dateinamenfeld (Export und Import).
+//
+// @param value - Vorbelegung
+// @return textinput.Model - Eingabefeld ohne Prompt
+// @date   2026-10-17 23:40
+func newPathInput(value string) textinput.Model {
 	input := textinput.New()
 	input.Prompt = ""
 	input.CharLimit = 1024
 	input.Width = 60
-	input.SetValue(defaultExportFileName())
-	m.exportPathInput = input
-	return m, nil
-}
-
-// exportRowIDs liefert die Verbindungs-IDs einer Zeile (Gruppe: alle
-// Mitglieder).
-//
-// @param row - Zeile
-// @return []string - IDs
-// @date   2026-10-17 23:10
-func (m AppModel) exportRowIDs(row listRow) []string {
-	if row.kind == rowGroup {
-		ids := make([]string, 0, len(row.children))
-		for _, idx := range row.children {
-			ids = append(ids, m.connections[idx].ID)
-		}
-		return ids
-	}
-	return []string{m.connections[row.connIndex].ID}
-}
-
-// exportSelectedCount zählt die gewählten Verbindungen.
-//
-// @return int - Anzahl
-// @date   2026-10-17 23:10
-func (m AppModel) exportSelectedCount() int {
-	count := 0
-	for _, conn := range m.connections {
-		if m.exportSelected[conn.ID] {
-			count++
-		}
-	}
-	return count
+	input.SetValue(value)
+	return input
 }
 
 // handleExportKeys verarbeitet Tasten in der Exportansicht.
@@ -224,7 +182,7 @@ func (m AppModel) exportSelectedCount() int {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-17 23:10
+// @date   2026-10-17 23:40
 func (m AppModel) handleExportKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
@@ -256,47 +214,7 @@ func (m AppModel) handleExportKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	rows := m.exportRows()
-	limit := visibleRowLimit(m.termHeight)
-	switch msg.String() {
-	case "up", "k":
-		m.exportCursor--
-	case "down", "j":
-		m.exportCursor++
-	case "pgup":
-		m.exportCursor -= limit
-	case "pgdown":
-		m.exportCursor += limit
-	case "home":
-		m.exportCursor = 0
-	case "end":
-		m.exportCursor = len(rows) - 1
-	case " ", "space":
-		if m.exportCursor >= 0 && m.exportCursor < len(rows) {
-			ids := m.exportRowIDs(rows[m.exportCursor])
-			// Ganz gewählt -> alle aus; sonst (keiner/teilweise) -> alle an
-			allOn := true
-			for _, id := range ids {
-				allOn = allOn && m.exportSelected[id]
-			}
-			for _, id := range ids {
-				m.exportSelected[id] = !allOn
-			}
-		}
-	case "a":
-		allOn := m.exportSelectedCount() == len(m.connections)
-		for _, conn := range m.connections {
-			m.exportSelected[conn.ID] = !allOn
-		}
-	}
-
-	if m.exportCursor >= len(rows) {
-		m.exportCursor = len(rows) - 1
-	}
-	if m.exportCursor < 0 {
-		m.exportCursor = 0
-	}
-	m.exportOffset = scrollOffset(len(rows), m.exportCursor, m.exportOffset, limit)
+	m.exportList.handleKey(msg.String(), visibleRowLimit(m.termHeight))
 	return m, nil
 }
 
@@ -304,14 +222,14 @@ func (m AppModel) handleExportKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 //
 // @return tea.Model - Liste mit Erfolgsmeldung bzw. Exportansicht mit Fehler
 // @return tea.Cmd - immer nil
-// @date   2026-10-17 23:10
+// @date   2026-10-17 23:40
 func (m AppModel) runExport() (tea.Model, tea.Cmd) {
-	count := m.exportSelectedCount()
+	count := m.exportList.count()
 	if count == 0 {
 		m.errorMsg = m.tr(txtExportNoneSelected)
 		return m, nil
 	}
-	cfg := buildExportConfig(m.connections, m.exportSelected)
+	cfg := buildExportConfig(m.exportList.conns, m.exportList.selected)
 	path, err := writeExportFile(m.exportPathInput.Value(), cfg, m.exportHomeDir)
 	switch {
 	case errors.Is(err, errExportExists):
@@ -336,33 +254,16 @@ func (m AppModel) runExport() (tea.Model, tea.Cmd) {
 // renderExport rendert die Exportansicht.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-17 23:10
+// @date   2026-10-17 23:40
 func (m AppModel) renderExport(s *strings.Builder) {
 	s.WriteString(titleStyle.Render("  " + m.tr(txtExportTitle)))
 	s.WriteString("\n\n")
-
-	rows := m.exportRows()
-	limit := visibleRowLimit(m.termHeight)
-	offset := scrollOffset(len(rows), m.exportCursor, m.exportOffset, limit)
-	end := offset + limit
-	if end > len(rows) {
-		end = len(rows)
-	}
-	if offset > 0 {
-		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
-	}
-	for i := offset; i < end; i++ {
-		s.WriteString(m.renderExportRow(rows[i], i == m.exportCursor && !m.exportFocusPath))
-		s.WriteString("\n")
-	}
-	if end < len(rows) {
-		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↓ +%d", len(rows)-end)) + "\n")
-	}
+	m.exportList.render(s, visibleRowLimit(m.termHeight), !m.exportFocusPath, nil)
 
 	// labelStyle ohne feste Breite: hier stehen Zähler und Feld direkt hinter
 	// der Beschriftung (nicht in Formularspalten)
 	label := labelStyle.UnsetWidth()
-	s.WriteString("\n" + label.Render(fmt.Sprintf("  "+m.tr(txtExportCount), m.exportSelectedCount(), len(m.connections))))
+	s.WriteString("\n" + label.Render(fmt.Sprintf("  "+m.tr(txtExportCount), m.exportList.count(), len(m.exportList.conns))))
 	s.WriteString("\n" + label.Render("  "+m.tr(txtExportFile)) + " " + m.exportPathInput.View())
 	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render("  "+m.tr(txtExportNoKeys)))
 
@@ -370,45 +271,4 @@ func (m AppModel) renderExport(s *strings.Builder) {
 		s.WriteString("\n" + errorStyle.Render(m.lang.ErrPrefix+m.errorMsg))
 	}
 	s.WriteString(helpStyle.Render("\n" + m.tr(txtExportHelp)))
-}
-
-// renderExportRow rendert eine Zeile mit Auswahlkästchen:
-// [x] gewählt, [ ] nicht gewählt, [~] Gruppe teilweise gewählt.
-//
-// @param row - Zeile
-// @param selected - Cursor steht auf der Zeile
-// @return string - Gerenderte Zeile
-// @date   2026-10-17 23:10
-func (m AppModel) renderExportRow(row listRow, selected bool) string {
-	base := normalStyle
-	if selected {
-		base = selectedStyle
-	}
-	on := 0
-	ids := m.exportRowIDs(row)
-	for _, id := range ids {
-		if m.exportSelected[id] {
-			on++
-		}
-	}
-	box := "[ ]"
-	switch {
-	case on == len(ids):
-		box = "[x]"
-	case on > 0:
-		box = "[~]"
-	}
-
-	label := row.label
-	switch row.kind {
-	case rowGroup:
-		label = fmt.Sprintf("%s (%d)", row.label, len(row.children))
-	case rowChild:
-		branch := "├"
-		if row.lastChild {
-			branch = "└"
-		}
-		return base.Render("    " + branch + " " + box + " " + label)
-	}
-	return base.Render("  " + box + " " + label)
 }

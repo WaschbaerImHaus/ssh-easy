@@ -20,6 +20,7 @@ A simple SSH connection manager with Terminal UI (TUI) for managing and establis
 - DNS fallback: if the network's DNS server fails, names are resolved via 1.1.1.1, 1.0.0.1, 8.8.8.8 and 8.8.4.4 (rotating)
 - Optional auto-update from GitHub releases (off by default, toggle with `u`); every release is signed (Ed25519)
 - Export the connection list — all connections or a selection, SSH keys are never exported (`E`)
+- Import connections from an export file — choose entries, existing names are detected (`I`)
 - Remembers the window size (Windows console, unless maximized/fullscreen; Windows Terminal remembers it itself)
 - 41 UI languages
 - Logging to `~/.ssh-easy/ssh-easy.log`
@@ -70,6 +71,7 @@ Start the program:
 | `PgUp` / `PgDn` / `Home` / `End` | Page through long lists |
 | `u` | Toggle auto-update (shown in the last menu line) |
 | `E` | Export connections (all or a selection) |
+| `I` | Import connections from an export file |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
@@ -133,6 +135,15 @@ Press `E` (Shift+E) in the list. All connections are selected at first; groups a
 
 The file has the format of `connections.json`, so it can be used as configuration on another computer. It is written with permissions `0600` and never overwrites an existing file. **SSH keys are not part of the export** — neither the key files nor their path; connections that used a key are exported as password connections (automatic authentication still tries the SSH agent and all keys in `~/.ssh/` first).
 
+### Importing connections
+
+Press `I` (Shift+I) in the list — this also works with an empty list, e.g. on a new computer.
+
+1. Enter the file name (suggested: the newest `ssh-easy-export-*.json` in your home folder) and press `Enter`.
+2. The connections of the file are shown with check boxes, like in the export (`Space`, `a`, groups toggle all members). Names that already exist are marked **(exists)** and are *not* selected at first. If you select one, it replaces the existing connection (host, port, user and tunnels come from the file; the local ID and a local SSH key setting are kept). `Enter` imports, `Esc` goes back.
+
+The file is treated as untrusted: at most 1 MiB, every entry is validated (name, host, port, user, tunnels), entries with control characters (e.g. terminal escape sequences) are skipped, duplicate names inside the file are skipped, and key paths are never taken over. Only connections are imported — settings like language or auto-update stay as they are.
+
 ### Password prompt
 
 If automatic authentication fails, ssh-easy asks for the password and shows the host and — on the line below — the user name, so you know which password is meant.
@@ -175,6 +186,7 @@ Further settings in `connections.json`: `language`, `font_size`, `window_cols` /
 - OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
 - Auto-update: downloads only from this repository's GitHub releases; the SHA-256 must match the Ed25519-signed checksum list of exactly this release (public key built in, private key only on the build machine), re-checked before installing, plus size and format check
 - Export: no SSH keys or key paths, file permissions `0600`, never overwrites or follows a symlink
+- Import: size limit, every entry validated, no control/format characters, key paths from the file are ignored, new IDs
 - DNS fallback servers are only used when the network's DNS does not answer and never for local names (`.local`, `.lan`, names without a dot, …); an unknown host key reached via fallback DNS is not trusted automatically
 - Shift+Insert paste uses bracketed paste when the remote shell enables it (`ESC[?2004h`): pasted text is wrapped in `ESC[200~ … ESC[201~` and embedded markers are removed, so multi-line clipboard content is not executed line by line
 

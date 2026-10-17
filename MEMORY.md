@@ -53,5 +53,11 @@
 - Export der Verbindungsliste (Taste E): alle/Auswahl/Gruppe, ohne key_path, AuthType key -> password, 0600, O_EXCL
 - tests/source_hygiene_test.go verbietet Bidi/ZWSP/BOM im Quellcode
 
+## Build 52 (2026-10-17) - Import
+- Import (Taste I, auch bei leerer Liste): ViewImportFile (Dateiname, Vorschlag neueste Exportdatei) -> ViewImportSelect
+- Gemeinsame Auswahlliste src/checklist.go (connChecklist) fuer Export und Import
+- Vorhandene Namen: markiert, anfangs abgewaehlt; gewaehlt = ersetzen (lokale ID/CreatedAt/Key bleiben)
+- Datei untrusted: 1 MiB, Validate + validGroupName, keine Steuer-/Cf-Zeichen (ZWNJ/ZWJ erlaubt), key_path verworfen, neue IDs
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

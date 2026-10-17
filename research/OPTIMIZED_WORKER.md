@@ -61,3 +61,10 @@ Unterstuetzung und Keepalive. Die TUI ist modular in Views aufgeteilt.
 
 ### Arbeitsweise
 - Bei Scanner-Berichten zuerst die Zeichen/Code-Stellen selbst prüfen, dann über triage_cli.py pro Befund (nicht per globaler Regel) bewerten.
+
+## Stand 2026-10-17 (Build 52)
+
+### Gelernt
+- `\uXXXX` in Tool-Parametern (Write/Edit) wird beim JSON-Dekodieren zum echten Zeichen. Für unsichtbare Zeichen in Go-Quelltext danach per Skript in Go-Escapes umwandeln – der Hygiene-Test (`tests/source_hygiene_test.go`) fängt es zuverlässig.
+- Import-Dateien wie Netzwerkeingaben behandeln: Größenlimit, strenge Prüfung je Eintrag, Steuerzeichen ablehnen (TUI-Ausgabe!), Pfadfelder (key_path) nie übernehmen, IDs neu vergeben.
+- Gemeinsame UI-Bausteine (connChecklist) als eigener Typ mit Wertsemantik + Map halten den Bubbletea-Modellcode klein und sind direkt testbar.

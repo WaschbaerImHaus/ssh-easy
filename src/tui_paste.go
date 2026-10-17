@@ -176,6 +176,8 @@ func (m AppModel) pasteIntoFocusedInput() (tea.Model, tea.Cmd) {
 		if m.exportFocusPath {
 			m.exportPathInput, cmd = m.exportPathInput.Update(paste)
 		}
+	case ViewImportFile:
+		m.importPathInput, cmd = m.importPathInput.Update(paste)
 	}
 	return m, cmd
 }
