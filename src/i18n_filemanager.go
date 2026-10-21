@@ -12,7 +12,7 @@
 // (höchstens 7 Zeichen), sonst werden sie bei 80 Spalten gekürzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:18
+// @date   2026-10-21 21:24
 package main
 
 const (
@@ -104,6 +104,16 @@ const (
 	txtFMErrCannotProtect textKey = "fm_err_cannot_protect"
 	// txtFMErrCopyLimit - Grenze beim Erfassen (%s Pfad, %d Einträge, %d Ebenen)
 	txtFMErrCopyLimit textKey = "fm_err_copy_limit"
+	// txtFMViewHelp - Tastenhilfe des Betrachters
+	txtFMViewHelp textKey = "fm_view_help"
+	// txtFMViewLine - Position im Betrachter (%d Zeile, %d gesamt)
+	txtFMViewLine textKey = "fm_view_line"
+	// txtFMViewTruncated - Hinweis gekürzt (%s geladene Größe)
+	txtFMViewTruncated textKey = "fm_view_truncated"
+	// txtFMViewLoading - Betrachter lädt
+	txtFMViewLoading textKey = "fm_view_loading"
+	// txtFMErrView - Ansehen nicht möglich (%s Name, %s Ursache)
+	txtFMErrView textKey = "fm_err_view"
 )
 
 // init mischt die Datei-Manager-Texte in die Zusatztexte ein.
@@ -167,6 +177,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: unzulässiger Dateiname vom Server – übersprungen",
 		txtFMErrCannotProtect: "%s: Zugriffsrechte lassen sich auf dem Ziel nicht einschränken – private Datei nicht kopiert",
 		txtFMErrCopyLimit:     "%s: zu viele Einträge oder zu tief verschachtelt (höchstens %d Einträge, %d Ebenen) – nichts kopiert",
+		txtFMViewHelp:         "q/Esc/F3 Schließen  F2 Umbruch  F4 Hex/Text  ↑↓ Bild↑↓ Pos1 Ende Blättern",
+		txtFMViewLine:         "Zeile %d/%d",
+		txtFMViewTruncated:    "(nur die ersten %s geladen)",
+		txtFMViewLoading:      "Lade …",
+		txtFMErrView:          "Ansehen von %s nicht möglich: %s",
 	},
 	LangEnglish: {
 		txtFMListEntry:        "File manager (two connections)",
@@ -213,6 +228,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: invalid file name from the server – skipped",
 		txtFMErrCannotProtect: "%s: permissions cannot be restricted on the target – private file not copied",
 		txtFMErrCopyLimit:     "%s: too many entries or nested too deeply (at most %d entries, %d levels) – nothing copied",
+		txtFMViewHelp:         "q/Esc/F3 Close  F2 Wrap  F4 Hex/Text  ↑↓ PgUp/PgDn Home End Scroll",
+		txtFMViewLine:         "Line %d/%d",
+		txtFMViewTruncated:    "(only the first %s loaded)",
+		txtFMViewLoading:      "Loading …",
+		txtFMErrView:          "Cannot view %s: %s",
 	},
 	LangFrancais: {
 		txtFMListEntry:        "Gestionnaire de fichiers (deux connexions)",
@@ -259,6 +279,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s : nom de fichier non autorisé envoyé par le serveur – ignoré",
 		txtFMErrCannotProtect: "%s : impossible de restreindre les droits sur la cible – fichier privé non copié",
 		txtFMErrCopyLimit:     "%s : trop d'éléments ou imbrication trop profonde (au plus %d éléments, %d niveaux) – rien copié",
+		txtFMViewHelp:         "q/Échap/F3 Fermer  F2 Retour ligne  F4 Hex/Texte  ↑↓ PgPréc/PgSuiv Début Fin Défiler",
+		txtFMViewLine:         "Ligne %d/%d",
+		txtFMViewTruncated:    "(seuls les premiers %s chargés)",
+		txtFMViewLoading:      "Chargement …",
+		txtFMErrView:          "Impossible d'afficher %s : %s",
 	},
 	LangEspanol: {
 		txtFMListEntry:        "Gestor de archivos (dos conexiones)",
@@ -305,6 +330,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: nombre de archivo no válido del servidor – omitido",
 		txtFMErrCannotProtect: "%s: no se pueden restringir los permisos en el destino – archivo privado no copiado",
 		txtFMErrCopyLimit:     "%s: demasiadas entradas o anidamiento excesivo (máximo %d entradas, %d niveles) – no se copió nada",
+		txtFMViewHelp:         "q/Esc/F3 Cerrar  F2 Ajuste  F4 Hex/Texto  ↑↓ RePág/AvPág Inicio Fin Desplazar",
+		txtFMViewLine:         "Línea %d/%d",
+		txtFMViewTruncated:    "(solo se cargaron los primeros %s)",
+		txtFMViewLoading:      "Cargando …",
+		txtFMErrView:          "No se puede ver %s: %s",
 	},
 	LangItaliano: {
 		txtFMListEntry:        "Gestore file (due connessioni)",
@@ -351,6 +381,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: nome file non valido dal server – saltato",
 		txtFMErrCannotProtect: "%s: impossibile limitare i permessi sulla destinazione – file privato non copiato",
 		txtFMErrCopyLimit:     "%s: troppi elementi o annidamento eccessivo (al massimo %d elementi, %d livelli) – nulla copiato",
+		txtFMViewHelp:         "q/Esc/F3 Chiudi  F2 A capo  F4 Hex/Testo  ↑↓ PagSu/PagGiù Inizio Fine Scorri",
+		txtFMViewLine:         "Riga %d/%d",
+		txtFMViewTruncated:    "(caricati solo i primi %s)",
+		txtFMViewLoading:      "Caricamento …",
+		txtFMErrView:          "Impossibile visualizzare %s: %s",
 	},
 	LangPortugues: {
 		txtFMListEntry:        "Gestor de ficheiros (duas ligações)",
@@ -397,6 +432,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: nome de ficheiro inválido do servidor – ignorado",
 		txtFMErrCannotProtect: "%s: não é possível restringir as permissões no destino – ficheiro privado não copiado",
 		txtFMErrCopyLimit:     "%s: demasiadas entradas ou aninhamento excessivo (no máximo %d entradas, %d níveis) – nada copiado",
+		txtFMViewHelp:         "q/Esc/F3 Fechar  F2 Quebra  F4 Hex/Texto  ↑↓ PgUp/PgDn Início Fim Deslocar",
+		txtFMViewLine:         "Linha %d/%d",
+		txtFMViewTruncated:    "(apenas os primeiros %s carregados)",
+		txtFMViewLoading:      "A carregar …",
+		txtFMErrView:          "Não é possível ver %s: %s",
 	},
 	LangDutch: {
 		txtFMListEntry:        "Bestandsbeheer (twee verbindingen)",
@@ -443,6 +483,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ongeldige bestandsnaam van de server – overgeslagen",
 		txtFMErrCannotProtect: "%s: rechten kunnen op het doel niet worden beperkt – privébestand niet gekopieerd",
 		txtFMErrCopyLimit:     "%s: te veel items of te diep genest (hoogstens %d items, %d niveaus) – niets gekopieerd",
+		txtFMViewHelp:         "q/Esc/F3 Sluiten  F2 Terugloop  F4 Hex/Tekst  ↑↓ PgUp/PgDn Home End Scrollen",
+		txtFMViewLine:         "Regel %d/%d",
+		txtFMViewTruncated:    "(alleen de eerste %s geladen)",
+		txtFMViewLoading:      "Laden …",
+		txtFMErrView:          "%s kan niet worden bekeken: %s",
 	},
 	LangSwedish: {
 		txtFMListEntry:        "Filhanterare (två anslutningar)",
@@ -489,6 +534,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ogiltigt filnamn från servern – hoppades över",
 		txtFMErrCannotProtect: "%s: behörigheterna kan inte begränsas på målet – privat fil kopierades inte",
 		txtFMErrCopyLimit:     "%s: för många poster eller för djup nästling (högst %d poster, %d nivåer) – inget kopierat",
+		txtFMViewHelp:         "q/Esc/F3 Stäng  F2 Radbrytning  F4 Hex/Text  ↑↓ PgUp/PgDn Home End Bläddra",
+		txtFMViewLine:         "Rad %d/%d",
+		txtFMViewTruncated:    "(endast de första %s inlästa)",
+		txtFMViewLoading:      "Läser in …",
+		txtFMErrView:          "Kan inte visa %s: %s",
 	},
 	LangPolish: {
 		txtFMListEntry:        "Menedżer plików (dwa połączenia)",
@@ -535,6 +585,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: niedozwolona nazwa pliku z serwera – pominięto",
 		txtFMErrCannotProtect: "%s: nie można ograniczyć uprawnień w celu – plik prywatny nie został skopiowany",
 		txtFMErrCopyLimit:     "%s: za dużo pozycji lub zbyt głębokie zagnieżdżenie (najwyżej %d pozycji, %d poziomów) – nic nie skopiowano",
+		txtFMViewHelp:         "q/Esc/F3 Zamknij  F2 Zawijanie  F4 Hex/Tekst  ↑↓ PgUp/PgDn Home End Przewijanie",
+		txtFMViewLine:         "Wiersz %d/%d",
+		txtFMViewTruncated:    "(wczytano tylko pierwsze %s)",
+		txtFMViewLoading:      "Wczytywanie …",
+		txtFMErrView:          "Nie można wyświetlić %s: %s",
 	},
 	LangCzech: {
 		txtFMListEntry:        "Správce souborů (dvě připojení)",
@@ -581,6 +636,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: neplatný název souboru ze serveru – přeskočeno",
 		txtFMErrCannotProtect: "%s: na cíli nelze omezit oprávnění – soukromý soubor nezkopírován",
 		txtFMErrCopyLimit:     "%s: příliš mnoho položek nebo příliš hluboké vnoření (nejvýše %d položek, %d úrovní) – nic nezkopírováno",
+		txtFMViewHelp:         "q/Esc/F3 Zavřít  F2 Zalamování  F4 Hex/Text  ↑↓ PgUp/PgDn Home End Posun",
+		txtFMViewLine:         "Řádek %d/%d",
+		txtFMViewTruncated:    "(načteno jen prvních %s)",
+		txtFMViewLoading:      "Načítání …",
+		txtFMErrView:          "%s nelze zobrazit: %s",
 	},
 	LangRomanian: {
 		txtFMListEntry:        "Manager de fișiere (două conexiuni)",
@@ -627,6 +687,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: nume de fișier nevalid de la server – omis",
 		txtFMErrCannotProtect: "%s: permisiunile nu pot fi restrânse pe țintă – fișier privat necopiat",
 		txtFMErrCopyLimit:     "%s: prea multe intrări sau imbricare prea adâncă (cel mult %d intrări, %d niveluri) – nimic copiat",
+		txtFMViewHelp:         "q/Esc/F3 Închide  F2 Încadrare  F4 Hex/Text  ↑↓ PgUp/PgDn Home End Derulare",
+		txtFMViewLine:         "Rândul %d/%d",
+		txtFMViewTruncated:    "(doar primii %s încărcați)",
+		txtFMViewLoading:      "Se încarcă …",
+		txtFMErrView:          "%s nu poate fi afișat: %s",
 	},
 	LangBulgarian: {
 		txtFMListEntry:        "Файлов мениджър (две връзки)",
@@ -673,6 +738,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: недопустимо име на файл от сървъра – пропуснато",
 		txtFMErrCannotProtect: "%s: правата не могат да се ограничат в целта – личният файл не е копиран",
 		txtFMErrCopyLimit:     "%s: твърде много елементи или твърде дълбоко влагане (най-много %d елемента, %d нива) – нищо не е копирано",
+		txtFMViewHelp:         "q/Esc/F3 Затваряне  F2 Пренос  F4 Hex/Текст  ↑↓ PgUp/PgDn Home End Превъртане",
+		txtFMViewLine:         "Ред %d/%d",
+		txtFMViewTruncated:    "(заредени са само първите %s)",
+		txtFMViewLoading:      "Зареждане …",
+		txtFMErrView:          "%s не може да се покаже: %s",
 	},
 	LangRussian: {
 		txtFMListEntry:        "Файловый менеджер (два подключения)",
@@ -719,6 +789,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: недопустимое имя файла от сервера – пропущено",
 		txtFMErrCannotProtect: "%s: на цели нельзя ограничить права – личный файл не скопирован",
 		txtFMErrCopyLimit:     "%s: слишком много элементов или слишком глубокая вложенность (не более %d элементов, %d уровней) – ничего не скопировано",
+		txtFMViewHelp:         "q/Esc/F3 Закрыть  F2 Перенос  F4 Hex/Текст  ↑↓ PgUp/PgDn Home End Прокрутка",
+		txtFMViewLine:         "Строка %d/%d",
+		txtFMViewTruncated:    "(загружены только первые %s)",
+		txtFMViewLoading:      "Загрузка …",
+		txtFMErrView:          "Невозможно просмотреть %s: %s",
 	},
 	LangUkrainian: {
 		txtFMListEntry:        "Файловий менеджер (два підключення)",
@@ -765,6 +840,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: неприпустиме ім'я файлу від сервера – пропущено",
 		txtFMErrCannotProtect: "%s: на цілі неможливо обмежити права – особистий файл не скопійовано",
 		txtFMErrCopyLimit:     "%s: забагато елементів або завелика вкладеність (не більше %d елементів, %d рівнів) – нічого не скопійовано",
+		txtFMViewHelp:         "q/Esc/F3 Закрити  F2 Перенесення  F4 Hex/Текст  ↑↓ PgUp/PgDn Home End Прокрутка",
+		txtFMViewLine:         "Рядок %d/%d",
+		txtFMViewTruncated:    "(завантажено лише перші %s)",
+		txtFMViewLoading:      "Завантаження …",
+		txtFMErrView:          "Неможливо переглянути %s: %s",
 	},
 	LangGreek: {
 		txtFMListEntry:        "Διαχείριση αρχείων (δύο συνδέσεις)",
@@ -811,6 +891,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: μη έγκυρο όνομα αρχείου από τον διακομιστή – παραλείφθηκε",
 		txtFMErrCannotProtect: "%s: τα δικαιώματα δεν μπορούν να περιοριστούν στον προορισμό – το ιδιωτικό αρχείο δεν αντιγράφηκε",
 		txtFMErrCopyLimit:     "%s: πάρα πολλά στοιχεία ή πολύ βαθιά ένθεση (το πολύ %d στοιχεία, %d επίπεδα) – δεν αντιγράφηκε τίποτα",
+		txtFMViewHelp:         "q/Esc/F3 Κλείσιμο  F2 Αναδίπλωση  F4 Hex/Κείμενο  ↑↓ PgUp/PgDn Home End Κύλιση",
+		txtFMViewLine:         "Γραμμή %d/%d",
+		txtFMViewTruncated:    "(φορτώθηκαν μόνο τα πρώτα %s)",
+		txtFMViewLoading:      "Φόρτωση …",
+		txtFMErrView:          "Αδυναμία προβολής %s: %s",
 	},
 	LangTurkish: {
 		txtFMListEntry:        "Dosya yöneticisi (iki bağlantı)",
@@ -857,6 +942,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: sunucudan geçersiz dosya adı – atlandı",
 		txtFMErrCannotProtect: "%s: hedefte izinler kısıtlanamıyor – özel dosya kopyalanmadı",
 		txtFMErrCopyLimit:     "%s: çok fazla öğe veya çok derin iç içe geçme (en fazla %d öğe, %d düzey) – hiçbir şey kopyalanmadı",
+		txtFMViewHelp:         "q/Esc/F3 Kapat  F2 Satır kaydırma  F4 Hex/Metin  ↑↓ PgUp/PgDn Home End Kaydır",
+		txtFMViewLine:         "Satır %d/%d",
+		txtFMViewTruncated:    "(yalnızca ilk %s yüklendi)",
+		txtFMViewLoading:      "Yükleniyor …",
+		txtFMErrView:          "%s görüntülenemiyor: %s",
 	},
 	LangGeorgian: {
 		txtFMListEntry:        "ფაილების მენეჯერი (ორი კავშირი)",
@@ -903,6 +993,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: სერვერიდან მიღებული ფაილის დაუშვებელი სახელი – გამოტოვებულია",
 		txtFMErrCannotProtect: "%s: სამიზნეზე უფლებების შეზღუდვა შეუძლებელია – პირადი ფაილი არ დაკოპირდა",
 		txtFMErrCopyLimit:     "%s: ძალიან ბევრი ელემენტი ან ძალიან ღრმა ჩადგმა (მაქს. %d ელემენტი, %d დონე) – არაფერი დაკოპირდა",
+		txtFMViewHelp:         "q/Esc/F3 დახურვა  F2 გადატანა  F4 Hex/ტექსტი  ↑↓ PgUp/PgDn Home End გადახვევა",
+		txtFMViewLine:         "ხაზი %d/%d",
+		txtFMViewTruncated:    "(ჩაიტვირთა მხოლოდ პირველი %s)",
+		txtFMViewLoading:      "იტვირთება …",
+		txtFMErrView:          "%s-ის ნახვა შეუძლებელია: %s",
 	},
 	LangArabic: {
 		txtFMListEntry:        "مدير الملفات (اتصالان)",
@@ -949,6 +1044,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: اسم ملف غير صالح من الخادم – تم تخطيه",
 		txtFMErrCannotProtect: "%s: لا يمكن تقييد الصلاحيات على الهدف – لم يُنسخ الملف الخاص",
 		txtFMErrCopyLimit:     "%s: عناصر كثيرة جدًا أو تداخل عميق جدًا (بحد أقصى %d عنصر، %d مستوى) – لم يُنسخ شيء",
+		txtFMViewHelp:         "q/Esc/F3 إغلاق  F2 التفاف  F4 ست عشري/نص  ↑↓ PgUp/PgDn Home End تمرير",
+		txtFMViewLine:         "السطر %d/%d",
+		txtFMViewTruncated:    "(تم تحميل أول %s فقط)",
+		txtFMViewLoading:      "جارٍ التحميل …",
+		txtFMErrView:          "تعذّر عرض %s: %s",
 	},
 	LangPersian: {
 		txtFMListEntry:        "مدیر فایل (دو اتصال)",
@@ -995,6 +1095,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: نام فایل نامعتبر از سرور – رد شد",
 		txtFMErrCannotProtect: "%s: محدود کردن مجوزها در مقصد ممکن نیست – فایل خصوصی کپی نشد",
 		txtFMErrCopyLimit:     "%s: موارد بیش از حد یا تودرتوی بیش از حد (حداکثر %d مورد، %d سطح) – چیزی کپی نشد",
+		txtFMViewHelp:         "q/Esc/F3 بستن  F2 شکستن خط  F4 هگز/متن  ↑↓ PgUp/PgDn Home End پیمایش",
+		txtFMViewLine:         "خط %d/%d",
+		txtFMViewTruncated:    "(فقط %s اول بارگیری شد)",
+		txtFMViewLoading:      "در حال بارگیری …",
+		txtFMErrView:          "نمایش %s ممکن نیست: %s",
 	},
 	LangUrdu: {
 		txtFMListEntry:        "فائل منیجر (دو کنکشن)",
@@ -1041,6 +1146,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: سرور سے غیر درست فائل نام – چھوڑ دیا گیا",
 		txtFMErrCannotProtect: "%s: ہدف پر اجازتیں محدود نہیں کی جا سکتیں – نجی فائل کاپی نہیں ہوئی",
 		txtFMErrCopyLimit:     "%s: بہت زیادہ اندراجات یا بہت گہری تہہ (زیادہ سے زیادہ %d اندراجات، %d سطحیں) – کچھ کاپی نہیں ہوا",
+		txtFMViewHelp:         "q/Esc/F3 بند کریں  F2 لپیٹنا  F4 ہیکس/متن  ↑↓ PgUp/PgDn Home End اسکرول",
+		txtFMViewLine:         "سطر %d/%d",
+		txtFMViewTruncated:    "(صرف پہلے %s لوڈ ہوئے)",
+		txtFMViewLoading:      "لوڈ ہو رہا ہے …",
+		txtFMErrView:          "%s نہیں دیکھی جا سکتی: %s",
 	},
 	LangHindi: {
 		txtFMListEntry:        "फ़ाइल मैनेजर (दो कनेक्शन)",
@@ -1087,6 +1197,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: सर्वर से अमान्य फ़ाइल नाम – छोड़ा गया",
 		txtFMErrCannotProtect: "%s: लक्ष्य पर अनुमतियाँ सीमित नहीं की जा सकतीं – निजी फ़ाइल कॉपी नहीं हुई",
 		txtFMErrCopyLimit:     "%s: बहुत अधिक प्रविष्टियाँ या बहुत गहरी नेस्टिंग (अधिकतम %d प्रविष्टियाँ, %d स्तर) – कुछ भी कॉपी नहीं हुआ",
+		txtFMViewHelp:         "q/Esc/F3 बंद करें  F2 रैप  F4 हेक्स/पाठ  ↑↓ PgUp/PgDn Home End स्क्रॉल",
+		txtFMViewLine:         "पंक्ति %d/%d",
+		txtFMViewTruncated:    "(केवल पहले %s लोड हुए)",
+		txtFMViewLoading:      "लोड हो रहा है …",
+		txtFMErrView:          "%s देखा नहीं जा सकता: %s",
 	},
 	LangBengali: {
 		txtFMListEntry:        "ফাইল ম্যানেজার (দুটি সংযোগ)",
@@ -1133,6 +1248,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: সার্ভার থেকে অবৈধ ফাইলের নাম – বাদ দেওয়া হয়েছে",
 		txtFMErrCannotProtect: "%s: লক্ষ্যে অনুমতি সীমিত করা যায় না – ব্যক্তিগত ফাইল কপি হয়নি",
 		txtFMErrCopyLimit:     "%s: অনেক বেশি এন্ট্রি বা অতিরিক্ত গভীর নেস্টিং (সর্বোচ্চ %d এন্ট্রি, %d স্তর) – কিছুই কপি হয়নি",
+		txtFMViewHelp:         "q/Esc/F3 বন্ধ  F2 মোড়ানো  F4 হেক্স/টেক্সট  ↑↓ PgUp/PgDn Home End স্ক্রল",
+		txtFMViewLine:         "লাইন %d/%d",
+		txtFMViewTruncated:    "(শুধু প্রথম %s লোড হয়েছে)",
+		txtFMViewLoading:      "লোড হচ্ছে …",
+		txtFMErrView:          "%s দেখা যাচ্ছে না: %s",
 	},
 	LangPunjabi: {
 		txtFMListEntry:        "ਫਾਈਲ ਮੈਨੇਜਰ (ਦੋ ਕਨੈਕਸ਼ਨ)",
@@ -1179,6 +1299,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ਸਰਵਰ ਤੋਂ ਅਯੋਗ ਫਾਈਲ ਨਾਮ – ਛੱਡਿਆ ਗਿਆ",
 		txtFMErrCannotProtect: "%s: ਟੀਚੇ 'ਤੇ ਅਧਿਕਾਰ ਸੀਮਤ ਨਹੀਂ ਕੀਤੇ ਜਾ ਸਕਦੇ – ਨਿੱਜੀ ਫਾਈਲ ਕਾਪੀ ਨਹੀਂ ਹੋਈ",
 		txtFMErrCopyLimit:     "%s: ਬਹੁਤ ਜ਼ਿਆਦਾ ਇੰਦਰਾਜ ਜਾਂ ਬਹੁਤ ਡੂੰਘੀ ਨੈਸਟਿੰਗ (ਵੱਧ ਤੋਂ ਵੱਧ %d ਇੰਦਰਾਜ, %d ਪੱਧਰ) – ਕੁਝ ਵੀ ਕਾਪੀ ਨਹੀਂ ਹੋਇਆ",
+		txtFMViewHelp:         "q/Esc/F3 ਬੰਦ ਕਰੋ  F2 ਲਪੇਟੋ  F4 ਹੈਕਸ/ਟੈਕਸਟ  ↑↓ PgUp/PgDn Home End ਸਕ੍ਰੋਲ",
+		txtFMViewLine:         "ਲਾਈਨ %d/%d",
+		txtFMViewTruncated:    "(ਸਿਰਫ਼ ਪਹਿਲੇ %s ਲੋਡ ਹੋਏ)",
+		txtFMViewLoading:      "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ …",
+		txtFMErrView:          "%s ਵੇਖੀ ਨਹੀਂ ਜਾ ਸਕਦੀ: %s",
 	},
 	LangGujarati: {
 		txtFMListEntry:        "ફાઇલ મેનેજર (બે કનેક્શન)",
@@ -1225,6 +1350,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: સર્વર તરફથી અમાન્ય ફાઇલ નામ – છોડી દીધું",
 		txtFMErrCannotProtect: "%s: લક્ષ્ય પર પરવાનગીઓ મર્યાદિત કરી શકાતી નથી – ખાનગી ફાઇલ નકલ થઈ નથી",
 		txtFMErrCopyLimit:     "%s: ઘણી બધી એન્ટ્રીઓ અથવા ખૂબ ઊંડું નેસ્ટિંગ (વધુમાં વધુ %d એન્ટ્રી, %d સ્તર) – કંઈ નકલ થયું નથી",
+		txtFMViewHelp:         "q/Esc/F3 બંધ કરો  F2 લપેટો  F4 હેક્સ/લખાણ  ↑↓ PgUp/PgDn Home End સ્ક્રોલ",
+		txtFMViewLine:         "લીટી %d/%d",
+		txtFMViewTruncated:    "(ફક્ત પ્રથમ %s લોડ થયા)",
+		txtFMViewLoading:      "લોડ થઈ રહ્યું છે …",
+		txtFMErrView:          "%s જોઈ શકાતી નથી: %s",
 	},
 	LangMarathi: {
 		txtFMListEntry:        "फाइल व्यवस्थापक (दोन कनेक्शन)",
@@ -1271,6 +1401,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: सर्व्हरकडून अवैध फाइल नाव – वगळले",
 		txtFMErrCannotProtect: "%s: लक्ष्यावर परवानग्या मर्यादित करता येत नाहीत – खाजगी फाइलची प्रत झाली नाही",
 		txtFMErrCopyLimit:     "%s: खूप जास्त नोंदी किंवा खूप खोल नेस्टिंग (जास्तीत जास्त %d नोंदी, %d स्तर) – काहीही प्रत झाले नाही",
+		txtFMViewHelp:         "q/Esc/F3 बंद करा  F2 गुंडाळा  F4 हेक्स/मजकूर  ↑↓ PgUp/PgDn Home End स्क्रोल",
+		txtFMViewLine:         "ओळ %d/%d",
+		txtFMViewTruncated:    "(फक्त पहिले %s लोड झाले)",
+		txtFMViewLoading:      "लोड होत आहे …",
+		txtFMErrView:          "%s पाहता येत नाही: %s",
 	},
 	LangTamil: {
 		txtFMListEntry:        "கோப்பு மேலாளர் (இரண்டு இணைப்புகள்)",
@@ -1317,6 +1452,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: சேவையகத்திலிருந்து தவறான கோப்புப் பெயர் – தவிர்க்கப்பட்டது",
 		txtFMErrCannotProtect: "%s: இலக்கில் அனுமதிகளைக் கட்டுப்படுத்த முடியவில்லை – தனிப்பட்ட கோப்பு நகலெடுக்கப்படவில்லை",
 		txtFMErrCopyLimit:     "%s: மிக அதிக உள்ளீடுகள் அல்லது மிக ஆழமான அடுக்கு (அதிகபட்சம் %d உள்ளீடுகள், %d நிலைகள்) – எதுவும் நகலெடுக்கப்படவில்லை",
+		txtFMViewHelp:         "q/Esc/F3 மூடு  F2 மடிப்பு  F4 ஹெக்ஸ்/உரை  ↑↓ PgUp/PgDn Home End உருட்டு",
+		txtFMViewLine:         "வரி %d/%d",
+		txtFMViewTruncated:    "(முதல் %s மட்டும் ஏற்றப்பட்டது)",
+		txtFMViewLoading:      "ஏற்றுகிறது …",
+		txtFMErrView:          "%s ஐக் காட்ட முடியவில்லை: %s",
 	},
 	LangTelugu: {
 		txtFMListEntry:        "ఫైల్ మేనేజర్ (రెండు కనెక్షన్లు)",
@@ -1363,6 +1503,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: సర్వర్ నుండి చెల్లని ఫైల్ పేరు – దాటవేయబడింది",
 		txtFMErrCannotProtect: "%s: లక్ష్యంలో అనుమతులను పరిమితం చేయలేము – ప్రైవేట్ ఫైల్ కాపీ కాలేదు",
 		txtFMErrCopyLimit:     "%s: చాలా ఎక్కువ ఎంట్రీలు లేదా చాలా లోతైన నెస్టింగ్ (గరిష్ఠంగా %d ఎంట్రీలు, %d స్థాయిలు) – ఏదీ కాపీ కాలేదు",
+		txtFMViewHelp:         "q/Esc/F3 మూసివేయి  F2 చుట్టు  F4 హెక్స్/పాఠ్యం  ↑↓ PgUp/PgDn Home End స్క్రోల్",
+		txtFMViewLine:         "పంక్తి %d/%d",
+		txtFMViewTruncated:    "(మొదటి %s మాత్రమే లోడ్ అయ్యాయి)",
+		txtFMViewLoading:      "లోడ్ అవుతోంది …",
+		txtFMErrView:          "%s చూపలేము: %s",
 	},
 	LangKannada: {
 		txtFMListEntry:        "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ (ಎರಡು ಸಂಪರ್ಕಗಳು)",
@@ -1409,6 +1554,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ಸರ್ವರ್‌ನಿಂದ ಅಮಾನ್ಯ ಫೈಲ್ ಹೆಸರು – ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ",
 		txtFMErrCannotProtect: "%s: ಗುರಿಯಲ್ಲಿ ಅನುಮತಿಗಳನ್ನು ಮಿತಿಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ – ಖಾಸಗಿ ಫೈಲ್ ನಕಲಿಸಲಾಗಿಲ್ಲ",
 		txtFMErrCopyLimit:     "%s: ತುಂಬಾ ಹೆಚ್ಚು ನಮೂದುಗಳು ಅಥವಾ ತುಂಬಾ ಆಳವಾದ ಗೂಡು (ಗರಿಷ್ಠ %d ನಮೂದುಗಳು, %d ಹಂತಗಳು) – ಏನನ್ನೂ ನಕಲಿಸಲಾಗಿಲ್ಲ",
+		txtFMViewHelp:         "q/Esc/F3 ಮುಚ್ಚು  F2 ಸುತ್ತು  F4 ಹೆಕ್ಸ್/ಪಠ್ಯ  ↑↓ PgUp/PgDn Home End ಸ್ಕ್ರೋಲ್",
+		txtFMViewLine:         "ಸಾಲು %d/%d",
+		txtFMViewTruncated:    "(ಮೊದಲ %s ಮಾತ್ರ ಲೋಡ್ ಆಗಿದೆ)",
+		txtFMViewLoading:      "ಲೋಡ್ ಆಗುತ್ತಿದೆ …",
+		txtFMErrView:          "%s ವೀಕ್ಷಿಸಲಾಗುವುದಿಲ್ಲ: %s",
 	},
 	LangChinese: {
 		txtFMListEntry:        "文件管理器（两个连接）",
@@ -1455,6 +1605,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s：服务器返回的文件名无效 – 已跳过",
 		txtFMErrCannotProtect: "%s：无法在目标上限制权限 – 未复制私有文件",
 		txtFMErrCopyLimit:     "%s：条目过多或嵌套过深（最多 %d 个条目、%d 层）– 未复制任何内容",
+		txtFMViewHelp:         "q/Esc/F3 关闭  F2 换行  F4 十六进制/文本  ↑↓ PgUp/PgDn Home End 滚动",
+		txtFMViewLine:         "第 %d/%d 行",
+		txtFMViewTruncated:    "（仅加载了前 %s）",
+		txtFMViewLoading:      "正在加载 …",
+		txtFMErrView:          "无法查看 %s：%s",
 	},
 	LangJapanese: {
 		txtFMListEntry:        "ファイルマネージャー（2つの接続）",
@@ -1501,6 +1656,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s：サーバーからの不正なファイル名 – スキップしました",
 		txtFMErrCannotProtect: "%s：コピー先で権限を制限できません – 非公開ファイルはコピーしません",
 		txtFMErrCopyLimit:     "%s：エントリが多すぎるか階層が深すぎます（最大 %d 件、%d 階層）– 何もコピーしていません",
+		txtFMViewHelp:         "q/Esc/F3 閉じる  F2 折り返し  F4 16進/テキスト  ↑↓ PgUp/PgDn Home End スクロール",
+		txtFMViewLine:         "%d/%d 行",
+		txtFMViewTruncated:    "（先頭の %s のみ読み込み）",
+		txtFMViewLoading:      "読み込み中 …",
+		txtFMErrView:          "%s を表示できません：%s",
 	},
 	LangKorean: {
 		txtFMListEntry:        "파일 관리자 (두 개의 연결)",
@@ -1547,6 +1707,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: 서버에서 받은 잘못된 파일 이름 – 건너뜀",
 		txtFMErrCannotProtect: "%s: 대상에서 권한을 제한할 수 없음 – 개인 파일을 복사하지 않음",
 		txtFMErrCopyLimit:     "%s: 항목이 너무 많거나 너무 깊게 중첩됨 (최대 %d개 항목, %d단계) – 아무것도 복사하지 않음",
+		txtFMViewHelp:         "q/Esc/F3 닫기  F2 줄 바꿈  F4 16진/텍스트  ↑↓ PgUp/PgDn Home End 스크롤",
+		txtFMViewLine:         "%d/%d 줄",
+		txtFMViewTruncated:    "(처음 %s만 불러옴)",
+		txtFMViewLoading:      "불러오는 중 …",
+		txtFMErrView:          "%s을(를) 볼 수 없음: %s",
 	},
 	LangThai: {
 		txtFMListEntry:        "ตัวจัดการไฟล์ (สองการเชื่อมต่อ)",
@@ -1593,6 +1758,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ชื่อไฟล์จากเซิร์ฟเวอร์ไม่ถูกต้อง – ข้ามไป",
 		txtFMErrCannotProtect: "%s: จำกัดสิทธิ์บนปลายทางไม่ได้ – ไม่ได้คัดลอกไฟล์ส่วนตัว",
 		txtFMErrCopyLimit:     "%s: รายการมากเกินไปหรือซ้อนลึกเกินไป (สูงสุด %d รายการ, %d ระดับ) – ไม่ได้คัดลอกอะไรเลย",
+		txtFMViewHelp:         "q/Esc/F3 ปิด  F2 ตัดบรรทัด  F4 ฐานสิบหก/ข้อความ  ↑↓ PgUp/PgDn Home End เลื่อน",
+		txtFMViewLine:         "บรรทัด %d/%d",
+		txtFMViewTruncated:    "(โหลดเฉพาะ %s แรก)",
+		txtFMViewLoading:      "กำลังโหลด …",
+		txtFMErrView:          "ดู %s ไม่ได้: %s",
 	},
 	LangVietnamese: {
 		txtFMListEntry:        "Trình quản lý tệp (hai kết nối)",
@@ -1639,6 +1809,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: tên tệp không hợp lệ từ máy chủ – đã bỏ qua",
 		txtFMErrCannotProtect: "%s: không thể giới hạn quyền trên đích – không sao chép tệp riêng tư",
 		txtFMErrCopyLimit:     "%s: quá nhiều mục hoặc lồng quá sâu (tối đa %d mục, %d cấp) – không sao chép gì",
+		txtFMViewHelp:         "q/Esc/F3 Đóng  F2 Ngắt dòng  F4 Hex/Văn bản  ↑↓ PgUp/PgDn Home End Cuộn",
+		txtFMViewLine:         "Dòng %d/%d",
+		txtFMViewTruncated:    "(chỉ tải %s đầu tiên)",
+		txtFMViewLoading:      "Đang tải …",
+		txtFMErrView:          "Không thể xem %s: %s",
 	},
 	LangIndonesian: {
 		txtFMListEntry:        "Pengelola berkas (dua koneksi)",
@@ -1685,6 +1860,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: nama berkas tidak sah dari server – dilewati",
 		txtFMErrCannotProtect: "%s: izin di tujuan tidak dapat dibatasi – berkas pribadi tidak disalin",
 		txtFMErrCopyLimit:     "%s: terlalu banyak entri atau bersarang terlalu dalam (paling banyak %d entri, %d tingkat) – tidak ada yang disalin",
+		txtFMViewHelp:         "q/Esc/F3 Tutup  F2 Bungkus baris  F4 Hex/Teks  ↑↓ PgUp/PgDn Home End Gulir",
+		txtFMViewLine:         "Baris %d/%d",
+		txtFMViewTruncated:    "(hanya %s pertama dimuat)",
+		txtFMViewLoading:      "Memuat …",
+		txtFMErrView:          "Tidak dapat melihat %s: %s",
 	},
 	LangFilipino: {
 		txtFMListEntry:        "Tagapamahala ng file (dalawang koneksyon)",
@@ -1731,6 +1911,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: hindi wastong pangalan ng file mula sa server – nilaktawan",
 		txtFMErrCannotProtect: "%s: hindi malimitahan ang mga pahintulot sa target – hindi kinopya ang pribadong file",
 		txtFMErrCopyLimit:     "%s: masyadong maraming entry o masyadong malalim na pagkakapugad (hanggang %d entry, %d antas) – walang nakopya",
+		txtFMViewHelp:         "q/Esc/F3 Isara  F2 Pag-wrap  F4 Hex/Teksto  ↑↓ PgUp/PgDn Home End Mag-scroll",
+		txtFMViewLine:         "Linya %d/%d",
+		txtFMViewTruncated:    "(ang unang %s lang ang na-load)",
+		txtFMViewLoading:      "Naglo-load …",
+		txtFMErrView:          "Hindi matingnan ang %s: %s",
 	},
 	LangSwahili: {
 		txtFMListEntry:        "Kidhibiti faili (miunganisho miwili)",
@@ -1777,6 +1962,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: jina batili la faili kutoka kwa seva – limerukwa",
 		txtFMErrCannotProtect: "%s: ruhusa haziwezi kuzuiwa kwenye lengo – faili ya faragha haikunakiliwa",
 		txtFMErrCopyLimit:     "%s: vipengee vingi mno au kina kirefu mno (zaidi %d vipengee, %d viwango) – hakuna kilichonakiliwa",
+		txtFMViewHelp:         "q/Esc/F3 Funga  F2 Kufunga mstari  F4 Hex/Maandishi  ↑↓ PgUp/PgDn Home End Sogeza",
+		txtFMViewLine:         "Mstari %d/%d",
+		txtFMViewTruncated:    "(ni %s za kwanza tu zimepakiwa)",
+		txtFMViewLoading:      "Inapakia …",
+		txtFMErrView:          "Haiwezekani kutazama %s: %s",
 	},
 	LangAmharic: {
 		txtFMListEntry:        "የፋይል አስተዳዳሪ (ሁለት ግንኙነቶች)",
@@ -1823,6 +2013,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: ከአገልጋዩ ልክ ያልሆነ የፋይል ስም – ተዘሏል",
 		txtFMErrCannotProtect: "%s: በመድረሻው ላይ ፈቃዶችን መገደብ አይቻልም – የግል ፋይሉ አልተቀዳም",
 		txtFMErrCopyLimit:     "%s: በጣም ብዙ ግቤቶች ወይም በጣም ጥልቅ ጎጆ (ቢበዛ %d ግቤቶች, %d ደረጃዎች) – ምንም አልተቀዳም",
+		txtFMViewHelp:         "q/Esc/F3 ዝጋ  F2 መጠቅለያ  F4 ሄክስ/ጽሑፍ  ↑↓ PgUp/PgDn Home End ሸብልል",
+		txtFMViewLine:         "መስመር %d/%d",
+		txtFMViewTruncated:    "(የመጀመሪያው %s ብቻ ተጭኗል)",
+		txtFMViewLoading:      "በመጫን ላይ …",
+		txtFMErrView:          "%s ማየት አይቻልም: %s",
 	},
 	LangHausa: {
 		txtFMListEntry:        "Mai sarrafa fayiloli (haɗi biyu)",
@@ -1869,6 +2064,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: sunan fayil mara inganci daga sabar – an tsallake",
 		txtFMErrCannotProtect: "%s: ba za a iya taƙaita izini a manufa ba – ba a kwafi fayil na sirri ba",
 		txtFMErrCopyLimit:     "%s: abubuwa sun yi yawa ko gida ya yi zurfi sosai (mafi yawa %d abubuwa, %d matakai) – ba a kwafi komai ba",
+		txtFMViewHelp:         "q/Esc/F3 Rufe  F2 Naɗe layi  F4 Hex/Rubutu  ↑↓ PgUp/PgDn Home End Gungura",
+		txtFMViewLine:         "Layi %d/%d",
+		txtFMViewTruncated:    "(an loda %s na farko kawai)",
+		txtFMViewLoading:      "Ana lodawa …",
+		txtFMErrView:          "Ba za a iya duba %s ba: %s",
 	},
 	LangIgbo: {
 		txtFMListEntry:        "Onye njikwa faịlụ (njikọ abụọ)",
@@ -1915,6 +2115,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: aha faịlụ na-ezighi ezi site na sava – a wụfere ya",
 		txtFMErrCannotProtect: "%s: enweghị ike ịmachi ikike na ebe a na-aga – edetughị faịlụ nzuzo",
 		txtFMErrCopyLimit:     "%s: ndenye dị ukwuu ma ọ bụ ntinye miri emi nke ukwuu (kacha %d ndenye, %d ọkwa) – edetughị ihe ọ bụla",
+		txtFMViewHelp:         "q/Esc/F3 Mechie  F2 Mkpuchi ahịrị  F4 Hex/Ederede  ↑↓ PgUp/PgDn Home End Pịgharịa",
+		txtFMViewLine:         "Ahịrị %d/%d",
+		txtFMViewTruncated:    "(naanị %s mbụ ka ebugoro)",
+		txtFMViewLoading:      "Na-ebu …",
+		txtFMErrView:          "Enweghị ike ịhụ %s: %s",
 	},
 	LangYoruba: {
 		txtFMListEntry:        "Olùṣàkóso fáìlì (ìsopọ̀ méjì)",
@@ -1961,6 +2166,11 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: orúkọ fáìlì tí kò bófin mu láti ọ̀dọ̀ olupin – a fò ó",
 		txtFMErrCannotProtect: "%s: a kò lè dín àwọn àṣẹ kù ní ibi tí a ń lọ – a kò ṣàdàkọ fáìlì àdáni",
 		txtFMErrCopyLimit:     "%s: àwọn ohun pọ̀ jù tàbí ìtẹ̀léra jìn jù (ó pọ̀jù %d ohun, %d ìpele) – a kò ṣàdàkọ nǹkan kan",
+		txtFMViewHelp:         "q/Esc/F3 Pa á dé  F2 Ìwépọ̀ ìlà  F4 Hex/Ọ̀rọ̀  ↑↓ PgUp/PgDn Home End Yí lọ",
+		txtFMViewLine:         "Ìlà %d/%d",
+		txtFMViewTruncated:    "(%s àkọ́kọ́ nìkan ni a gbé)",
+		txtFMViewLoading:      "Ń gbé e …",
+		txtFMErrView:          "A kò lè wo %s: %s",
 	},
 	LangOromo: {
 		txtFMListEntry:        "Bulchiinsa faayilii (walqunnamtii lama)",
@@ -2007,5 +2217,10 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrUnsafeName:    "%s: maqaa faayilii sirrii hin taane sarvarii irraa – darbameera",
 		txtFMErrCannotProtect: "%s: bakka gahiinsaa irratti hayyamoota daangessuun hin danda'amu – faayiliin dhuunfaa hin garagalfamne",
 		txtFMErrCopyLimit:     "%s: galmeewwan baay'ee ykn walkeessa galuu gadi fagoo (yoo baay'ate %d galmee, %d sadarkaa) – homtuu hin garagalfamne",
+		txtFMViewHelp:         "q/Esc/F3 Cufi  F2 Marsaa sarara  F4 Hex/Barreeffama  ↑↓ PgUp/PgDn Home End Sochoosi",
+		txtFMViewLine:         "Sarara %d/%d",
+		txtFMViewTruncated:    "(%s jalqabaa qofatu fe'ame)",
+		txtFMViewLoading:      "Fe'aa jira …",
+		txtFMErrView:          "%s ilaaluun hin danda'amu: %s",
 	},
 }

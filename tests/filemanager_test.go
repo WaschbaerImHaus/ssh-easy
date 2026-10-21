@@ -212,7 +212,7 @@ func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 // isFileManagerMsg erkennt die asynchronen Nachrichten des Datei-Managers.
 func isFileManagerMsg(msg tea.Msg) bool {
 	switch msg.(type) {
-	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg:
+	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg:
 		return true
 	}
 	return false
@@ -234,6 +234,12 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyF5}
 	case "f6":
 		return tea.KeyMsg{Type: tea.KeyF6}
+	case "f2":
+		return tea.KeyMsg{Type: tea.KeyF2}
+	case "f3":
+		return tea.KeyMsg{Type: tea.KeyF3}
+	case "f4":
+		return tea.KeyMsg{Type: tea.KeyF4}
 	case "esc":
 		return tea.KeyMsg{Type: tea.KeyEsc}
 	case "backspace":

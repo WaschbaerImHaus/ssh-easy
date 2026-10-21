@@ -11,12 +11,13 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Stand Build 57: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
-// alle Markierungen um) und Kopieren (F5, tui_filemanager_copy.go)
-// funktionieren; Menü und die übrigen F-Tasten sind nur optisch vorhanden.
+// Stand Build 59: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
+// alle Markierungen um), Ansehen (F3, tui_filemanager_view.go) und Kopieren
+// (F5, tui_filemanager_copy.go) funktionieren; Menü und die übrigen
+// F-Tasten sind nur optisch vorhanden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:03
+// @date   2026-10-21 21:24
 package main
 
 import (
@@ -79,6 +80,10 @@ type fileManager struct {
 	// Offener Dialog (Kopieren usw.) und Zustand des Kopiervorgangs
 	dialog fmDialog
 	copy   fmCopyState
+	// Betrachter (F3): offen?, Zustand, laufende Nummer (veraltete Ladeergebnisse)
+	viewing bool
+	view    fmViewer
+	viewSeq int
 }
 
 // fmConnectedMsg meldet das Ergebnis eines Verbindungsaufbaus.
@@ -408,9 +413,13 @@ func (m AppModel) fmScreenSize() (int, int) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verzeichnis lesen)
-// @date   2026-10-21 21:03
+// @date   2026-10-21 21:24
 func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Offener Dialog bekommt alle Tasten (auch F10 ruht dann)
+	// Betrachter bzw. offener Dialog bekommt alle Tasten (F10 schließt
+	// dann nur den Betrachter bzw. ruht im Dialog)
+	if m.fm.viewing {
+		return m.handleFMViewerKeys(msg)
+	}
 	if m.fm.dialog != fmDialogNone {
 		return m.handleFMDialogKeys(msg)
 	}
@@ -450,9 +459,11 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "*":
 		// Markierung aller Einträge umkehren (wie im mc)
 		panel.invertMarks()
+	case "f3":
+		return m.fmOpenViewer()
 	case "f5":
 		return m.fmOpenCopyConfirm()
-	case "f1", "f2", "f3", "f4", "f6", "f7", "f8", "f9":
+	case "f1", "f2", "f4", "f6", "f7", "f8", "f9":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
 	}
@@ -590,8 +601,12 @@ func (m AppModel) renderFMPassword(s *strings.Builder) {
 // genau so viele Zeilen und Spalten wie das Terminal (sonst scrollt es).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 21:03
+// @date   2026-10-21 21:24
 func (m AppModel) renderFileManager(s *strings.Builder) {
+	if m.fm.viewing {
+		m.renderFMViewer(s)
+		return
+	}
 	width, height := m.fmScreenSize()
 	st := fmThemeStyles(m.fm.theme)
 

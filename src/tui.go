@@ -448,6 +448,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fmCopyEventMsg:
 		return m.handleFMCopyEvent(msg)
 
+	case fmViewLoadedMsg:
+		return m.handleFMViewLoaded(msg)
+
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
 		if msg.err != nil && errors.Is(msg.err, errAltF4Quit) {

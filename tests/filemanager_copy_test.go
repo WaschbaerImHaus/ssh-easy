@@ -195,6 +195,14 @@ func (m *memFS) OpenRead(p string) (io.ReadCloser, error) {
 		return nil, os.ErrPermission
 	}
 	n, ok := m.nodes[p]
+	// Wie ein echter Server: Öffnen folgt Symlinks (eine Ebene genügt hier)
+	if ok && n.mode&fs.ModeSymlink != 0 {
+		target := n.target
+		if !path.IsAbs(target) {
+			target = path.Join(path.Dir(p), target)
+		}
+		n, ok = m.nodes[target]
+	}
 	if !ok || n.mode&fs.ModeType != 0 {
 		return nil, os.ErrNotExist
 	}

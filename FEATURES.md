@@ -66,7 +66,9 @@
 - [ ] F6 Verschieben/Umbenennen
 - [ ] F7 Verzeichnis anlegen
 - [ ] F8 Löschen (mit Bestätigung)
-- [ ] F3 Ansehen
+- [x] F3 Ansehen: Betrachter (max. 16 MiB), Text bereinigt, Umbruch F2, Hex F4 (automatisch bei Binärdaten) (Build 59)
+- [ ] Liegengebliebene Temp-Dateien (`.ssh-easy-copy-*.tmp`, z. B. nach Verbindungsabbruch) beim nächsten Kopieren in dasselbe Verzeichnis aufräumen (Vorschlag 2026-10-21)
+- [ ] F6 Verschieben: Ziel ebenfalls über Temp-Datei + Umbenennen, bei Fehler Temp löschen (Nutzervorgabe 2026-10-21); Quelle erst nach erfolgreichem Umbenennen löschen
 - [ ] F4 Bearbeiten
 - [ ] Menüs Links/Datei/Befehl/Optionen/Rechts (F9)
 

@@ -154,6 +154,7 @@ nebeneinander zu arbeiten:
 | `Tab` | Zwischen linkem und rechtem Fenster wechseln |
 | `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
 | `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
+| `F3` | Datei unter dem Cursor ansehen (`F2` Umbruch, `F4` Hex/Text, `q`/`Esc` schließen) |
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
@@ -177,8 +178,8 @@ Datei wird erst ersetzt, wenn die neue vollständig ist.
 
 Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
 
-*Stand Build 57: Navigation, Markieren und Kopieren. Verschieben, Verzeichnis anlegen,
-Löschen, Ansehen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
+*Stand Build 59: Navigation, Markieren, Ansehen und Kopieren. Verschieben, Verzeichnis
+anlegen, Löschen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
 klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
 
 ### Passwortabfrage

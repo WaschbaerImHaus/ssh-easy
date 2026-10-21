@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.59] – Build 59
+- **Added** viewer (`F3`) in the file manager: shows the file under the cursor full-screen (loaded via SFTP, at most 16 MiB – larger files are cut with a hint). Content from the server is displayed safely: control and invisible format characters become `?`, tabs become spaces, CRLF works. Long lines are wrapped (`F2` toggles wrapping; without wrapping `←`/`→` scroll sideways), binary files (NUL bytes) open as hex view automatically (`F4` toggles hex/text). `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` scroll; `q`, `Esc`, `F3` or `F10` close the viewer. `F3` on a directory enters it like `Enter`, symlinks to files show the target file
+- **Added** 16 new tests (451 total, all green)
+
 ## [v0.58] – Build 58
 - **Security** file manager copy writes every file as an exclusively created temporary file in the target directory, restricted to `0600` right away, and renames it to the target name in one step at the end. Private files are therefore never readable by others during the transfer (if the host refuses to restrict permissions, a private file is not copied), a symlink planted at the target between check and write is replaced instead of written through, an existing target stays untouched until the copy is complete, and copying a file onto itself through two connection entries to the same server (name vs. IP) can no longer empty the source. New directories are `0700` while being filled
 - **Security** names received from a server containing a backslash (path separator on Windows SFTP servers) or control characters are rejected when copying; every target path is additionally checked to lie inside the target directory
