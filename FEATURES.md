@@ -60,7 +60,7 @@
 - [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
 - [ ] Menü "Optionen": Farbmodus umschalten (und merken)
-- [ ] Datei/Dateien/Verzeichnisse markieren (Einfg/Leertaste)
+- [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)
 - [ ] F5 Kopieren zwischen den Verbindungen (auch markierte Einträge, Verzeichnisse rekursiv)
 - [ ] F6 Verschieben/Umbenennen
 - [ ] F7 Verzeichnis anlegen

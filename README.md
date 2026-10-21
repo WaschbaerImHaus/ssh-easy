@@ -164,13 +164,18 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `↑` / `↓` / `PgUp` / `PgDn` / `Home` / `End` | Move the cursor |
 | `Enter` | Change into the directory or `..` |
 | `Tab` | Switch between left and right panel |
+| `Insert` | Mark / unmark the entry under the cursor and move down |
+| `*` | Invert the marking of all entries (files and directories) |
 | `F10` / `q` | Close both connections and return to the list |
 
 Markers in front of names: `/` directory, `~` symlink to a directory, `@` symlink to a
 file, `!` broken symlink. Symlinks to directories are not followed (a message is shown).
 If you lack permission for a directory, you stay where you are and get a message.
+Marked entries are highlighted; the panel's info line shows their number and the total
+size of the marked files. Marks belong to their panel and are cleared when you change
+the directory.
 
-*Current state (Build 53): navigation only. Copy, move, mkdir, delete, marking, view,
+*Current state (Build 56): navigation and marking. Copy, move, mkdir, delete, view,
 edit and the menu (incl. switching between the classic, ssh-easy and monochrome colour
 themes) follow step by step.*
 

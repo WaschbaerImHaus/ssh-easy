@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.56] – Build 56
+- **Added** marking in the file manager: `Insert` marks/unmarks the entry under the cursor and moves down one line (on Windows, where Insert arrives as a NUL key, too); `*` inverts the marking of all entries in the active panel, files and directories alike (like in mc). `..` can never be marked
+- **Added** marked entries are highlighted (yellow in the classic and ssh-easy themes, white on dark grey in the monochrome theme); the info line of a panel shows the number of marked entries and the total size of the marked files (e.g. `3 marked, 2058 B`). Marks are kept per panel when switching with `Tab` and are cleared when changing the directory (like in mc)
+- **Added** 11 new tests (396 total, all green)
+
 ## [v0.55] – Build 55
 - **Changed** file manager connection choice: the first entry is now the placeholder "(not selected)" and the cursor starts on it. Enter on the placeholder does nothing, so you cannot end up in the file manager by accidentally pressing Enter twice – both connections have to be chosen deliberately (translated into all 41 languages)
 - **Changed** a connection can no longer be paired with itself: the connection chosen for the left panel is removed from the list for the right panel

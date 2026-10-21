@@ -218,6 +218,11 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyF5}
 	case "backspace":
 		return tea.KeyMsg{Type: tea.KeyBackspace}
+	case "insert":
+		return tea.KeyMsg{Type: tea.KeyInsert}
+	case "nul":
+		// Windows: Einfg kommt als Rune 0x00 (VK_INSERT nicht gemappt)
+		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}}
 	}
 	return keyMsgFor(key)
 }
@@ -1254,5 +1259,248 @@ func TestConnectErrorSanitized(t *testing.T) {
 	m = updated.(AppModel)
 	if strings.ContainsAny(m.errorMsg, "\x1b\x07") {
 		t.Errorf("Fehlermeldung enthält Steuerzeichen: %q", m.errorMsg)
+	}
+}
+
+// --- Markieren (Build 56) ---
+
+// markedNames liefert die markierten Einträge eines Panels.
+func markedNames(p filePanel) []string {
+	var names []string
+	for _, e := range p.entries {
+		if e.marked {
+			names = append(names, e.name)
+		}
+	}
+	return names
+}
+
+// TestFileManagerInsertTogglesAndMovesDown - Einfg markiert den Eintrag
+// unter dem Cursor und springt eine Zeile weiter; erneut = entmarkieren.
+func TestFileManagerInsertTogglesAndMovesDown(t *testing.T) {
+	for _, key := range []string{"insert", "nul"} {
+		m, _ := openFileManagerFor(t)
+		m = cursorTo(t, m, "geheim")
+		start := m.fm.panels[0].cursor
+		m = pressRun(t, m, key)
+		p := m.fm.panels[0]
+		if got := strings.Join(markedNames(p), ","); got != "geheim" {
+			t.Errorf("%s: markiert = %q, erwartet geheim", key, got)
+		}
+		if p.cursor != start+1 {
+			t.Errorf("%s: Cursor = %d, erwartet %d", key, p.cursor, start+1)
+		}
+		m = cursorTo(t, m, "geheim")
+		m = pressRun(t, m, key)
+		if got := markedNames(m.fm.panels[0]); len(got) != 0 {
+			t.Errorf("%s: nach zweitem Druck noch markiert: %v", key, got)
+		}
+	}
+}
+
+// TestFileManagerInsertSkipsParentEntry - ".." ist nicht markierbar, der
+// Cursor springt trotzdem weiter.
+func TestFileManagerInsertSkipsParentEntry(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "..")
+	m = pressRun(t, m, "insert")
+	if got := markedNames(m.fm.panels[0]); len(got) != 0 {
+		t.Errorf("markiert = %v, \"..\" darf nicht markierbar sein", got)
+	}
+	if m.fm.panels[0].cursor != 1 {
+		t.Errorf("Cursor = %d, erwartet 1", m.fm.panels[0].cursor)
+	}
+}
+
+// TestFileManagerInsertAtLastEntry - am Ende markieren, Cursor bleibt.
+func TestFileManagerInsertAtLastEntry(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = pressRun(t, m, "end")
+	last := m.fm.panels[0].cursor
+	m = pressRun(t, m, "insert")
+	p := m.fm.panels[0]
+	if p.cursor != last || !p.entries[last].marked {
+		t.Errorf("Cursor %d (erwartet %d), markiert %v", p.cursor, last, p.entries[last].marked)
+	}
+}
+
+// TestFileManagerStarInvertsAll - * kehrt die Markierung aller Einträge
+// (Dateien und Verzeichnisse, ohne "..") um; zweimal * = wie vorher.
+func TestFileManagerStarInvertsAll(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "b.txt")
+	m = pressRun(t, m, "insert")
+	cursor := m.fm.panels[0].cursor
+	m = pressRun(t, m, "*")
+	got := strings.Join(markedNames(m.fm.panels[0]), ",")
+	want := "geheim,logs,projekte,aktuell.txt,kaputt,Notes.txt"
+	if got != want {
+		t.Errorf("nach *: markiert = %s, erwartet %s", got, want)
+	}
+	if m.fm.panels[0].cursor != cursor {
+		t.Error("* darf den Cursor nicht bewegen")
+	}
+	m = pressRun(t, m, "*")
+	if got := strings.Join(markedNames(m.fm.panels[0]), ","); got != "b.txt" {
+		t.Errorf("nach zweitem *: markiert = %s, erwartet b.txt", got)
+	}
+	// Die andere Seite bleibt unberührt
+	if got := markedNames(m.fm.panels[1]); len(got) != 0 {
+		t.Errorf("rechte Seite markiert: %v", got)
+	}
+}
+
+// TestFileManagerMarksOnlyActivePanelAndSurviveTab - Markierungen gelten
+// pro Fenster und bleiben beim Seitenwechsel erhalten.
+func TestFileManagerMarksOnlyActivePanelAndSurviveTab(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = pressRun(t, m, "*")
+	m = pressRun(t, m, "tab")
+	m = cursorTo(t, m, "b.txt")
+	m = pressRun(t, m, "insert")
+	m = pressRun(t, m, "tab")
+	if n := len(markedNames(m.fm.panels[0])); n != 7 {
+		t.Errorf("links markiert = %d, erwartet 7", n)
+	}
+	if got := strings.Join(markedNames(m.fm.panels[1]), ","); got != "b.txt" {
+		t.Errorf("rechts markiert = %s, erwartet b.txt", got)
+	}
+}
+
+// TestFileManagerMarksClearedOnDirChange - Verzeichniswechsel verwirft
+// die Markierungen (wie im mc); misslingt der Wechsel, bleiben sie.
+func TestFileManagerMarksClearedOnDirChange(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = pressRun(t, m, "*")
+	m = cursorTo(t, m, "geheim") // kein Zugriff
+	m = pressRun(t, m, "enter")
+	if n := len(markedNames(m.fm.panels[0])); n != 7 {
+		t.Errorf("nach misslungenem Wechsel markiert = %d, erwartet 7", n)
+	}
+	m = cursorTo(t, m, "projekte")
+	m = pressRun(t, m, "enter")
+	m = cursorTo(t, m, "..")
+	m = pressRun(t, m, "enter")
+	if got := markedNames(m.fm.panels[0]); len(got) != 0 {
+		t.Errorf("nach Verzeichniswechsel noch markiert: %v", got)
+	}
+}
+
+// TestFileManagerMarkedInfoLine - die Infozeile zeigt Anzahl und Größe der
+// markierten Einträge (Größe nur aus Dateien).
+func TestFileManagerMarkedInfoLine(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "b.txt") // 10 Bytes
+	m = pressRun(t, m, "insert")
+	m = cursorTo(t, m, "Notes.txt") // 2048 Bytes
+	m = pressRun(t, m, "insert")
+	m = cursorTo(t, m, "projekte") // Verzeichnis: zählt mit, Größe nicht
+	m = pressRun(t, m, "insert")
+	want := fmt.Sprintf(m.tr(txtFMMarkedInfo), 3, "2058 B")
+	text := stripANSI(m.View())
+	if !strings.Contains(text, want) {
+		t.Errorf("Infozeile ohne %q:\n%s", want, text)
+	}
+	assertScreenSize(t, m)
+	// Meldungen haben Vorrang, danach wieder die Markierungsinfo
+	m = cursorTo(t, m, "logs")
+	m = pressRun(t, m, "enter")
+	if !strings.Contains(stripANSI(m.View()), m.fm.message[:20]) {
+		t.Error("Meldung wird von der Markierungsinfo verdeckt")
+	}
+}
+
+// TestFileManagerMarkedEntriesHighlighted - markierte Einträge erscheinen in
+// der Markierungsfarbe, auch in der Cursorzeile und im inaktiven Fenster.
+func TestFileManagerMarkedEntriesHighlighted(t *testing.T) {
+	withColorProfile(t)
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "b.txt")
+	m = pressRun(t, m, "insert")
+	m = cursorTo(t, m, "b.txt") // Cursor auf markierter Zeile
+	// Erwartete Escape-Folge eines Stils = alles vor dem Text
+	prefix := func(style lipgloss.Style) string {
+		out := style.Render("X")
+		return out[:strings.Index(out, "X")]
+	}
+	for theme := range fmThemes {
+		m.fm.theme = theme
+		st := fmThemeStyles(theme)
+		for _, active := range []int{0, 1} {
+			m.fm.active = active
+			want := prefix(st.mark)
+			if active == 0 {
+				want = prefix(st.cursorMark) // Cursor steht auf b.txt
+			}
+			left := leftHalf(selectedLine(t, m.View(), " b.txt"), m.termWidth/2)
+			if !strings.Contains(left, want+" b.txt") {
+				t.Errorf("Modus %s, aktiv %d: markierte Zeile ohne Markierungsstil %q: %q", fmThemes[theme].name, active, want, left)
+			}
+			plain := leftHalf(selectedLine(t, m.View(), " Notes.txt"), m.termWidth/2)
+			if strings.Contains(plain, prefix(st.mark)) {
+				t.Errorf("Modus %s: nicht markierte Zeile im Markierungsstil", fmThemes[theme].name)
+			}
+		}
+	}
+}
+
+// leftHalf liefert die ersten width sichtbaren Zellen einer gerenderten
+// Zeile samt Escape-Sequenzen (linkes Fenster).
+func leftHalf(line string, width int) string {
+	visible := 0
+	for i := 0; i < len(line); i++ {
+		if line[i] == 0x1b {
+			for i < len(line) && line[i] != 'm' {
+				i++
+			}
+			continue
+		}
+		if line[i]&0xc0 != 0x80 {
+			visible++
+			if visible > width {
+				return line[:i]
+			}
+		}
+	}
+	return line
+}
+
+// TestFileManagerMarkKeysOnEmptyPanel - Markiertasten auf leerem Fenster
+// (unlesbares Startverzeichnis im Wurzelverzeichnis) stürzen nicht ab.
+func TestFileManagerMarkKeysOnEmptyPanel(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m.fm.panels[0].entries = nil
+	m.fm.panels[0].cursor = 0
+	m = pressRun(t, m, "insert")
+	m = pressRun(t, m, "*")
+	assertScreenSize(t, m)
+}
+
+// TestFileManagerMultiNulDoesNotMark - nur genau eine NUL-Rune gilt als
+// Einfg (Windows); mehrere NUL-Runen markieren nicht.
+func TestFileManagerMultiNulDoesNotMark(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "b.txt")
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0, 0}})
+	m = updated.(AppModel)
+	if got := markedNames(m.fm.panels[0]); len(got) != 0 {
+		t.Errorf("mehrere NUL-Runen markieren: %v", got)
+	}
+}
+
+// TestFormatSizeWithUnit - Größe mit Einheit für die Infozeile.
+func TestFormatSizeWithUnit(t *testing.T) {
+	cases := map[int64]string{
+		0:             "0 B",
+		12:            "12 B",
+		9999999:       "9999999 B",
+		10000000:      "9765 KB",
+		1048576 * 500: "500 MB",
+		1 << 40:       "1024 GB",
+	}
+	for in, want := range cases {
+		if got := formatSizeWithUnit(in); got != want {
+			t.Errorf("formatSizeWithUnit(%d) = %q, erwartet %q", in, got, want)
+		}
 	}
 }

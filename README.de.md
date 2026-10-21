@@ -152,15 +152,20 @@ nebeneinander zu arbeiten:
 | `↑` / `↓` / `Bild↑` / `Bild↓` / `Pos1` / `Ende` | Cursor bewegen |
 | `Enter` | In das Verzeichnis bzw. `..` wechseln |
 | `Tab` | Zwischen linkem und rechtem Fenster wechseln |
+| `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
+| `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
 Kennzeichen vor den Namen: `/` Verzeichnis, `~` Symlink auf ein Verzeichnis, `@` Symlink
 auf eine Datei, `!` defekter Symlink. Symlinks auf Verzeichnisse werden nicht verfolgt
 (es erscheint eine Meldung). Fehlen die Rechte für ein Verzeichnis, bleibt man im
 bisherigen und bekommt eine Meldung.
+Markierte Einträge werden hervorgehoben; die Infozeile des Fensters zeigt ihre Anzahl und
+die Gesamtgröße der markierten Dateien. Markierungen gehören zu ihrem Fenster und
+verfallen beim Verzeichniswechsel.
 
-*Stand Build 53: nur Navigation. Kopieren, Verschieben, Verzeichnis anlegen, Löschen,
-Markieren, Ansehen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
+*Stand Build 56: Navigation und Markieren. Kopieren, Verschieben, Verzeichnis anlegen,
+Löschen, Ansehen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
 klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
 
 ### Passwortabfrage

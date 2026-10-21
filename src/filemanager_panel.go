@@ -11,7 +11,7 @@
 // Windows "\" einsetzen).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:10
 package main
 
 import (
@@ -55,6 +55,8 @@ type fmEntry struct {
 	broken bool
 	// Eintrag ".." (zum Elternverzeichnis)
 	parent bool
+	// Vom Nutzer markiert (Einfg / *); ".." ist nie markiert
+	marked bool
 }
 
 // filePanel ist ein Dateifenster (linke oder rechte Seite).
@@ -256,6 +258,54 @@ func (p *filePanel) setCursor(pos int) {
 	p.cursor = pos
 }
 
+// toggleMark markiert bzw. entmarkiert den Eintrag unter dem Cursor und
+// setzt den Cursor eine Zeile weiter (wie Einfg im mc). ".." wird nicht
+// markiert, der Cursor springt trotzdem weiter.
+//
+// @date   2026-10-21 20:10
+func (p *filePanel) toggleMark() {
+	if p.cursor < 0 || p.cursor >= len(p.entries) {
+		return
+	}
+	if entry := &p.entries[p.cursor]; !entry.parent {
+		entry.marked = !entry.marked
+	}
+	p.moveCursor(1)
+}
+
+// invertMarks kehrt die Markierung aller Einträge um - Dateien und
+// Verzeichnisse, nur ".." bleibt unmarkiert (wie * im mc).
+//
+// @date   2026-10-21 20:10
+func (p *filePanel) invertMarks() {
+	for i := range p.entries {
+		if !p.entries[i].parent {
+			p.entries[i].marked = !p.entries[i].marked
+		}
+	}
+}
+
+// markedSummary liefert Anzahl und Gesamtgröße der markierten Einträge.
+// Die Größe zählt nur Dateien (die "Größe" eines Verzeichnisses sagt
+// nichts über seinen Inhalt).
+//
+// @return int - Anzahl markierter Einträge
+// @return int64 - Summe der Dateigrößen in Bytes
+// @date   2026-10-21 20:10
+func (p *filePanel) markedSummary() (int, int64) {
+	count, size := 0, int64(0)
+	for _, e := range p.entries {
+		if !e.marked {
+			continue
+		}
+		count++
+		if !e.dir {
+			size += e.size
+		}
+	}
+	return count, size
+}
+
 // title liefert die Titelzeile des Fensters, z. B. "root@host:/home/root".
 //
 // @return string - Titel (bereinigt, ohne Steuerzeichen)
@@ -309,4 +359,20 @@ func formatFileSize(size int64) string {
 		}
 	}
 	return strconv.FormatInt(size, 10) + "P"
+}
+
+// formatSizeWithUnit liefert die Größe wie formatFileSize, aber mit
+// Einheit: "12 B", "9765 KB", "500 MB" (für die Markierungsinfo, wo die
+// Zahl ohne Spaltenkopf steht).
+//
+// @param size - Größe in Bytes
+// @return string - Anzeige mit Einheit
+// @date   2026-10-21 20:12
+func formatSizeWithUnit(size int64) string {
+	text := formatFileSize(size)
+	last := text[len(text)-1]
+	if last >= '0' && last <= '9' {
+		return text + " B"
+	}
+	return text[:len(text)-1] + " " + string(last) + "B"
 }

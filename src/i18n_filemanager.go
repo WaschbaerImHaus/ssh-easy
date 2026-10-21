@@ -12,7 +12,7 @@
 // (höchstens 7 Zeichen), sonst werden sie bei 80 Spalten gekürzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:04
+// @date   2026-10-21 20:10
 package main
 
 const (
@@ -58,6 +58,8 @@ const (
 	txtFMNotYet textKey = "fm_not_yet"
 	// txtFMNotSelected - Platzhalter an erster Stelle der Verbindungsauswahl
 	txtFMNotSelected textKey = "fm_not_selected"
+	// txtFMMarkedInfo - Infozeile bei markierten Einträgen (%d Anzahl, %s Größe)
+	txtFMMarkedInfo textKey = "fm_marked_info"
 )
 
 // init mischt die Datei-Manager-Texte in die Zusatztexte ein.
@@ -98,6 +100,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Datei-Manager: SFTP auf %s nicht verfügbar: %s",
 		txtFMNotYet:         "Diese Funktion folgt in einer späteren Version",
 		txtFMNotSelected:    "(nicht ausgewählt)",
+		txtFMMarkedInfo:     "%d markiert, %s",
 	},
 	LangEnglish: {
 		txtFMListEntry:      "File manager (two connections)",
@@ -121,6 +124,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "File manager: SFTP not available on %s: %s",
 		txtFMNotYet:         "This function will follow in a later version",
 		txtFMNotSelected:    "(not selected)",
+		txtFMMarkedInfo:     "%d marked, %s",
 	},
 	LangFrancais: {
 		txtFMListEntry:      "Gestionnaire de fichiers (deux connexions)",
@@ -144,6 +148,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Gestionnaire de fichiers : SFTP indisponible sur %s : %s",
 		txtFMNotYet:         "Cette fonction arrivera dans une version ultérieure",
 		txtFMNotSelected:    "(non sélectionné)",
+		txtFMMarkedInfo:     "%d sélectionné(s), %s",
 	},
 	LangEspanol: {
 		txtFMListEntry:      "Gestor de archivos (dos conexiones)",
@@ -167,6 +172,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Gestor de archivos: SFTP no disponible en %s: %s",
 		txtFMNotYet:         "Esta función llegará en una versión posterior",
 		txtFMNotSelected:    "(no seleccionado)",
+		txtFMMarkedInfo:     "%d marcados, %s",
 	},
 	LangItaliano: {
 		txtFMListEntry:      "Gestore file (due connessioni)",
@@ -190,6 +196,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Gestore file: SFTP non disponibile su %s: %s",
 		txtFMNotYet:         "Questa funzione arriverà in una versione successiva",
 		txtFMNotSelected:    "(non selezionato)",
+		txtFMMarkedInfo:     "%d selezionati, %s",
 	},
 	LangPortugues: {
 		txtFMListEntry:      "Gestor de ficheiros (duas ligações)",
@@ -213,6 +220,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Gestor de ficheiros: SFTP indisponível em %s: %s",
 		txtFMNotYet:         "Esta função chegará numa versão posterior",
 		txtFMNotSelected:    "(não selecionado)",
+		txtFMMarkedInfo:     "%d marcados, %s",
 	},
 	LangDutch: {
 		txtFMListEntry:      "Bestandsbeheer (twee verbindingen)",
@@ -236,6 +244,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Bestandsbeheer: SFTP niet beschikbaar op %s: %s",
 		txtFMNotYet:         "Deze functie volgt in een latere versie",
 		txtFMNotSelected:    "(niet gekozen)",
+		txtFMMarkedInfo:     "%d gemarkeerd, %s",
 	},
 	LangSwedish: {
 		txtFMListEntry:      "Filhanterare (två anslutningar)",
@@ -259,6 +268,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Filhanterare: SFTP är inte tillgängligt på %s: %s",
 		txtFMNotYet:         "Den här funktionen kommer i en senare version",
 		txtFMNotSelected:    "(inte vald)",
+		txtFMMarkedInfo:     "%d markerade, %s",
 	},
 	LangPolish: {
 		txtFMListEntry:      "Menedżer plików (dwa połączenia)",
@@ -282,6 +292,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Menedżer plików: SFTP niedostępne na %s: %s",
 		txtFMNotYet:         "Ta funkcja pojawi się w późniejszej wersji",
 		txtFMNotSelected:    "(nie wybrano)",
+		txtFMMarkedInfo:     "zaznaczono %d, %s",
 	},
 	LangCzech: {
 		txtFMListEntry:      "Správce souborů (dvě připojení)",
@@ -305,6 +316,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Správce souborů: SFTP na %s není k dispozici: %s",
 		txtFMNotYet:         "Tato funkce přijde v pozdější verzi",
 		txtFMNotSelected:    "(nevybráno)",
+		txtFMMarkedInfo:     "označeno %d, %s",
 	},
 	LangRomanian: {
 		txtFMListEntry:      "Manager de fișiere (două conexiuni)",
@@ -328,6 +340,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Manager de fișiere: SFTP indisponibil pe %s: %s",
 		txtFMNotYet:         "Această funcție va veni într-o versiune ulterioară",
 		txtFMNotSelected:    "(neselectat)",
+		txtFMMarkedInfo:     "%d marcate, %s",
 	},
 	LangBulgarian: {
 		txtFMListEntry:      "Файлов мениджър (две връзки)",
@@ -351,6 +364,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Файлов мениджър: SFTP не е наличен на %s: %s",
 		txtFMNotYet:         "Тази функция ще дойде в по-късна версия",
 		txtFMNotSelected:    "(не е избрано)",
+		txtFMMarkedInfo:     "маркирани %d, %s",
 	},
 	LangRussian: {
 		txtFMListEntry:      "Файловый менеджер (два подключения)",
@@ -374,6 +388,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Файловый менеджер: SFTP недоступен на %s: %s",
 		txtFMNotYet:         "Эта функция появится в одной из следующих версий",
 		txtFMNotSelected:    "(не выбрано)",
+		txtFMMarkedInfo:     "отмечено %d, %s",
 	},
 	LangUkrainian: {
 		txtFMListEntry:      "Файловий менеджер (два підключення)",
@@ -397,6 +412,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Файловий менеджер: SFTP недоступний на %s: %s",
 		txtFMNotYet:         "Ця функція з'явиться в одній із наступних версій",
 		txtFMNotSelected:    "(не вибрано)",
+		txtFMMarkedInfo:     "позначено %d, %s",
 	},
 	LangGreek: {
 		txtFMListEntry:      "Διαχείριση αρχείων (δύο συνδέσεις)",
@@ -420,6 +436,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Διαχείριση αρχείων: το SFTP δεν είναι διαθέσιμο στο %s: %s",
 		txtFMNotYet:         "Αυτή η λειτουργία θα έρθει σε μεταγενέστερη έκδοση",
 		txtFMNotSelected:    "(δεν επιλέχθηκε)",
+		txtFMMarkedInfo:     "%d επισημασμένα, %s",
 	},
 	LangTurkish: {
 		txtFMListEntry:      "Dosya yöneticisi (iki bağlantı)",
@@ -443,6 +460,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Dosya yöneticisi: %s üzerinde SFTP kullanılamıyor: %s",
 		txtFMNotYet:         "Bu işlev sonraki bir sürümde gelecek",
 		txtFMNotSelected:    "(seçilmedi)",
+		txtFMMarkedInfo:     "%d işaretli, %s",
 	},
 	LangGeorgian: {
 		txtFMListEntry:      "ფაილების მენეჯერი (ორი კავშირი)",
@@ -466,6 +484,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ფაილების მენეჯერი: SFTP მიუწვდომელია %s-ზე: %s",
 		txtFMNotYet:         "ეს ფუნქცია მომავალ ვერსიაში დაემატება",
 		txtFMNotSelected:    "(არ არის არჩეული)",
+		txtFMMarkedInfo:     "მონიშნულია %d, %s",
 	},
 	LangArabic: {
 		txtFMListEntry:      "مدير الملفات (اتصالان)",
@@ -489,6 +508,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "مدير الملفات: SFTP غير متاح على %s: %s",
 		txtFMNotYet:         "ستتوفر هذه الوظيفة في إصدار لاحق",
 		txtFMNotSelected:    "(غير محدد)",
+		txtFMMarkedInfo:     "%d محدد، %s",
 	},
 	LangPersian: {
 		txtFMListEntry:      "مدیر فایل (دو اتصال)",
@@ -512,6 +532,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "مدیر فایل: SFTP روی %s در دسترس نیست: %s",
 		txtFMNotYet:         "این قابلیت در نسخه‌ای بعدی می‌آید",
 		txtFMNotSelected:    "(انتخاب نشده)",
+		txtFMMarkedInfo:     "%d علامت‌خورده، %s",
 	},
 	LangUrdu: {
 		txtFMListEntry:      "فائل منیجر (دو کنکشن)",
@@ -535,6 +556,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "فائل منیجر: %s پر SFTP دستیاب نہیں: %s",
 		txtFMNotYet:         "یہ فنکشن بعد کے ورژن میں آئے گا",
 		txtFMNotSelected:    "(منتخب نہیں)",
+		txtFMMarkedInfo:     "%d نشان زدہ، %s",
 	},
 	LangHindi: {
 		txtFMListEntry:      "फ़ाइल मैनेजर (दो कनेक्शन)",
@@ -558,6 +580,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "फ़ाइल मैनेजर: %s पर SFTP उपलब्ध नहीं: %s",
 		txtFMNotYet:         "यह सुविधा बाद के संस्करण में आएगी",
 		txtFMNotSelected:    "(चयनित नहीं)",
+		txtFMMarkedInfo:     "%d चिह्नित, %s",
 	},
 	LangBengali: {
 		txtFMListEntry:      "ফাইল ম্যানেজার (দুটি সংযোগ)",
@@ -581,6 +604,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ফাইল ম্যানেজার: %s এ SFTP উপলব্ধ নয়: %s",
 		txtFMNotYet:         "এই ফাংশনটি পরবর্তী সংস্করণে আসবে",
 		txtFMNotSelected:    "(নির্বাচিত নয়)",
+		txtFMMarkedInfo:     "%d চিহ্নিত, %s",
 	},
 	LangPunjabi: {
 		txtFMListEntry:      "ਫਾਈਲ ਮੈਨੇਜਰ (ਦੋ ਕਨੈਕਸ਼ਨ)",
@@ -604,6 +628,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ਫਾਈਲ ਮੈਨੇਜਰ: %s ਉੱਤੇ SFTP ਉਪਲਬਧ ਨਹੀਂ: %s",
 		txtFMNotYet:         "ਇਹ ਫੰਕਸ਼ਨ ਬਾਅਦ ਦੇ ਸੰਸਕਰਣ ਵਿੱਚ ਆਵੇਗਾ",
 		txtFMNotSelected:    "(ਚੁਣਿਆ ਨਹੀਂ)",
+		txtFMMarkedInfo:     "%d ਨਿਸ਼ਾਨਬੱਧ, %s",
 	},
 	LangGujarati: {
 		txtFMListEntry:      "ફાઇલ મેનેજર (બે કનેક્શન)",
@@ -627,6 +652,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ફાઇલ મેનેજર: %s પર SFTP ઉપલબ્ધ નથી: %s",
 		txtFMNotYet:         "આ સુવિધા પછીના સંસ્કરણમાં આવશે",
 		txtFMNotSelected:    "(પસંદ નથી)",
+		txtFMMarkedInfo:     "%d ચિહ્નિત, %s",
 	},
 	LangMarathi: {
 		txtFMListEntry:      "फाइल व्यवस्थापक (दोन कनेक्शन)",
@@ -650,6 +676,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "फाइल व्यवस्थापक: %s वर SFTP उपलब्ध नाही: %s",
 		txtFMNotYet:         "हे कार्य नंतरच्या आवृत्तीत येईल",
 		txtFMNotSelected:    "(निवडलेले नाही)",
+		txtFMMarkedInfo:     "%d चिन्हांकित, %s",
 	},
 	LangTamil: {
 		txtFMListEntry:      "கோப்பு மேலாளர் (இரண்டு இணைப்புகள்)",
@@ -673,6 +700,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "கோப்பு மேலாளர்: %s இல் SFTP கிடைக்கவில்லை: %s",
 		txtFMNotYet:         "இந்த செயல்பாடு பிந்தைய பதிப்பில் வரும்",
 		txtFMNotSelected:    "(தேர்ந்தெடுக்கப்படவில்லை)",
+		txtFMMarkedInfo:     "%d குறிக்கப்பட்டவை, %s",
 	},
 	LangTelugu: {
 		txtFMListEntry:      "ఫైల్ మేనేజర్ (రెండు కనెక్షన్లు)",
@@ -696,6 +724,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ఫైల్ మేనేజర్: %s లో SFTP అందుబాటులో లేదు: %s",
 		txtFMNotYet:         "ఈ ఫంక్షన్ తదుపరి సంస్కరణలో వస్తుంది",
 		txtFMNotSelected:    "(ఎంచుకోలేదు)",
+		txtFMMarkedInfo:     "%d గుర్తించబడ్డాయి, %s",
 	},
 	LangKannada: {
 		txtFMListEntry:      "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ (ಎರಡು ಸಂಪರ್ಕಗಳು)",
@@ -719,6 +748,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ಫೈಲ್ ಮ್ಯಾನೇಜರ್: %s ನಲ್ಲಿ SFTP ಲಭ್ಯವಿಲ್ಲ: %s",
 		txtFMNotYet:         "ಈ ಕಾರ್ಯ ನಂತರದ ಆವೃತ್ತಿಯಲ್ಲಿ ಬರುತ್ತದೆ",
 		txtFMNotSelected:    "(ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ)",
+		txtFMMarkedInfo:     "%d ಗುರುತಿಸಲಾಗಿದೆ, %s",
 	},
 	LangChinese: {
 		txtFMListEntry:      "文件管理器（两个连接）",
@@ -742,6 +772,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "文件管理器：%s 上不可用 SFTP：%s",
 		txtFMNotYet:         "此功能将在后续版本中提供",
 		txtFMNotSelected:    "（未选择）",
+		txtFMMarkedInfo:     "已标记 %d 项，%s",
 	},
 	LangJapanese: {
 		txtFMListEntry:      "ファイルマネージャー（2つの接続）",
@@ -765,6 +796,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ファイルマネージャー：%s で SFTP を利用できません：%s",
 		txtFMNotYet:         "この機能は今後のバージョンで追加されます",
 		txtFMNotSelected:    "（未選択）",
+		txtFMMarkedInfo:     "%d 件マーク済み、%s",
 	},
 	LangKorean: {
 		txtFMListEntry:      "파일 관리자 (두 개의 연결)",
@@ -788,6 +820,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "파일 관리자: %s에서 SFTP를 사용할 수 없음: %s",
 		txtFMNotYet:         "이 기능은 이후 버전에서 제공됩니다",
 		txtFMNotSelected:    "(선택 안 함)",
+		txtFMMarkedInfo:     "%d개 표시됨, %s",
 	},
 	LangThai: {
 		txtFMListEntry:      "ตัวจัดการไฟล์ (สองการเชื่อมต่อ)",
@@ -811,6 +844,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "ตัวจัดการไฟล์: ไม่มี SFTP บน %s: %s",
 		txtFMNotYet:         "ฟังก์ชันนี้จะมาในเวอร์ชันถัดไป",
 		txtFMNotSelected:    "(ยังไม่ได้เลือก)",
+		txtFMMarkedInfo:     "ทำเครื่องหมาย %d รายการ, %s",
 	},
 	LangVietnamese: {
 		txtFMListEntry:      "Trình quản lý tệp (hai kết nối)",
@@ -834,6 +868,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Trình quản lý tệp: SFTP không khả dụng trên %s: %s",
 		txtFMNotYet:         "Chức năng này sẽ có trong phiên bản sau",
 		txtFMNotSelected:    "(chưa chọn)",
+		txtFMMarkedInfo:     "đã đánh dấu %d, %s",
 	},
 	LangIndonesian: {
 		txtFMListEntry:      "Pengelola berkas (dua koneksi)",
@@ -857,6 +892,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Pengelola berkas: SFTP tidak tersedia di %s: %s",
 		txtFMNotYet:         "Fungsi ini akan hadir di versi berikutnya",
 		txtFMNotSelected:    "(belum dipilih)",
+		txtFMMarkedInfo:     "%d ditandai, %s",
 	},
 	LangFilipino: {
 		txtFMListEntry:      "Tagapamahala ng file (dalawang koneksyon)",
@@ -880,6 +916,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Tagapamahala ng file: walang SFTP sa %s: %s",
 		txtFMNotYet:         "Darating ang function na ito sa susunod na bersyon",
 		txtFMNotSelected:    "(hindi pa napili)",
+		txtFMMarkedInfo:     "%d ang minarkahan, %s",
 	},
 	LangSwahili: {
 		txtFMListEntry:      "Kidhibiti faili (miunganisho miwili)",
@@ -903,6 +940,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Kidhibiti faili: SFTP haipatikani kwenye %s: %s",
 		txtFMNotYet:         "Kipengele hiki kitakuja katika toleo la baadaye",
 		txtFMNotSelected:    "(haijachaguliwa)",
+		txtFMMarkedInfo:     "%d zimewekwa alama, %s",
 	},
 	LangAmharic: {
 		txtFMListEntry:      "የፋይል አስተዳዳሪ (ሁለት ግንኙነቶች)",
@@ -926,6 +964,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "የፋይል አስተዳዳሪ: በ%s ላይ SFTP አይገኝም: %s",
 		txtFMNotYet:         "ይህ ተግባር በሚቀጥለው ስሪት ይመጣል",
 		txtFMNotSelected:    "(አልተመረጠም)",
+		txtFMMarkedInfo:     "%d ምልክት የተደረገባቸው, %s",
 	},
 	LangHausa: {
 		txtFMListEntry:      "Mai sarrafa fayiloli (haɗi biyu)",
@@ -949,6 +988,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Mai sarrafa fayiloli: babu SFTP a %s: %s",
 		txtFMNotYet:         "Wannan aikin zai zo a sigar gaba",
 		txtFMNotSelected:    "(ba a zaɓa ba)",
+		txtFMMarkedInfo:     "an yi wa %d alama, %s",
 	},
 	LangIgbo: {
 		txtFMListEntry:      "Onye njikwa faịlụ (njikọ abụọ)",
@@ -972,6 +1012,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Onye njikwa faịlụ: SFTP adịghị na %s: %s",
 		txtFMNotYet:         "Ọrụ a ga-abịa na ụdị ọzọ",
 		txtFMNotSelected:    "(ahọrọghị)",
+		txtFMMarkedInfo:     "%d akara, %s",
 	},
 	LangYoruba: {
 		txtFMListEntry:      "Olùṣàkóso fáìlì (ìsopọ̀ méjì)",
@@ -995,6 +1036,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Olùṣàkóso fáìlì: SFTP kò sí lórí %s: %s",
 		txtFMNotYet:         "Iṣẹ́ yìí yóò dé ní ẹ̀yà tó ń bọ̀",
 		txtFMNotSelected:    "(a kò yàn)",
+		txtFMMarkedInfo:     "%d ti samisi, %s",
 	},
 	LangOromo: {
 		txtFMListEntry:      "Bulchiinsa faayilii (walqunnamtii lama)",
@@ -1018,5 +1060,6 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrSFTP:        "Bulchiinsa faayilii: SFTP %s irratti hin argamu: %s",
 		txtFMNotYet:         "Hojiin kun gosa itti aanu keessatti dhufa",
 		txtFMNotSelected:    "(hin filatamne)",
+		txtFMMarkedInfo:     "%d mallattoo qabu, %s",
 	},
 }

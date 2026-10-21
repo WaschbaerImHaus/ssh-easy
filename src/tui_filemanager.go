@@ -11,11 +11,12 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Rohfassung (Build 53): Navigation und Seitenwechsel funktionieren,
-// Menü und F1-F9 sind nur optisch vorhanden.
+// Stand Build 56: Navigation, Seitenwechsel und Markieren (Einfg, * kehrt
+// alle Markierungen um) funktionieren; Menü und F1-F9 sind nur optisch
+// vorhanden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:04
+// @date   2026-10-21 20:10
 package main
 
 import (
@@ -403,12 +404,20 @@ func (m AppModel) fmScreenSize() (int, int) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verzeichnis lesen)
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:10
 func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Meldungen gelten nur bis zum nächsten Tastendruck
 	m.fm.message = ""
 	panel := &m.fm.panels[m.fm.active]
 	rows := m.fmVisibleRows()
+
+	// Einfg: unter Windows als einzelne NUL-Rune (VK_INSERT ist in Bubbletea
+	// nicht gemappt); mit gedrückter Umschalttaste wäre es Einfügen
+	if msg.Type == tea.KeyInsert || (isNulKey(msg) && len(msg.Runes) == 1 && !shiftInsertPressed()) {
+		panel.toggleMark()
+		panel.offset = scrollOffset(len(panel.entries), panel.cursor, panel.offset, rows)
+		return m, nil
+	}
 
 	switch msg.String() {
 	case "q", "f10":
@@ -430,6 +439,9 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		panel.setCursor(len(panel.entries) - 1)
 	case "enter":
 		return m.fmEnter()
+	case "*":
+		// Markierung aller Einträge umkehren (wie im mc)
+		panel.invertMarks()
 	case "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
@@ -640,7 +652,7 @@ func (m AppModel) renderFMKeyBar(st fmStyles, width int) string {
 // @param width - Breite des Fensters
 // @param height - Höhe des Fensters
 // @return []string - Zeilen
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:10
 func (m AppModel) renderFMPanel(side int, st fmStyles, width, height int) []string {
 	panel := m.fm.panels[side]
 	active := side == m.fm.active
@@ -691,8 +703,11 @@ func (m AppModel) renderFMPanel(side int, st fmStyles, width, height int) []stri
 	// Trennlinie, Infozeile (aktueller Eintrag oder Meldung), Rahmen unten
 	lines = append(lines, st.frame.Render("├"+strings.Repeat("─", inner)+"┤"))
 	info := st.panel.Render(fitWidth("", inner))
-	if active && m.fm.message != "" {
+	if count, size := panel.markedSummary(); active && m.fm.message != "" {
 		info = st.message.Render(fitWidth(m.fm.message, inner))
+	} else if count > 0 {
+		// Markierte Einträge: Anzahl und Größe (wie im mc)
+		info = st.mark.Render(fitWidth(fmt.Sprintf(m.tr(txtFMMarkedInfo), count, formatSizeWithUnit(size)), inner))
 	} else if entry, ok := panel.current(); ok {
 		info = st.panel.Render(fitWidth(sanitizeFileName(entry.name), inner))
 	}
@@ -764,7 +779,7 @@ func (m AppModel) renderFMColumns(cols fmColumns, text, sep lipgloss.Style, name
 // @param entry - Eintrag
 // @param selected - Cursorzeile?
 // @return string - Zeile ohne äußeren Rahmen
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:10
 func (m AppModel) renderFMEntry(st fmStyles, cols fmColumns, entry fmEntry, selected bool) string {
 	marker, style := " ", st.file
 	switch {
@@ -785,8 +800,15 @@ func (m AppModel) renderFMEntry(st fmStyles, cols fmColumns, entry fmEntry, sele
 		date = entry.modTime.Format(fmDateFormat)
 	}
 	sep := st.frame
+	if entry.marked {
+		// Spaltentrenner auf dem Markierungshintergrund (durchgehendes Band)
+		style, sep = st.mark, st.markFrame
+	}
 	if selected {
 		style, sep = st.cursor, st.cursor
+		if entry.marked {
+			style = st.cursorMark
+		}
 	}
 	return m.renderFMColumns(cols, style, sep, marker+sanitizeFileName(entry.name), size, date)
 }
