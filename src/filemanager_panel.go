@@ -11,7 +11,7 @@
 // Windows "\" einsetzen).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:09
+// @date   2026-10-21 21:16
 package main
 
 import (
@@ -43,8 +43,13 @@ type remoteFS interface {
 	ReadLink(p string) (string, error)
 	// OpenRead öffnet eine Datei zum Lesen
 	OpenRead(p string) (io.ReadCloser, error)
-	// CreateFile legt eine Datei an bzw. leert eine vorhandene
-	CreateFile(p string) (io.WriteCloser, error)
+	// CreateExclusive legt eine NEUE Datei an; existiert der Pfad schon
+	// (auch als Symlink), schlägt es fehl - so wird nie durch einen
+	// untergeschobenen Symlink hindurch geschrieben
+	CreateExclusive(p string) (io.WriteCloser, error)
+	// RenameOverwrite benennt um und ersetzt ein vorhandenes Ziel (Datei
+	// oder Symlink - der Link selbst wird ersetzt, nicht sein Ziel)
+	RenameOverwrite(oldPath, newPath string) error
 	// Mkdir legt ein Verzeichnis an
 	Mkdir(p string) error
 	// Remove löscht eine Datei, einen Symlink oder ein leeres Verzeichnis
@@ -336,9 +341,12 @@ func (p *filePanel) title() string {
 	return sanitizeFileName(p.conn.User + "@" + p.conn.Host + ":" + p.path)
 }
 
-// sanitizeFileName ersetzt Steuerzeichen und ungültiges UTF-8 durch "?".
-// Dateinamen kommen vom Server und sind nicht vertrauenswürdig: Ein Name
-// mit ESC-Sequenz könnte sonst das lokale Terminal steuern.
+// sanitizeFileName ersetzt Steuerzeichen, unsichtbare Formatzeichen und
+// ungültiges UTF-8 durch "?". Dateinamen kommen vom Server und sind nicht
+// vertrauenswürdig: Ein Name mit ESC-Sequenz könnte sonst das lokale
+// Terminal steuern, eine Richtungsumkehr (U+202E) täuscht einen anderen
+// Namen vor ("rechnung<RLO>fdp.exe" erscheint als "rechnungexe.pdf").
+// Die Joiner U+200C/U+200D bleiben: Sie gehören z. B. zur persischen Schrift.
 //
 // @param name - Name vom Server
 // @return string - Gefahrlos anzeigbarer Name
@@ -352,7 +360,7 @@ func sanitizeFileName(name string) string {
 			out.WriteByte('?')
 			continue
 		}
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || (unicode.Is(unicode.Cf, r) && r != '\u200c' && r != '\u200d') {
 			out.WriteByte('?')
 			continue
 		}

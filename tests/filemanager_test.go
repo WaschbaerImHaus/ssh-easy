@@ -96,9 +96,10 @@ func (f *fakeRemoteFS) Close() error {
 func (f *fakeRemoteFS) Lstat(p string) (os.FileInfo, error)      { return nil, errors.ErrUnsupported }
 func (f *fakeRemoteFS) ReadLink(p string) (string, error)        { return "", errors.ErrUnsupported }
 func (f *fakeRemoteFS) OpenRead(p string) (io.ReadCloser, error) { return nil, errors.ErrUnsupported }
-func (f *fakeRemoteFS) CreateFile(p string) (io.WriteCloser, error) {
+func (f *fakeRemoteFS) CreateExclusive(p string) (io.WriteCloser, error) {
 	return nil, errors.ErrUnsupported
 }
+func (f *fakeRemoteFS) RenameOverwrite(o, n string) error      { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Mkdir(p string) error                   { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Remove(p string) error                  { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Symlink(target, linkPath string) error  { return errors.ErrUnsupported }
@@ -1164,6 +1165,13 @@ func TestSanitizeFileName(t *testing.T) {
 		"del\x7f":         "del?",
 		"ungültig\xff":    "ungültig?",
 		"日本語.txt":         "日本語.txt",
+		// Unsichtbare Formatzeichen (Täuschung durch Richtungsumkehr u. ä.)
+		"rechnung\u202efdp.exe": "rechnung?fdp.exe",
+		"a\u200bb":              "a?b",
+		"\u2066x\u2069":         "?x?",
+		"\ufeffbom":             "?bom",
+		// Joiner sind Teil normaler Schrift (z. B. Persisch) und bleiben
+		"می\u200cخواهم": "می\u200cخواهم",
 	}
 	for in, want := range cases {
 		if got := sanitizeFileName(in); got != want {

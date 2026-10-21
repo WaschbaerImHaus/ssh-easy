@@ -14,28 +14,37 @@
 //     eine Datei/ein Symlink schon, wird über den Ereigniskanal nachgefragt
 //     (überschreiben, überspringen, alle, keine, alle wenn neuer, alle wenn
 //     größer, abbrechen). Fehler einzelner Einträge brechen nicht ab.
-//  3. Rechte und Änderungszeit werden übernommen (Fehler dabei still
-//     ignorieren - manche Hoster verbieten chmod). Verzeichnisrechte erst
-//     am Ende setzen, sonst könnte ein schreibgeschütztes Verzeichnis das
-//     Kopieren seines Inhalts verhindern.
+//  3. Jede Datei wird als exklusive Temp-Datei mit Rechten 0600
+//     geschrieben und erst am Ende auf den Zielnamen umbenannt (siehe
+//     copyData). Neue Verzeichnisse sind währenddessen 0700; ihre echten
+//     Rechte setzt finishDirs am Ende. Rechte/Zeit-Fehler werden ignoriert
+//     (manche Hoster verbieten chmod) - außer bei privaten Dateien.
+//  4. Schutz vor bösartigen Servern: Namen mit "/", "\" oder
+//     Steuerzeichen werden abgelehnt, Zielpfade müssen im Zielverzeichnis
+//     liegen, Größen werden überlaufsicher addiert, Anzahl und Tiefe der
+//     Einträge sind begrenzt.
 //
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt, Rückfragen
 // und das Ergebnis als copyEvent und wartet bei Rückfragen auf eine Antwort.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:09
+// @date   2026-10-21 21:17
 package main
 
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"path"
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // copyBufferSize - Schreibpuffer pro Datei. SFTP überträgt einen vollen
@@ -53,10 +62,31 @@ var errTargetTypeMismatch = errors.New("target exists with a different type")
 // Pfad); Kopieren würde die Quelle leeren.
 var errSameFile = errors.New("source and target are the same file")
 
-// errUnsafeName - Name aus einem Verzeichnis enthält "/" oder ist leer, "."
-// oder "..". Ein bösartiger Server könnte so aus dem Zielverzeichnis des
-// anderen Servers hinausschreiben (Path Traversal).
+// errUnsafeName - Name aus einem Verzeichnis enthält "/" oder "\" oder
+// Steuerzeichen oder ist leer, "." bzw. "..". Ein bösartiger Server könnte
+// so aus dem Zielverzeichnis des anderen Servers hinausschreiben (Path
+// Traversal; "\" ist auf Windows-SFTP-Servern ein Pfadtrenner).
 var errUnsafeName = errors.New("unsafe file name")
+
+// errCannotProtect - der Zielserver lässt die Rechte einer privaten Datei
+// (ohne Rechte für Gruppe/Andere) nicht einschränken; sie wäre dort für
+// andere lesbar und wird deshalb nicht kopiert.
+var errCannotProtect = errors.New("cannot restrict permissions on target")
+
+// errCopyLimit - zu viele Einträge oder zu tief verschachtelt (Schutz vor
+// bösartigen Servern mit endlosen Verzeichnisbäumen); nichts wird kopiert.
+var errCopyLimit = errors.New("too many entries or nesting too deep")
+
+// Grenzen beim Erfassen (Variablen, damit Tests sie verkleinern können)
+var (
+	copyMaxEntries = 1_000_000
+	copyMaxDepth   = 128
+)
+
+// copyTempPrefix - Namensanfang der Temp-Dateien im Zielverzeichnis. Jede
+// Datei wird erst unter "<Präfix><Zufall>.tmp" geschrieben und dann in
+// einem Schritt auf den Zielnamen umbenannt.
+const copyTempPrefix = ".ssh-easy-copy-"
 
 // copyRequest beschreibt einen Kopierauftrag.
 type copyRequest struct {
@@ -174,6 +204,8 @@ type copyRun struct {
 	skipDirs map[string]bool
 	// Neu angelegte Verzeichnisse (Rechte/Zeit am Ende setzen)
 	createdDirs []copyNode
+	// Grenze beim Erfassen erreicht (copyMaxEntries/copyMaxDepth)
+	limitHit bool
 }
 
 // runCopy führt einen Kopierauftrag aus und meldet am Ende genau ein
@@ -196,6 +228,14 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 	run.progress.scanning = true
 	nodes := run.scan()
 	run.progress.scanning = false
+	if run.limitHit {
+		// Grenze erreicht: gar nichts kopieren
+		nodes = nil
+		run.incomplete = map[string]bool{}
+		for _, name := range req.names {
+			run.incomplete[name] = true
+		}
+	}
 	run.sendProgress(true)
 	run.copyAll(nodes)
 	run.finishDirs()
@@ -209,14 +249,67 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 	events <- copyEvent{result: &result}
 }
 
-// safeEntryName prüft einen einzelnen Verzeichniseintrag: nicht leer, nicht
-// "." oder "..", kein "/" (nur so bleibt path.Join im Verzeichnis).
+// safeEntryName prüft einen einzelnen Verzeichniseintrag für die Anzeige:
+// nicht leer, nicht "." oder "..", kein "/" (nur so bleibt path.Join im
+// Verzeichnis).
 //
 // @param name - Name vom Server
 // @return bool - true wenn unbedenklich
-// @date   2026-10-21 21:09
+// @date   2026-10-21 21:17
 func safeEntryName(name string) bool {
 	return name != "" && name != "." && name != ".." && !strings.Contains(name, "/")
+}
+
+// safeCopyName ist die strengere Prüfung beim Kopieren: zusätzlich kein
+// Backslash (Pfadtrenner auf Windows-SFTP-Servern) und keine Steuerzeichen.
+// Ein Doppelpunkt bleibt erlaubt: Unter Linux ist er ein normales Zeichen,
+// mitten im Pfad führt er auch unter Windows nicht aus dem Verzeichnis.
+//
+// @param name - Name vom Server
+// @return bool - true wenn unbedenklich
+// @date   2026-10-21 21:17
+func safeCopyName(name string) bool {
+	if !safeEntryName(name) || strings.Contains(name, "\\") {
+		return false
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// insideDir prüft, ob p (nach Bereinigung) echt unterhalb von dir liegt -
+// zweite Sicherung nach der Namensprüfung.
+//
+// @param dir - Verzeichnis
+// @param p - Pfad
+// @return bool - true wenn p in dir liegt (und nicht dir selbst ist)
+// @date   2026-10-21 21:17
+func insideDir(dir, p string) bool {
+	d, c := path.Clean(dir), path.Clean(p)
+	if d == "/" {
+		return c != "/" && strings.HasPrefix(c, "/")
+	}
+	return strings.HasPrefix(c, d+"/")
+}
+
+// satAdd addiert ohne Überlauf und nie unter 0 (Größen meldet der Server,
+// ein bösartiger kann absurde Werte schicken).
+//
+// @param a - Summe bisher
+// @param b - Summand
+// @return int64 - a+b, begrenzt auf [0, MaxInt64]
+// @date   2026-10-21 21:17
+func satAdd(a, b int64) int64 {
+	if b > 0 && a > math.MaxInt64-b {
+		return math.MaxInt64
+	}
+	if a+b < 0 {
+		return 0
+	}
+	return a + b
 }
 
 // fail merkt einen Fehler und markiert den obersten Eintrag als unvollständig.
@@ -238,7 +331,13 @@ func (r *copyRun) scan() []copyNode {
 	var nodes []copyNode
 	var walk func(rel, top string)
 	walk = func(rel, top string) {
-		if r.ctx.Err() != nil {
+		if r.ctx.Err() != nil || r.limitHit {
+			return
+		}
+		// Schutz vor endlosen Bäumen eines bösartigen Servers
+		if len(nodes) >= copyMaxEntries || strings.Count(rel, "/") >= copyMaxDepth {
+			r.limitHit = true
+			r.fail(copyNode{top: top}, path.Join(r.req.srcDir, rel), errCopyLimit)
 			return
 		}
 		srcPath := path.Join(r.req.srcDir, rel)
@@ -261,7 +360,7 @@ func (r *copyRun) scan() []copyNode {
 				if child.Name() == "." || child.Name() == ".." {
 					continue
 				}
-				if !safeEntryName(child.Name()) {
+				if !safeCopyName(child.Name()) {
 					// Nicht path.Join: das würde ".." auflösen
 					r.fail(node, srcPath+"/"+child.Name(), errUnsafeName)
 					continue
@@ -272,12 +371,12 @@ func (r *copyRun) scan() []copyNode {
 		}
 		r.progress.totalFiles++
 		if info.Mode().IsRegular() {
-			r.progress.totalBytes += info.Size()
+			r.progress.totalBytes = satAdd(r.progress.totalBytes, max(info.Size(), 0))
 		}
 		r.sendProgress(false)
 	}
 	for _, name := range r.req.names {
-		if !safeEntryName(name) {
+		if !safeCopyName(name) {
 			r.fail(copyNode{top: name}, name, errUnsafeName)
 			continue
 		}
@@ -304,6 +403,14 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 		dstPath := path.Join(r.req.dstDir, node.rel)
 		r.progress.current = srcPath
 		r.sendProgress(false)
+
+		// Zweite Sicherung: Ziel muss im Zielverzeichnis liegen
+		if !insideDir(r.req.dstDir, dstPath) {
+			r.fail(node, dstPath, errUnsafeName)
+			r.skipDir(node)
+			r.countSkipped(node)
+			continue
+		}
 
 		if r.req.sameHost && path.Clean(srcPath) == path.Clean(dstPath) {
 			r.fail(node, dstPath, errSameFile)
@@ -345,6 +452,9 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 		r.skipDir(node)
 		return
 	}
+	// Während des Kopierens nur für den Besitzer zugänglich; die echten
+	// Rechte setzt finishDirs am Ende
+	_ = r.req.dst.Chmod(dstPath, 0o700)
 	r.createdDirs = append(r.createdDirs, node)
 }
 
@@ -367,12 +477,16 @@ func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing o
 		if !overwrite {
 			return true
 		}
-		if err := r.req.dst.Remove(dstPath); err != nil {
-			r.fail(node, dstPath, err)
-			return true
-		}
 	}
-	if err := r.req.dst.Symlink(target, dstPath); err != nil {
+	// Erst unter Temp-Namen anlegen, dann in einem Schritt umbenennen
+	// (ersetzt ein vorhandenes Ziel, ohne ihm zu folgen)
+	tmp := tempCopyName(dstPath)
+	if err := r.req.dst.Symlink(target, tmp); err != nil {
+		r.fail(node, dstPath, err)
+		return true
+	}
+	if err := r.req.dst.RenameOverwrite(tmp, dstPath); err != nil {
+		_ = r.req.dst.Remove(tmp)
 		r.fail(node, dstPath, err)
 		return true
 	}
@@ -400,17 +514,9 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 			r.countDone(node, node.info.Size())
 			return true
 		}
-		// Am Ziel steht ein Symlink: entfernen statt hindurch zu schreiben
-		if existing.Mode()&os.ModeSymlink != 0 {
-			if err := r.req.dst.Remove(dstPath); err != nil {
-				r.fail(node, dstPath, err)
-				r.countDone(node, node.info.Size())
-				return true
-			}
-		}
 	}
 	before := r.progress.doneBytes
-	err := r.copyData(srcPath, dstPath)
+	err := r.copyData(srcPath, dstPath, node.info)
 	if err != nil {
 		if r.ctx.Err() != nil {
 			r.result.cancelled = true
@@ -421,33 +527,55 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 		r.countDone(node, node.info.Size())
 		return true
 	}
-	// Rechte und Zeit übernehmen; Fehler ignorieren (eingeschränkte Hoster)
-	_ = r.req.dst.Chmod(dstPath, node.info.Mode().Perm())
-	_ = r.req.dst.Chtimes(dstPath, node.info.ModTime(), node.info.ModTime())
 	r.result.files++
-	r.result.bytes += node.info.Size()
+	r.result.bytes = satAdd(r.result.bytes, max(node.info.Size(), 0))
 	r.progress.doneFiles++
 	r.sendProgress(true)
 	return true
 }
 
-// copyData überträgt den Inhalt einer Datei. Bei Fehler oder Abbruch wird
-// die halb geschriebene Zieldatei gelöscht.
+// copyData überträgt den Inhalt einer Datei sicher:
+//  1. Temp-Datei im Zielverzeichnis exklusiv anlegen (O_EXCL: kein
+//     untergeschobener Symlink, keine fremde Datei wird benutzt)
+//  2. sofort auf 0600 setzen - der Inhalt ist nie für andere lesbar; geht
+//     das nicht und ist die Quelle privat, wird abgebrochen (errCannotProtect)
+//  3. Inhalt schreiben, dann echte Rechte und Änderungszeit setzen
+//  4. in einem Schritt auf den Zielnamen umbenennen (ersetzt ein vorhandenes
+//     Ziel bzw. einen Symlink dort, ohne ihm zu folgen)
+//
+// Die Quelle wird dabei nie geleert, auch wenn Quelle und Ziel unerkannt
+// dieselbe Datei sind (zwei Verbindungseinträge auf denselben Server). Bei
+// Fehler oder Abbruch wird die Temp-Datei gelöscht; ein vorhandenes Ziel
+// bleibt dann unverändert.
 //
 // @param srcPath - Quelle
 // @param dstPath - Ziel
+// @param info - Infos der Quelle (Rechte, Zeit)
 // @return error - Fehler beim Lesen/Schreiben oder ctx.Err()
-// @date   2026-10-21 21:03
-func (r *copyRun) copyData(srcPath, dstPath string) error {
+// @date   2026-10-21 21:17
+func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error) {
 	reader, err := r.req.src.OpenRead(srcPath)
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
-	writer, err := r.req.dst.CreateFile(dstPath)
+
+	tmp := tempCopyName(dstPath)
+	writer, err := r.req.dst.CreateExclusive(tmp)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			_ = r.req.dst.Remove(tmp)
+		}
+	}()
+	perm := info.Mode().Perm()
+	if chmodErr := r.req.dst.Chmod(tmp, 0o600); chmodErr != nil && perm&0o077 == 0 {
+		writer.Close()
+		return errCannotProtect
+	}
+
 	buffered := bufio.NewWriterSize(writer, copyBufferSize)
 	counter := &copyCountingWriter{run: r, w: buffered}
 	_, err = io.Copy(counter, reader)
@@ -461,9 +589,23 @@ func (r *copyRun) copyData(srcPath, dstPath string) error {
 		err = r.ctx.Err()
 	}
 	if err != nil {
-		_ = r.req.dst.Remove(dstPath)
+		return err
 	}
-	return err
+	// Rechte und Zeit übernehmen; Fehler ignorieren (eingeschränkte Hoster)
+	_ = r.req.dst.Chmod(tmp, perm)
+	_ = r.req.dst.Chtimes(tmp, info.ModTime(), info.ModTime())
+	return r.req.dst.RenameOverwrite(tmp, dstPath)
+}
+
+// tempCopyName liefert einen zufälligen Temp-Namen im Verzeichnis des Ziels.
+//
+// @param dstPath - Zielpfad
+// @return string - z. B. "/srv/b/.ssh-easy-copy-3f9a….tmp"
+// @date   2026-10-21 21:17
+func tempCopyName(dstPath string) string {
+	random := make([]byte, 8)
+	_, _ = rand.Read(random)
+	return path.Join(path.Dir(dstPath), copyTempPrefix+hex.EncodeToString(random)+".tmp")
 }
 
 // copyCountingWriter zählt geschriebene Bytes für den Fortschritt und
@@ -481,7 +623,7 @@ func (c *copyCountingWriter) Write(b []byte) (int, error) {
 		return 0, err
 	}
 	n, err := c.w.Write(b)
-	c.run.progress.doneBytes += int64(n)
+	c.run.progress.doneBytes = satAdd(c.run.progress.doneBytes, int64(n))
 	c.run.sendProgress(false)
 	return n, err
 }
@@ -608,7 +750,7 @@ func (r *copyRun) countSkipped(node copyNode) {
 func (r *copyRun) countDone(node copyNode, size int64) {
 	r.progress.doneFiles++
 	if node.info.Mode().IsRegular() {
-		r.progress.doneBytes += size
+		r.progress.doneBytes = satAdd(r.progress.doneBytes, max(size, 0))
 	}
 	r.sendProgress(true)
 }

@@ -5,6 +5,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.58] – Build 58
+- **Security** file manager copy writes every file as an exclusively created temporary file in the target directory, restricted to `0600` right away, and renames it to the target name in one step at the end. Private files are therefore never readable by others during the transfer (if the host refuses to restrict permissions, a private file is not copied), a symlink planted at the target between check and write is replaced instead of written through, an existing target stays untouched until the copy is complete, and copying a file onto itself through two connection entries to the same server (name vs. IP) can no longer empty the source. New directories are `0700` while being filled
+- **Security** names received from a server containing a backslash (path separator on Windows SFTP servers) or control characters are rejected when copying; every target path is additionally checked to lie inside the target directory
+- **Security** invisible Unicode format characters (e.g. right-to-left override U+202E, zero-width space) in file names are shown as `?`, so a name like `invoice<RLO>fdp.exe` cannot pose as `invoiceexe.pdf`
+- **Security** sizes reported by a server are added without overflow and the progress bar is computed safely – a malicious server can no longer crash ssh-easy with absurd file sizes; scanning stops after 1,000,000 entries or 128 directory levels (nothing is copied then)
+- **Added** 8 new tests (435 total, all green); verified end-to-end against a real SFTP server
+
 ## [v0.57] – Build 57
 - **Added** copying with `F5` in the file manager: the marked entries of the active panel (without marks: the entry under the cursor) are copied into the current directory of the other panel. Directories are copied recursively with their content, symlinks as symlinks (their target is not followed), permissions and modification time are kept (silently skipped if the host forbids it). The data flows through this computer, the two servers do not need to reach each other; large buffers are written with concurrent SFTP requests
 - **Added** dialogs like in mc: confirmation (`Enter` copy, `Esc`/`q` cancel), progress with current file, file and byte counters and a progress bar (`Esc` cancels, a partially written file is removed), and a question when the target already exists, showing size and date of source and target: `j`/`y` overwrite, `n` skip, `a` all, `k` none, `u` all if newer, `g` all if larger, `Esc` cancel. Existing directories are merged. Errors of single entries do not stop the copy and are reported at the end; afterwards the target panel is reloaded and fully copied entries are unmarked

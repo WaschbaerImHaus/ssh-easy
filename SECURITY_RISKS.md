@@ -2,6 +2,28 @@
 
 ## Offen
 
+### Datei-Manager: Austausch eines Verzeichnisses während des Kopierens (Restrisiko)
+
+**Dateien:** `src/filemanager_copy.go`
+**Schweregrad:** NIEDRIG
+
+Wer im Zielverzeichnis schreiben darf, könnte ein gerade angelegtes bzw. vorhandenes
+Unterverzeichnis während des Kopierens umbenennen und durch einen Symlink ersetzen.
+Folgende Dateien landen dann im Ziel des Links. SFTP bietet keine `openat()`/`O_NOFOLLOW`-
+Operationen für Pfadbestandteile, daher nicht vollständig vermeidbar. Abschwächung: neue
+Verzeichnisse sind während des Kopierens 0700, jede Datei wird exklusiv (`O_EXCL`) unter
+Temp-Namen angelegt. Nur relevant bei Zielverzeichnissen, in die Dritte schreiben dürfen.
+
+### Datei-Manager: unbegrenzte Verzeichnisliste beim Anzeigen (Restrisiko)
+
+**Dateien:** `src/filemanager_panel.go` (`readPanelDir`), `github.com/pkg/sftp` `ReadDir`
+**Schweregrad:** NIEDRIG
+
+Ein bösartiger Server kann beim Öffnen eines Verzeichnisses beliebig viele Einträge
+liefern; `ReadDir` sammelt sie vollständig im Speicher. Beim Kopieren gilt eine Grenze
+(1 000 000 Einträge / 128 Ebenen), beim Anzeigen nicht. Abhilfe wäre ein eigenes,
+begrenztes Lesen über die SFTP-Pakete. Betrifft nur Verbindungen zu bösartigen Servern.
+
 ### SHA1 in known_hosts-Verifikation (akzeptiertes Risiko)
 
 **Datei:** `src/ssh.go` – Funktion `matchesHashedKnownHost()`

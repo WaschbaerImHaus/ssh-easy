@@ -171,6 +171,9 @@ erscheint ein Fortschrittsfenster (`Esc` bricht ab). Existiert ein Ziel schon, w
 Größe und Datum beider Dateien nachgefragt: `j` überschreiben, `n` überspringen,
 `a` alle, `k` keine, `u` alle, wenn neuer, `g` alle, wenn größer, `Esc` abbrechen. Die
 Daten laufen über deinen Rechner, die Server müssen sich nicht gegenseitig erreichen.
+Jede Datei wird erst unter einem Temp-Namen nur für dich lesbar geschrieben und am Ende
+umbenannt: Private Dateien sind auf dem Ziel nie für andere lesbar, eine vorhandene
+Datei wird erst ersetzt, wenn die neue vollständig ist.
 
 Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
 

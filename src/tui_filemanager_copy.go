@@ -13,13 +13,14 @@
 // der Antwort, weil die Kopie bis dahin ruht.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:09
+// @date   2026-10-21 21:18
 package main
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"unicode/utf8"
 
@@ -234,6 +235,10 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrSameFile), p)
 	case errors.Is(f.err, errUnsafeName):
 		return fmt.Sprintf(m.tr(txtFMErrUnsafeName), p)
+	case errors.Is(f.err, errCannotProtect):
+		return fmt.Sprintf(m.tr(txtFMErrCannotProtect), p)
+	case errors.Is(f.err, errCopyLimit):
+		return fmt.Sprintf(m.tr(txtFMErrCopyLimit), p, copyMaxEntries, copyMaxDepth)
 	}
 	return p + ": " + sanitizeFileName(f.err.Error())
 }
@@ -315,7 +320,8 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 		}
 		percent := 100
 		if total > 0 {
-			percent = int(min(done*100/total, 100))
+			// Kommazahl statt done*100: kein Überlauf bei absurden Größen
+			percent = int(math.Min(math.Max(float64(done)/float64(total), 0), 1) * 100)
 		}
 		lines := []string{
 			fitWidthLeft(sanitizeFileName(p.current), inner),
@@ -496,7 +502,9 @@ func progressBar(done, total int64, width int) string {
 	}
 	filled := width
 	if total > 0 {
-		filled = int(min(max(done, 0)*int64(width)/total, int64(width)))
+		// Kommazahl statt done*width: kein Überlauf, Ergebnis immer in [0, width]
+		ratio := math.Min(math.Max(float64(done)/float64(total), 0), 1)
+		filled = min(max(int(ratio*float64(width)), 0), width)
 	}
 	return strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
 }

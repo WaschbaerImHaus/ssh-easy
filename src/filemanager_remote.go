@@ -7,12 +7,13 @@
 // andere Programme werden dort nicht gebraucht.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:59
+// @date   2026-10-21 21:16
 package main
 
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -41,14 +42,35 @@ func (s *sftpFS) OpenRead(p string) (io.ReadCloser, error) {
 	return s.Client.Open(p)
 }
 
-// CreateFile legt eine Datei an bzw. leert eine vorhandene.
+// CreateExclusive legt eine neue Datei an (O_EXCL): Existiert der Pfad
+// schon - auch als Symlink -, schlägt es fehl.
 //
 // @param p - Pfad
 // @return io.WriteCloser - Datei
-// @return error - Fehler beim Anlegen
-// @date   2026-10-21 20:59
-func (s *sftpFS) CreateFile(p string) (io.WriteCloser, error) {
-	return s.Client.Create(p)
+// @return error - Fehler beim Anlegen (os.ErrExist wenn vorhanden)
+// @date   2026-10-21 21:16
+func (s *sftpFS) CreateExclusive(p string) (io.WriteCloser, error) {
+	return s.Client.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL)
+}
+
+// RenameOverwrite benennt um und ersetzt ein vorhandenes Ziel in einem
+// Schritt (posix-rename@openssh.com). Kann der Server das nicht, wird ein
+// vorhandenes Ziel (Datei oder Symlink, nie ein Verzeichnis) erst entfernt.
+//
+// @param oldPath - bisheriger Pfad
+// @param newPath - neuer Pfad
+// @return error - Fehler beim Umbenennen
+// @date   2026-10-21 21:16
+func (s *sftpFS) RenameOverwrite(oldPath, newPath string) error {
+	if err := s.Client.PosixRename(oldPath, newPath); err == nil {
+		return nil
+	}
+	if info, err := s.Client.Lstat(newPath); err == nil && !info.IsDir() {
+		if err := s.Client.Remove(newPath); err != nil {
+			return err
+		}
+	}
+	return s.Client.Rename(oldPath, newPath)
 }
 
 // Close schließt erst den SFTP-Client, dann die SSH-Verbindung.

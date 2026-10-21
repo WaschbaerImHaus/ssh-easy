@@ -181,7 +181,10 @@ recursively, symlinks as symlinks, with permissions and modification time. After
 confirmation a progress window appears (`Esc` cancels). If a target already exists you
 are asked, with size and date of both files: `j`/`y` overwrite, `n` skip, `a` all,
 `k` none, `u` all if newer, `g` all if larger, `Esc` cancel. The data flows through your
-computer, so the two servers do not need to reach each other.
+computer, so the two servers do not need to reach each other. Every file is written
+under a temporary name with owner-only permissions and renamed when complete, so a
+private file is never readable by others on the target and an existing file is only
+replaced once the new one is complete.
 
 The file manager needs two connections; until then its entry is greyed out.
 

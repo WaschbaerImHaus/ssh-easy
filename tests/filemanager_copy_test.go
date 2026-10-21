@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"path"
 	"sort"
@@ -47,11 +48,15 @@ type memFS struct {
 	nodes map[string]*memNode
 	// Pfade ohne Leserecht (ReadDir/OpenRead schlagen fehl)
 	denied map[string]bool
-	// Pfade, bei denen das Schreiben nach failAfter Bytes scheitert
-	failWrite map[string]bool
+	// Verzeichnis -> Nummer der neu angelegten Datei (1 = erste), deren
+	// Schreiben nach failAfter Bytes scheitert
+	failNth   map[string]int
+	created   map[string]int
 	failAfter int
 	// Wird bei jedem Schreibaufruf aufgerufen (für Abbruch-Tests)
 	onWrite func()
+	// Wird bei jedem Schreibaufruf mit Pfad und Knoten aufgerufen (unter Sperre)
+	onWriteNode func(p string, n *memNode)
 	// Chmod/Chtimes verbieten (eingeschränkter Hoster)
 	noAttrs bool
 	closed  bool
@@ -60,10 +65,11 @@ type memFS struct {
 // newMemFS erzeugt ein leeres Dateisystem mit "/" und dem Home-Verzeichnis.
 func newMemFS(home string) *memFS {
 	m := &memFS{
-		home:      home,
-		nodes:     map[string]*memNode{"/": {mode: fs.ModeDir | 0o755}},
-		denied:    map[string]bool{},
-		failWrite: map[string]bool{},
+		home:    home,
+		nodes:   map[string]*memNode{"/": {mode: fs.ModeDir | 0o755}},
+		denied:  map[string]bool{},
+		failNth: map[string]int{},
+		created: map[string]int{},
 	}
 	m.mkdirAll(home)
 	return m
@@ -200,6 +206,7 @@ type memWriter struct {
 	fs      *memFS
 	p       string
 	written int
+	fail    bool
 }
 
 func (w *memWriter) Write(b []byte) (int, error) {
@@ -208,7 +215,10 @@ func (w *memWriter) Write(b []byte) (int, error) {
 	}
 	w.fs.mu.Lock()
 	defer w.fs.mu.Unlock()
-	if w.fs.failWrite[w.p] && w.written+len(b) > w.fs.failAfter {
+	if w.fs.onWriteNode != nil {
+		w.fs.onWriteNode(w.p, w.fs.nodes[w.p])
+	}
+	if w.fail && w.written+len(b) > w.fs.failAfter {
 		ok := w.fs.failAfter - w.written
 		if ok > 0 {
 			w.fs.nodes[w.p].data = append(w.fs.nodes[w.p].data, b[:ok]...)
@@ -223,22 +233,43 @@ func (w *memWriter) Write(b []byte) (int, error) {
 
 func (w *memWriter) Close() error { return nil }
 
-func (m *memFS) CreateFile(p string) (io.WriteCloser, error) {
+// CreateExclusive legt eine neue Datei an; existiert der Pfad (auch als
+// Symlink), schlägt es fehl. Neue Dateien bekommen wie bei einem echten
+// Server die Standardrechte 0644 (umask 022).
+func (m *memFS) CreateExclusive(p string) (io.WriteCloser, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	parent, ok := m.nodes[path.Dir(p)]
+	dir := path.Dir(p)
+	parent, ok := m.nodes[dir]
 	if !ok || !parent.mode.IsDir() {
 		return nil, os.ErrNotExist
 	}
-	if m.denied[path.Dir(p)] {
+	if m.denied[dir] {
 		return nil, os.ErrPermission
 	}
-	if n, ok := m.nodes[p]; ok && n.mode&fs.ModeSymlink != 0 {
-		// Wie ein echtes Dateisystem: Schreiben folgt dem Symlink
-		return nil, errors.New("memFS: Schreiben durch Symlink - darf nicht passieren")
+	if _, ok := m.nodes[p]; ok {
+		return nil, os.ErrExist
 	}
 	m.nodes[p] = &memNode{mode: 0o644}
-	return &memWriter{fs: m, p: p}, nil
+	m.created[dir]++
+	return &memWriter{fs: m, p: p, fail: m.failNth[dir] == m.created[dir]}, nil
+}
+
+// RenameOverwrite benennt um und ersetzt dabei ein vorhandenes Ziel
+// (Datei oder Symlink - der Symlink selbst wird ersetzt, nicht sein Ziel).
+func (m *memFS) RenameOverwrite(oldPath, newPath string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, ok := m.nodes[oldPath]
+	if !ok {
+		return os.ErrNotExist
+	}
+	if existing, ok := m.nodes[newPath]; ok && existing.mode.IsDir() {
+		return os.ErrExist
+	}
+	m.nodes[newPath] = n
+	delete(m.nodes, oldPath)
+	return nil
 }
 
 func (m *memFS) Mkdir(p string) error {
@@ -378,6 +409,7 @@ func TestCopyRecursiveTree(t *testing.T) {
 	if len(res.failures) != 0 || res.cancelled {
 		t.Fatalf("Fehler %v, abgebrochen %v", res.failures, res.cancelled)
 	}
+	assertNoTempFiles(t, dst)
 	for p, want := range map[string]string{
 		"/srv/b/projekt/main.go":  "package main",
 		"/srv/b/projekt/run.sh":   "#!/bin/sh",
@@ -634,7 +666,7 @@ func TestCopyTypeMismatch(t *testing.T) {
 func TestCopyContinuesAfterErrors(t *testing.T) {
 	src, dst := newCopySource(), newMemFS("/srv/b")
 	src.denied["/home/a/projekt/lib"] = true
-	dst.failWrite["/srv/b/projekt/main.go"] = true
+	dst.failNth["/srv/b/projekt"] = 1 // erste neue Datei dort ist main.go
 	dst.failAfter = 3
 	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt", "notiz.txt"}}
 	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
@@ -644,6 +676,7 @@ func TestCopyContinuesAfterErrors(t *testing.T) {
 	if _, ok := dst.content("/srv/b/projekt/main.go"); ok {
 		t.Error("halb geschriebene Datei nicht gelöscht")
 	}
+	assertNoTempFiles(t, dst)
 	if got, _ := dst.content("/srv/b/projekt/run.sh"); got != "#!/bin/sh" {
 		t.Error("run.sh fehlt")
 	}
@@ -670,6 +703,7 @@ func TestCopyCancelRemovesPartialFile(t *testing.T) {
 	if _, ok := dst.content("/srv/b/gross.bin"); ok {
 		t.Error("Teil-Datei nach Abbruch nicht gelöscht")
 	}
+	assertNoTempFiles(t, dst)
 	if _, ok := dst.content("/srv/b/danach.txt"); ok {
 		t.Error("nach Abbruch weiterkopiert")
 	}
@@ -1001,14 +1035,20 @@ func TestFileManagerCopySanitizesNames(t *testing.T) {
 	if strings.Contains(m.View(), "\x1b[2J") {
 		t.Error("Steuersequenz im Bestätigungsdialog")
 	}
+	// Namen mit Steuerzeichen werden seit Build 58 gar nicht kopiert
 	m = pressRun(t, m, "enter")
-	if m.fm.dialog != fmDialogOverwrite {
-		t.Fatalf("Dialog %v, erwartet Rückfrage", m.fm.dialog)
+	if m.fm.dialog != fmDialogNone {
+		t.Fatalf("Dialog %v, erwartet Ende mit Fehlermeldung", m.fm.dialog)
 	}
-	if strings.Contains(m.View(), "\x1b[2J") {
-		t.Error("Steuersequenz in der Rückfrage")
+	if strings.Contains(m.View(), "\x1b[2J") || strings.Contains(m.fm.message, "\x1b") {
+		t.Error("Steuersequenz in der Fehlermeldung")
 	}
-	m = pressRun(t, m, "n")
+	if !strings.Contains(m.fm.message, fmt.Sprintf(m.tr(txtFMErrUnsafeName), "böse?[2J")) {
+		t.Errorf("Meldung = %q, erwartet unzulässigen Namen", m.fm.message)
+	}
+	if got, _ := dst.content("/srv/b/böse\x1b[2J"); got != "y" {
+		t.Error("Ziel trotz unzulässigem Namen verändert")
+	}
 }
 
 // TestFileManagerDialogsAllThemesAndSizes - Dialoge passen in jede Größe.
@@ -1127,5 +1167,226 @@ func TestReadPanelDirSkipsUnsafeNames(t *testing.T) {
 		if strings.Contains(e.name, "/") {
 			t.Errorf("unsicherer Name in der Liste: %q", e.name)
 		}
+	}
+}
+
+// --- Sicherheit (Build 58) ---
+
+// assertNoTempFiles prüft, dass keine Temp-Dateien liegen geblieben sind.
+func assertNoTempFiles(t *testing.T, m *memFS) {
+	t.Helper()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for p := range m.nodes {
+		if strings.Contains(path.Base(p), copyTempPrefix) {
+			t.Errorf("Temp-Datei liegen geblieben: %s", p)
+		}
+	}
+}
+
+// TestCopyPrivateFileNeverReadable - eine private Datei (0600) ist auf dem
+// Ziel zu keinem Zeitpunkt für Gruppe/Andere lesbar, auch nicht während des
+// Schreibens; neue Verzeichnisse sind währenddessen 0700.
+func TestCopyPrivateFileNeverReadable(t *testing.T) {
+	src, dst := newCopySource(), newMemFS("/srv/b")
+	src.addFile("/home/a/projekt/geheim.key", strings.Repeat("k", 100), 0o600, copyTestTime)
+	writes := 0
+	dst.onWriteNode = func(p string, n *memNode) {
+		writes++
+		if strings.HasPrefix(p, "/srv/b/projekt/") {
+			if dir := dst.nodes["/srv/b/projekt"]; dir.mode.Perm() != 0o700 {
+				t.Errorf("neues Verzeichnis während des Kopierens %v, erwartet 0700", dir.mode.Perm())
+			}
+		}
+		if n.mode.Perm()&0o077 != 0 {
+			t.Errorf("%s während des Schreibens mit Rechten %v", p, n.mode.Perm())
+		}
+	}
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt", "notiz.txt"}}
+	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	if len(res.failures) != 0 || writes == 0 {
+		t.Fatalf("Fehler %v, Schreibaufrufe %d", res.failures, writes)
+	}
+	if n := dst.node("/srv/b/projekt/geheim.key"); n == nil || n.mode.Perm() != 0o600 {
+		t.Errorf("geheim.key am Ende: %+v", n)
+	}
+	if n := dst.node("/srv/b/projekt/run.sh"); n.mode.Perm() != 0o755 {
+		t.Errorf("run.sh am Ende %v, erwartet 0755", n.mode.Perm())
+	}
+	if n := dst.node("/srv/b/projekt"); n.mode.Perm() != 0o750 {
+		t.Errorf("Verzeichnis am Ende %v, erwartet 0750", n.mode.Perm())
+	}
+}
+
+// TestCopyPrivateFileChmodForbidden - kann der Server die Rechte nicht
+// einschränken, wird eine private Datei nicht kopiert (sie wäre sonst für
+// andere lesbar); nicht private Dateien werden trotzdem kopiert.
+func TestCopyPrivateFileChmodForbidden(t *testing.T) {
+	src, dst := newCopySource(), newMemFS("/srv/b")
+	dst.noAttrs = true
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"notiz.txt", "projekt"}}
+	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	if len(res.failures) != 1 || !errors.Is(res.failures[0].err, errCannotProtect) {
+		t.Fatalf("Fehler = %v, erwartet errCannotProtect für notiz.txt", res.failures)
+	}
+	if _, ok := dst.content("/srv/b/notiz.txt"); ok {
+		t.Error("private Datei trotz fehlender Rechte kopiert")
+	}
+	if got, _ := dst.content("/srv/b/projekt/main.go"); got != "package main" {
+		t.Error("nicht private Datei nicht kopiert")
+	}
+	assertNoTempFiles(t, dst)
+}
+
+// TestCopySymlinkPlantedDuringCopy - wird zwischen Prüfung und Schreiben am
+// Ziel ein Symlink untergeschoben, wird NICHT durch ihn hindurch geschrieben.
+func TestCopySymlinkPlantedDuringCopy(t *testing.T) {
+	src, dst := newCopySource(), newMemFS("/srv/b")
+	dst.addFile("/etc/wichtig", "geheim", 0o644, copyTestTime)
+	planted := false
+	dst.onWriteNode = func(p string, n *memNode) {
+		if !planted {
+			planted = true
+			dst.nodes["/srv/b/notiz.txt"] = &memNode{mode: fs.ModeSymlink | 0o777, target: "/etc/wichtig"}
+		}
+	}
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"notiz.txt"}}
+	runCopySync(t, context.Background(), req, noConflicts(t))
+	if got, _ := dst.content("/etc/wichtig"); got != "geheim" {
+		t.Errorf("durch untergeschobenen Symlink geschrieben: /etc/wichtig = %q", got)
+	}
+	if got, ok := dst.content("/srv/b/notiz.txt"); !ok || got != "hallo" {
+		t.Errorf("notiz.txt = %q/%v, erwartet reguläre Datei", got, ok)
+	}
+}
+
+// TestCopyOntoItselfViaOtherHostName - zwei Verbindungseinträge (Name/IP)
+// auf denselben Server, gleiches Verzeichnis: die Quelle wird nicht geleert.
+func TestCopyOntoItselfViaOtherHostName(t *testing.T) {
+	src := newCopySource()
+	req := copyRequest{src: src, dst: src, srcDir: "/home/a", dstDir: "/home/a", names: []string{"notiz.txt", "projekt"}, sameHost: false}
+	runCopySync(t, context.Background(), req, func(string) copyConflictAnswer { return copyAnswerOverwriteAll })
+	if got, _ := src.content("/home/a/notiz.txt"); got != "hallo" {
+		t.Errorf("Quelle verändert: %q", got)
+	}
+	if got, _ := src.content("/home/a/projekt/main.go"); got != "package main" {
+		t.Errorf("Quelle im Verzeichnis verändert: %q", got)
+	}
+	assertNoTempFiles(t, src)
+}
+
+// TestCopyRejectsWindowsAndControlNames - Backslash (Pfadtrenner auf
+// Windows-Servern) und Steuerzeichen werden beim Kopieren abgelehnt; ein
+// Doppelpunkt ist unter Linux ein normales Zeichen und bleibt erlaubt.
+func TestCopyRejectsWindowsAndControlNames(t *testing.T) {
+	src := &evilFS{memFS: newMemFS("/home/a"), names: []string{"..\\..\\x", "steuer\x01zeichen"}}
+	src.addFile("/home/a/a:b", "doppelpunkt", 0o644, copyTestTime)
+	src.addDir("/home/a/d", 0o755)
+	dst := newMemFS("/srv/b")
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"d", "a:b"}}
+	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	unsafe := 0
+	for _, f := range res.failures {
+		if errors.Is(f.err, errUnsafeName) {
+			unsafe++
+		}
+	}
+	if unsafe != 2 {
+		t.Errorf("unsichere Namen = %d (%v), erwartet 2", unsafe, res.failures)
+	}
+	if got, _ := dst.content("/srv/b/a:b"); got != "doppelpunkt" {
+		t.Error("Name mit Doppelpunkt nicht kopiert")
+	}
+	for p := range dst.nodes {
+		if strings.Contains(p, "\\") {
+			t.Errorf("Name mit Backslash angelegt: %q", p)
+		}
+	}
+}
+
+// TestCopyInsideTargetDir prüft die Zusatzkontrolle nach dem Zusammensetzen.
+func TestCopyInsideTargetDir(t *testing.T) {
+	cases := map[[2]string]bool{
+		{"/srv/b", "/srv/b/x"}:    true,
+		{"/srv/b", "/srv/b/x/y"}:  true,
+		{"/srv/b", "/srv/b"}:      false,
+		{"/srv/b", "/srv/bx"}:     false,
+		{"/srv/b", "/srv/b/../x"}: false,
+		{"/", "/x"}:               true,
+		{"/srv/b/", "/srv/b/x"}:   true,
+	}
+	for in, want := range cases {
+		if got := insideDir(in[0], in[1]); got != want {
+			t.Errorf("insideDir(%q, %q) = %v, erwartet %v", in[0], in[1], got, want)
+		}
+	}
+}
+
+// TestCopyScanLimits - riesige oder zu tiefe Bäume (bösartiger Server)
+// brechen das Erfassen ab, ohne etwas zu kopieren.
+func TestCopyScanLimits(t *testing.T) {
+	defer func(entries, depth int) { copyMaxEntries, copyMaxDepth = entries, depth }(copyMaxEntries, copyMaxDepth)
+
+	copyMaxEntries, copyMaxDepth = 3, 100
+	src, dst := newCopySource(), newMemFS("/srv/b")
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt"}}
+	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	if len(res.failures) != 1 || !errors.Is(res.failures[0].err, errCopyLimit) {
+		t.Errorf("Eintragsgrenze: Fehler %v", res.failures)
+	}
+	if n := dst.node("/srv/b/projekt"); n != nil {
+		t.Error("trotz Grenze kopiert")
+	}
+
+	copyMaxEntries, copyMaxDepth = 1000, 1
+	res, _ = runCopySync(t, context.Background(), req, noConflicts(t))
+	if len(res.failures) != 1 || !errors.Is(res.failures[0].err, errCopyLimit) {
+		t.Errorf("Tiefengrenze: Fehler %v", res.failures)
+	}
+}
+
+// hugeFS meldet absurde Dateigrößen (bösartiger Server).
+type hugeFS struct{ *memFS }
+
+func (h *hugeFS) Lstat(p string) (os.FileInfo, error) {
+	info, err := h.memFS.Lstat(p)
+	if err != nil || info.IsDir() {
+		return info, err
+	}
+	return fakeFileInfo{name: info.Name(), size: math.MaxInt64, mode: info.Mode(), modTime: info.ModTime()}, nil
+}
+
+// TestCopyHugeSizesNoCrash - Summen laufen nicht über, kein Absturz in der
+// Anzeige.
+func TestCopyHugeSizesNoCrash(t *testing.T) {
+	src, dst := &hugeFS{newCopySource()}, newMemFS("/srv/b")
+	events := make(chan copyEvent, 64)
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt", "notiz.txt"}}
+	go runCopy(context.Background(), req, events, make(chan copyConflictAnswer, 1))
+	for ev := range events {
+		if ev.progress != nil && (ev.progress.totalBytes < 0 || ev.progress.doneBytes < 0) {
+			t.Errorf("Überlauf: %+v", *ev.progress)
+		}
+		if ev.result != nil {
+			if ev.result.bytes < 0 {
+				t.Errorf("Ergebnis-Bytes übergelaufen: %d", ev.result.bytes)
+			}
+			break
+		}
+	}
+	for _, c := range [][3]int64{
+		{math.MaxInt64, math.MaxInt64, 10}, {math.MaxInt64, 1, 10}, {-5, 10, 10},
+		{5, -10, 10}, {math.MinInt64, math.MaxInt64, 10}, {1, math.MaxInt64, 10},
+	} {
+		bar := progressBar(c[0], c[1], int(c[2]))
+		if n := len([]rune(bar)); n != 10 {
+			t.Errorf("progressBar(%d,%d) hat %d Zeichen", c[0], c[1], n)
+		}
+	}
+	if got := satAdd(math.MaxInt64, 5); got != math.MaxInt64 {
+		t.Errorf("satAdd = %d", got)
+	}
+	if got := satAdd(5, -10); got != 0 {
+		t.Errorf("satAdd negativ = %d, erwartet 0", got)
 	}
 }
