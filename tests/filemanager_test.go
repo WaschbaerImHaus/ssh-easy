@@ -17,6 +17,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -89,6 +90,20 @@ func (f *fakeRemoteFS) Close() error {
 	f.closed = true
 	return nil
 }
+
+// Schreib-/Kopiermethoden: fakeRemoteFS dient nur der Navigation, das
+// Kopieren testet memFS (filemanager_copy_test.go).
+func (f *fakeRemoteFS) Lstat(p string) (os.FileInfo, error)      { return nil, errors.ErrUnsupported }
+func (f *fakeRemoteFS) ReadLink(p string) (string, error)        { return "", errors.ErrUnsupported }
+func (f *fakeRemoteFS) OpenRead(p string) (io.ReadCloser, error) { return nil, errors.ErrUnsupported }
+func (f *fakeRemoteFS) CreateFile(p string) (io.WriteCloser, error) {
+	return nil, errors.ErrUnsupported
+}
+func (f *fakeRemoteFS) Mkdir(p string) error                   { return errors.ErrUnsupported }
+func (f *fakeRemoteFS) Remove(p string) error                  { return errors.ErrUnsupported }
+func (f *fakeRemoteFS) Symlink(target, linkPath string) error  { return errors.ErrUnsupported }
+func (f *fakeRemoteFS) Chmod(p string, mode os.FileMode) error { return errors.ErrUnsupported }
+func (f *fakeRemoteFS) Chtimes(p string, a, m time.Time) error { return errors.ErrUnsupported }
 
 // dirInfo / fileInfo / linkInfo erzeugen Einträge für das Fake-FS.
 func dirInfo(name string) os.FileInfo {
@@ -165,7 +180,7 @@ func (r *fmConnectRecorder) connect(conn Connection, password string) (remoteFS,
 // laufen ohne Wirkung durch.
 func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 	t.Helper()
-	for i := 0; cmd != nil && i < 20; i++ {
+	for i := 0; cmd != nil && i < 10000; i++ {
 		msg := cmd()
 		if batch, ok := msg.(tea.BatchMsg); ok {
 			var next tea.Cmd
@@ -196,7 +211,7 @@ func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 // isFileManagerMsg erkennt die asynchronen Nachrichten des Datei-Managers.
 func isFileManagerMsg(msg tea.Msg) bool {
 	switch msg.(type) {
-	case fmConnectedMsg, fmDirLoadedMsg:
+	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg:
 		return true
 	}
 	return false
@@ -216,6 +231,10 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyF10}
 	case "f5":
 		return tea.KeyMsg{Type: tea.KeyF5}
+	case "f6":
+		return tea.KeyMsg{Type: tea.KeyF6}
+	case "esc":
+		return tea.KeyMsg{Type: tea.KeyEsc}
 	case "backspace":
 		return tea.KeyMsg{Type: tea.KeyBackspace}
 	case "insert":
@@ -329,11 +348,76 @@ func TestFileManagerRowIsLastListRow(t *testing.T) {
 	}
 }
 
-// TestFileManagerRowHiddenWithoutConnections - ohne Verbindungen kein Eintrag.
-func TestFileManagerRowHiddenWithoutConnections(t *testing.T) {
-	m := newListTestModel(t)
-	if rows := m.listRows(); len(rows) != 0 {
-		t.Errorf("leere Liste hat %d Zeilen, erwartet 0", len(rows))
+// TestFileManagerRowGreyedBelowTwoConnections - mit weniger als zwei
+// Verbindungen ist der Eintrag ausgegraut, nennt die fehlende Anzahl und
+// öffnet nichts.
+func TestFileManagerRowGreyedBelowTwoConnections(t *testing.T) {
+	cases := []struct {
+		names []string
+		hint  textKey
+	}{
+		{nil, txtFMNeedTwo},
+		{[]string{"Server"}, txtFMNeedOne},
+	}
+	for _, c := range cases {
+		m := newListTestModel(t, c.names...)
+		rows := m.listRows()
+		if len(rows) != len(c.names)+1 || rows[len(rows)-1].kind != rowFileManager {
+			t.Fatalf("%d Verbindungen: Zeilen %v, erwartet Datei-Manager als letzte", len(c.names), rows)
+		}
+		text := stripANSI(renderListText(m))
+		if !strings.Contains(text, m.tr(txtFMListEntry)) || !strings.Contains(text, m.tr(c.hint)) {
+			t.Errorf("%d Verbindungen: Eintrag/Hinweis fehlt:\n%s", len(c.names), text)
+		}
+		if len(c.names) == 0 && !strings.Contains(text, m.lang.NoConnections) {
+			t.Errorf("Hinweis \"keine Verbindungen\" fehlt:\n%s", text)
+		}
+		m = press(t, m, "end", "enter")
+		if m.state != ViewList {
+			t.Errorf("%d Verbindungen: Enter öffnet den Datei-Manager (state %v)", len(c.names), m.state)
+		}
+		// Auch e/d/x tun nichts
+		for _, key := range []string{"e", "d", "x"} {
+			if got := press(t, m, key); got.state != ViewList {
+				t.Errorf("Taste %q auf ausgegrautem Eintrag wechselt nach %v", key, got.state)
+			}
+		}
+	}
+}
+
+// TestFileManagerRowEnabledFromTwoConnections - ab zwei Verbindungen kein
+// Hinweis, Enter öffnet die Auswahl.
+func TestFileManagerRowEnabledFromTwoConnections(t *testing.T) {
+	m := newListTestModel(t, "A", "B")
+	text := stripANSI(renderListText(m))
+	if strings.Contains(text, m.tr(txtFMNeedOne)) || strings.Contains(text, m.tr(txtFMNeedTwo)) {
+		t.Errorf("Hinweis trotz zwei Verbindungen:\n%s", text)
+	}
+	m = press(t, m, "end", "enter")
+	if m.state != ViewFMPick {
+		t.Errorf("state %v, erwartet ViewFMPick", m.state)
+	}
+}
+
+// TestFileManagerRowGreyedStyle - ausgegraut in grauer Schrift (auch als
+// Cursorzeile), aktiv in normaler Schrift.
+func TestFileManagerRowGreyedStyle(t *testing.T) {
+	withColorProfile(t)
+	grey := "38;5;" + fmDisabledFg
+	m := newListTestModel(t, "Server")
+	line := selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
+	if !strings.Contains(line, grey) {
+		t.Errorf("nicht ausgegraut: %q", line)
+	}
+	m = press(t, m, "end")
+	line = selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
+	if !strings.Contains(line, grey) {
+		t.Errorf("als Cursorzeile nicht ausgegraut: %q", line)
+	}
+	m = newListTestModel(t, "A", "B")
+	line = selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
+	if strings.Contains(line, grey) {
+		t.Errorf("trotz zwei Verbindungen ausgegraut: %q", line)
 	}
 }
 
@@ -515,27 +599,6 @@ func TestFileManagerPickPlaceholderForcesChoice(t *testing.T) {
 	m = pickSide(t, m, "Rechts")
 	if m.state != ViewFileManager {
 		t.Errorf("nach bewusster Wahl: state %v, erwartet ViewFileManager", m.state)
-	}
-}
-
-// TestFileManagerSingleConnectionCannotProceed - mit nur einer Verbindung
-// bleibt rechts nur der Platzhalter: kein Datei-Manager, q führt zurück.
-func TestFileManagerSingleConnectionCannotProceed(t *testing.T) {
-	m := newListTestModel(t, "Server")
-	rec := newConnectRecorder()
-	m.fmConnect = rec.connect
-	m = openPick(t, m)
-	m = pickSide(t, m, "Server")
-	if names := pickNames(m); len(names) != 0 {
-		t.Errorf("rechts: Auswahl = %v, erwartet leer", names)
-	}
-	m = press(t, m, "down", "end", "enter")
-	if m.state != ViewFMPick || m.fm.pickCursor != 0 || len(rec.calls) != 0 {
-		t.Errorf("state %v, Cursor %d, Aufrufe %v - erwartet Auswahl ohne Verbindung", m.state, m.fm.pickCursor, rec.calls)
-	}
-	m = press(t, m, "q")
-	if m.state != ViewList {
-		t.Errorf("q: state %v, erwartet ViewList", m.state)
 	}
 }
 
@@ -961,7 +1024,7 @@ func TestFileManagerF10ReturnsToList(t *testing.T) {
 // sich, ändern aber nichts.
 func TestFileManagerOtherFKeysNotYet(t *testing.T) {
 	m, _ := openFileManagerFor(t)
-	m = pressRun(t, m, "f5")
+	m = pressRun(t, m, "f6")
 	if m.state != ViewFileManager {
 		t.Fatalf("state = %v", m.state)
 	}

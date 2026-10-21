@@ -11,10 +11,11 @@
 // Windows "\" einsetzen).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:10
+// @date   2026-10-21 21:09
 package main
 
 import (
+	"io"
 	"os"
 	"path"
 	"sort"
@@ -26,8 +27,9 @@ import (
 )
 
 // remoteFS ist der Teil eines entfernten Dateisystems, den der
-// Datei-Manager braucht. *sftp.Client erfüllt die Lesemethoden; die
-// Implementierung sftpFS schließt beim Close() auch die SSH-Verbindung.
+// Datei-Manager braucht. Die Implementierung sftpFS (filemanager_remote.go)
+// leitet an *sftp.Client weiter und schließt beim Close() auch die
+// SSH-Verbindung.
 type remoteFS interface {
 	// Getwd liefert das Startverzeichnis (bei SFTP: Home des Users)
 	Getwd() (string, error)
@@ -35,6 +37,24 @@ type remoteFS interface {
 	ReadDir(p string) ([]os.FileInfo, error)
 	// Stat liefert Infos zum Ziel eines Pfads (folgt Symlinks)
 	Stat(p string) (os.FileInfo, error)
+	// Lstat liefert Infos zum Pfad selbst (folgt Symlinks NICHT)
+	Lstat(p string) (os.FileInfo, error)
+	// ReadLink liefert das Ziel eines Symlinks
+	ReadLink(p string) (string, error)
+	// OpenRead öffnet eine Datei zum Lesen
+	OpenRead(p string) (io.ReadCloser, error)
+	// CreateFile legt eine Datei an bzw. leert eine vorhandene
+	CreateFile(p string) (io.WriteCloser, error)
+	// Mkdir legt ein Verzeichnis an
+	Mkdir(p string) error
+	// Remove löscht eine Datei, einen Symlink oder ein leeres Verzeichnis
+	Remove(p string) error
+	// Symlink legt unter linkPath einen Symlink auf target an
+	Symlink(target, linkPath string) error
+	// Chmod setzt die Zugriffsrechte
+	Chmod(p string, mode os.FileMode) error
+	// Chtimes setzt Zugriffs- und Änderungszeit
+	Chtimes(p string, atime, mtime time.Time) error
 	// Close beendet die Verbindung
 	Close() error
 }
@@ -108,8 +128,10 @@ func readPanelDir(fsys remoteFS, dir string) ([]fmEntry, error) {
 		entries = append(entries, fmEntry{name: "..", dir: true, parent: true})
 	}
 	for _, info := range infos {
-		// "." und ".." liefert SFTP je nach Server mit - selbst erzeugen
-		if info.Name() == "." || info.Name() == ".." {
+		// "." und ".." liefert SFTP je nach Server mit - selbst erzeugen.
+		// Namen mit "/" kann es in einem echten Verzeichnis nicht geben; ein
+		// bösartiger Server könnte damit Pfade außerhalb erreichen -> weglassen
+		if !safeEntryName(info.Name()) {
 			continue
 		}
 		entry := fmEntry{

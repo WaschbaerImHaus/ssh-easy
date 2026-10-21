@@ -11,7 +11,7 @@
 // Terminal-Hintergrund durch).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:10
+// @date   2026-10-21 21:03
 package main
 
 import "github.com/charmbracelet/lipgloss"
@@ -36,6 +36,8 @@ type fmThemeColors struct {
 	activeTitleFg, activeTitleBg string
 	// Meldungen (z. B. "kein Zugriff")
 	messageFg, messageBg string
+	// Dialoge: Grundfarbe und Titel
+	dialogFg, dialogBg, dialogTitleFg string
 	// F-Tasten-Leiste: Nummer und Beschriftung
 	keyNumFg, keyNumBg, keyLabelFg, keyLabelBg string
 }
@@ -52,6 +54,7 @@ var fmThemes = []fmThemeColors{
 		markFg: "11", markBg: "4", cursorMarkBg: "6",
 		activeTitleFg: "0", activeTitleBg: "6",
 		messageFg: "15", messageBg: "1",
+		dialogFg: "0", dialogBg: "7", dialogTitleFg: "4",
 		keyNumFg: "7", keyNumBg: "0", keyLabelFg: "0", keyLabelBg: "6",
 	},
 	{
@@ -64,6 +67,7 @@ var fmThemes = []fmThemeColors{
 		markFg: "226", markBg: "233", cursorMarkBg: "57",
 		activeTitleFg: "229", activeTitleBg: "57",
 		messageFg: "229", messageBg: "160",
+		dialogFg: "252", dialogBg: "238", dialogTitleFg: "205",
 		keyNumFg: "205", keyNumBg: "233", keyLabelFg: "252", keyLabelBg: "236",
 	},
 	{
@@ -77,6 +81,7 @@ var fmThemes = []fmThemeColors{
 		markFg: "231", markBg: "238", cursorMarkBg: "245",
 		activeTitleFg: "16", activeTitleBg: "250",
 		messageFg: "16", messageBg: "231",
+		dialogFg: "16", dialogBg: "250", dialogTitleFg: "16",
 		keyNumFg: "231", keyNumBg: "16", keyLabelFg: "16", keyLabelBg: "245",
 	},
 }
@@ -87,6 +92,7 @@ type fmStyles struct {
 	dir, file, link, broken, cursor, activeTitle lipgloss.Style
 	mark, markFrame, cursorMark                  lipgloss.Style
 	message, keyNum, keyLabel                    lipgloss.Style
+	dialog, dialogTitle                          lipgloss.Style
 }
 
 // fmThemeStyles baut die Stile für einen Farbmodus. Ungültiger Index =
@@ -118,6 +124,8 @@ func fmThemeStyles(index int) fmStyles {
 		cursorMark:  pair(c.markFg, c.cursorMarkBg).Bold(true),
 		activeTitle: pair(c.activeTitleFg, c.activeTitleBg),
 		message:     pair(c.messageFg, c.messageBg).Bold(true),
+		dialog:      pair(c.dialogFg, c.dialogBg),
+		dialogTitle: pair(c.dialogTitleFg, c.dialogBg).Bold(true),
 		keyNum:      pair(c.keyNumFg, c.keyNumBg),
 		keyLabel:    pair(c.keyLabelFg, c.keyLabelBg),
 	}

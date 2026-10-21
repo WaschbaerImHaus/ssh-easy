@@ -14,6 +14,8 @@
 
 - **Datei-Manager: Symlink-Ziele einzeln geprüft** (Build 53): `readPanelDir` ruft für jeden Symlink ein eigenes SFTP-`Stat` auf (ein Roundtrip pro Link). In Verzeichnissen mit sehr vielen Symlinks (z. B. `/usr/lib`, `/etc/alternatives`) über langsame Leitungen spürbar. Möglich: Stat-Aufrufe parallel (SFTP erlaubt mehrere offene Anfragen) oder erst beim Anwählen prüfen.
 - **Datei-Manager: Meldungen nur in der Infozeile des aktiven Fensters** (Build 53): Lange Meldungen werden bei schmalen Fenstern gekürzt. Alternative: Meldungsdialog in Fenstermitte wie im mc (kommt ohnehin mit den Bestätigungsdialogen für Kopieren/Löschen).
+- **Datei-Manager: Kopieren Datei für Datei** (Build 57): Viele kleine Dateien kosten je mehrere Roundtrips (Lstat, Open, Create, Chmod, Chtimes). Möglich: mehrere Dateien parallel kopieren (2–4 Worker) – Fortschritt und Rückfragen müssten dann serialisiert werden.
+- **Datei-Manager: Daten laufen über den lokalen Rechner** (Build 57): Bei zwei Servern im selben Rechenzentrum wäre eine direkte Übertragung (z. B. `scp`/`rsync` von Server zu Server per Agent-Forwarding) schneller, setzt aber Werkzeuge und gegenseitige Erreichbarkeit voraus. Bewusst nicht umgesetzt (Hoster-Einschränkungen).
 - **Datei-Manager: keine Keepalives** (Build 53): Die eigenständigen Verbindungen laufen ohne Keepalive/Reconnect; bei langen Pausen kann ein NAT-Router sie trennen. Für Kopiervorgänge ggf. Keepalive ergänzen.
 
 - **Log-Rotation**: Automatische Rotation/Komprimierung der Log-Datei

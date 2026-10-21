@@ -7,11 +7,12 @@
 // andere Programme werden dort nicht gebraucht.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:59
 package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -26,6 +27,28 @@ type fmConnectFunc func(conn Connection, password string) (remoteFS, error)
 type sftpFS struct {
 	*sftp.Client
 	sshClient *ssh.Client
+}
+
+// OpenRead öffnet eine Datei zum Lesen. Die *sftp.File liest beim Kopieren
+// über WriteTo mit mehreren gleichzeitigen Anfragen (schnell auch bei
+// hoher Latenz).
+//
+// @param p - Pfad
+// @return io.ReadCloser - Datei
+// @return error - Fehler beim Öffnen
+// @date   2026-10-21 20:59
+func (s *sftpFS) OpenRead(p string) (io.ReadCloser, error) {
+	return s.Client.Open(p)
+}
+
+// CreateFile legt eine Datei an bzw. leert eine vorhandene.
+//
+// @param p - Pfad
+// @return io.WriteCloser - Datei
+// @return error - Fehler beim Anlegen
+// @date   2026-10-21 20:59
+func (s *sftpFS) CreateFile(p string) (io.WriteCloser, error) {
+	return s.Client.Create(p)
 }
 
 // Close schließt erst den SFTP-Client, dann die SSH-Verbindung.
@@ -51,7 +74,9 @@ func newSFTPConnector(manager *SSHManager) fmConnectFunc {
 		if err != nil {
 			return nil, err
 		}
-		sftpClient, err := sftp.NewClient(client)
+		// Gleichzeitige Schreibanfragen: große Puffer werden parallel
+		// übertragen statt Paket für Paket auf die Antwort zu warten
+		sftpClient, err := sftp.NewClient(client, sftp.UseConcurrentWrites(true))
 		if err != nil {
 			client.Close()
 			return nil, &fmSFTPError{err: err}

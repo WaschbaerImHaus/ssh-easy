@@ -154,6 +154,7 @@ nebeneinander zu arbeiten:
 | `Tab` | Zwischen linkem und rechtem Fenster wechseln |
 | `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
 | `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
+| `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
 Kennzeichen vor den Namen: `/` Verzeichnis, `~` Symlink auf ein Verzeichnis, `@` Symlink
@@ -164,7 +165,16 @@ Markierte Einträge werden hervorgehoben; die Infozeile des Fensters zeigt ihre 
 die Gesamtgröße der markierten Dateien. Markierungen gehören zu ihrem Fenster und
 verfallen beim Verzeichniswechsel.
 
-*Stand Build 56: Navigation und Markieren. Kopieren, Verschieben, Verzeichnis anlegen,
+**Kopieren (`F5`)** kopiert ins aktuelle Verzeichnis des anderen Fensters – Verzeichnisse
+rekursiv, Symlinks als Symlink, mit Rechten und Änderungszeit. Nach einer Bestätigung
+erscheint ein Fortschrittsfenster (`Esc` bricht ab). Existiert ein Ziel schon, wird mit
+Größe und Datum beider Dateien nachgefragt: `j` überschreiben, `n` überspringen,
+`a` alle, `k` keine, `u` alle, wenn neuer, `g` alle, wenn größer, `Esc` abbrechen. Die
+Daten laufen über deinen Rechner, die Server müssen sich nicht gegenseitig erreichen.
+
+Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
+
+*Stand Build 57: Navigation, Markieren und Kopieren. Verschieben, Verzeichnis anlegen,
 Löschen, Ansehen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
 klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
 

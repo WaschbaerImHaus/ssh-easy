@@ -5,6 +5,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.57] – Build 57
+- **Added** copying with `F5` in the file manager: the marked entries of the active panel (without marks: the entry under the cursor) are copied into the current directory of the other panel. Directories are copied recursively with their content, symlinks as symlinks (their target is not followed), permissions and modification time are kept (silently skipped if the host forbids it). The data flows through this computer, the two servers do not need to reach each other; large buffers are written with concurrent SFTP requests
+- **Added** dialogs like in mc: confirmation (`Enter` copy, `Esc`/`q` cancel), progress with current file, file and byte counters and a progress bar (`Esc` cancels, a partially written file is removed), and a question when the target already exists, showing size and date of source and target: `j`/`y` overwrite, `n` skip, `a` all, `k` none, `u` all if newer, `g` all if larger, `Esc` cancel. Existing directories are merged. Errors of single entries do not stop the copy and are reported at the end; afterwards the target panel is reloaded and fully copied entries are unmarked
+- **Changed** the file manager entry is always shown; with fewer than two connections it is greyed out with the hint to add two connections or one more connection
+- **Security** file names received from a server that contain `/` or are `.`/`..` are rejected (no path traversal out of the target directory on the other server); an existing symlink at the target is replaced instead of written through; copying a file onto itself (same host and path) is refused
+- **Added** 31 new tests (427 total, all green)
+
 ## [v0.56] – Build 56
 - **Added** marking in the file manager: `Insert` marks/unmarks the entry under the cursor and moves down one line (on Windows, where Insert arrives as a NUL key, too); `*` inverts the marking of all entries in the active panel, files and directories alike (like in mc). `..` can never be marked
 - **Added** marked entries are highlighted (yellow in the classic and ssh-easy themes, white on dark grey in the monochrome theme); the info line of a panel shows the number of marked entries and the total size of the marked files (e.g. `3 marked, 2058 B`). Marks are kept per panel when switching with `Tab` and are cleared when changing the directory (like in mc)

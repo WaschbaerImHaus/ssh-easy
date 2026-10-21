@@ -11,12 +11,12 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Stand Build 56: Navigation, Seitenwechsel und Markieren (Einfg, * kehrt
-// alle Markierungen um) funktionieren; Menü und F1-F9 sind nur optisch
-// vorhanden.
+// Stand Build 57: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
+// alle Markierungen um) und Kopieren (F5, tui_filemanager_copy.go)
+// funktionieren; Menü und die übrigen F-Tasten sind nur optisch vorhanden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 20:10
+// @date   2026-10-21 21:03
 package main
 
 import (
@@ -25,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -75,6 +76,9 @@ type fileManager struct {
 	passwordSide int
 	// Passwortfeld
 	passwordInput textinput.Model
+	// Offener Dialog (Kopieren usw.) und Zustand des Kopiervorgangs
+	dialog fmDialog
+	copy   fmCopyState
 }
 
 // fmConnectedMsg meldet das Ergebnis eines Verbindungsaufbaus.
@@ -404,8 +408,12 @@ func (m AppModel) fmScreenSize() (int, int) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verzeichnis lesen)
-// @date   2026-10-21 20:10
+// @date   2026-10-21 21:03
 func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Offener Dialog bekommt alle Tasten (auch F10 ruht dann)
+	if m.fm.dialog != fmDialogNone {
+		return m.handleFMDialogKeys(msg)
+	}
 	// Meldungen gelten nur bis zum nächsten Tastendruck
 	m.fm.message = ""
 	panel := &m.fm.panels[m.fm.active]
@@ -442,7 +450,9 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "*":
 		// Markierung aller Einträge umkehren (wie im mc)
 		panel.invertMarks()
-	case "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9":
+	case "f5":
+		return m.fmOpenCopyConfirm()
+	case "f1", "f2", "f3", "f4", "f6", "f7", "f8", "f9":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
 	}
@@ -580,7 +590,7 @@ func (m AppModel) renderFMPassword(s *strings.Builder) {
 // genau so viele Zeilen und Spalten wie das Terminal (sonst scrollt es).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 19:45
+// @date   2026-10-21 21:03
 func (m AppModel) renderFileManager(s *strings.Builder) {
 	width, height := m.fmScreenSize()
 	st := fmThemeStyles(m.fm.theme)
@@ -599,6 +609,12 @@ func (m AppModel) renderFileManager(s *strings.Builder) {
 		lines = append(lines, left[i]+right[i])
 	}
 	lines = append(lines, m.renderFMKeyBar(st, width))
+
+	// Offener Dialog mittig über den Fenstern
+	if m.fm.dialog != fmDialogNone {
+		box, boxWidth := m.renderFMDialogBox(st, width, height)
+		overlayDialog(lines, box, boxWidth, width)
+	}
 
 	// Sehr kleine Fenster: auf die Terminalhöhe kürzen
 	if len(lines) > height {
@@ -779,7 +795,7 @@ func (m AppModel) renderFMColumns(cols fmColumns, text, sep lipgloss.Style, name
 // @param entry - Eintrag
 // @param selected - Cursorzeile?
 // @return string - Zeile ohne äußeren Rahmen
-// @date   2026-10-21 20:10
+// @date   2026-10-21 21:03
 func (m AppModel) renderFMEntry(st fmStyles, cols fmColumns, entry fmEntry, selected bool) string {
 	marker, style := " ", st.file
 	switch {
@@ -797,7 +813,7 @@ func (m AppModel) renderFMEntry(st fmStyles, cols fmColumns, entry fmEntry, sele
 	if entry.parent {
 		size = m.tr(txtFMUpDir)
 	} else if !entry.modTime.IsZero() {
-		date = entry.modTime.Format(fmDateFormat)
+		date = formatFMTime(entry.modTime)
 	}
 	sep := st.frame
 	if entry.marked {
@@ -811,6 +827,15 @@ func (m AppModel) renderFMEntry(st fmStyles, cols fmColumns, entry fmEntry, sele
 		}
 	}
 	return m.renderFMColumns(cols, style, sep, marker+sanitizeFileName(entry.name), size, date)
+}
+
+// formatFMTime formatiert eine Änderungszeit in lokaler Zeit.
+//
+// @param t - Zeitpunkt
+// @return string - z. B. "2026-10-21 19:45"
+// @date   2026-10-21 21:03
+func formatFMTime(t time.Time) string {
+	return t.Local().Format(fmDateFormat)
 }
 
 // --- Hilfsfunktionen für feste Breiten ---

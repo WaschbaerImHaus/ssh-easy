@@ -25,7 +25,7 @@ import (
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-16 10:00
+// @date   2026-10-21 21:06
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.listRows()
 	limit := visibleRowLimit(m.termHeight)
@@ -112,8 +112,11 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "enter":
-		// Datei-Manager-Eintrag ganz unten
+		// Datei-Manager-Eintrag ganz unten (erst ab zwei Verbindungen nutzbar)
 		if row != nil && row.kind == rowFileManager {
+			if !m.fileManagerEnabled() {
+				break
+			}
 			return m.openFileManager()
 		}
 		// Gruppe: auf-/zuklappen
@@ -208,17 +211,27 @@ func (m AppModel) startAutoConnect(conn Connection) (tea.Model, tea.Cmd) {
 }
 
 // listRows liefert die aktuell sichtbaren Zeilen der Verbindungsliste.
-// Gibt es Verbindungen, steht ganz unten der Datei-Manager-Eintrag.
+// Ganz unten steht immer der Datei-Manager-Eintrag (unter zwei
+// Verbindungen ausgegraut, siehe fileManagerEnabled).
 //
 // @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen,
 // Datei-Manager)
-// @date   2026-10-21 19:45
+// @date   2026-10-21 21:06
 func (m AppModel) listRows() []listRow {
 	rows := buildListRows(m.connections, m.expandedGroups)
-	if len(rows) > 0 {
-		rows = append(rows, listRow{kind: rowFileManager, connIndex: -1})
-	}
-	return rows
+	return append(rows, listRow{kind: rowFileManager, connIndex: -1})
+}
+
+// fmDisabledFg - Schriftfarbe des ausgegrauten Datei-Manager-Eintrags
+const fmDisabledFg = "244"
+
+// fileManagerEnabled meldet, ob der Datei-Manager nutzbar ist: Er braucht
+// zwei verschiedene Verbindungen (keine Verbindung mit sich selbst).
+//
+// @return bool - true ab zwei Verbindungen
+// @date   2026-10-21 21:06
+func (m AppModel) fileManagerEnabled() bool {
+	return len(m.connections) >= 2
 }
 
 // selectedConnection liefert die Verbindung unter dem Cursor.
@@ -294,7 +307,7 @@ func (m *AppModel) selectConnectionByID(id string) {
 // Hinweise "↑ +N" / "↓ +N" nennen die Zahl der verborgenen Zeilen.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-16 10:00
+// @date   2026-10-21 21:06
 func (m AppModel) renderList(s *strings.Builder) {
 	// Titel mit Version und Build, z.B. "ssh-easy v0.46 (Build 46)"
 	s.WriteString(titleStyle.Render("  " + formatAppTitle(m.buildNumber)))
@@ -302,35 +315,34 @@ func (m AppModel) renderList(s *strings.Builder) {
 
 	rows := m.listRows()
 	hasGroups := false
-	if len(rows) == 0 {
+	if len(m.connections) == 0 {
 		s.WriteString(m.lang.NoConnections + "\n")
 		s.WriteString(m.lang.PressNToAdd + "\n")
-	} else {
-		limit := visibleRowLimit(m.termHeight)
-		offset := scrollOffset(len(rows), m.cursor, m.listOffset, limit)
-		end := offset + limit
-		if end > len(rows) {
-			end = len(rows)
-		}
-		if offset > 0 {
-			s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
-		}
-		for i := offset; i < end; i++ {
-			// Datei-Manager-Eintrag mit Leerzeile von den Verbindungen absetzen
-			if rows[i].kind == rowFileManager && i > 0 {
-				s.WriteString("\n")
-			}
-			s.WriteString(m.renderListRow(rows[i], i == m.cursor))
+	}
+	limit := visibleRowLimit(m.termHeight)
+	offset := scrollOffset(len(rows), m.cursor, m.listOffset, limit)
+	end := offset + limit
+	if end > len(rows) {
+		end = len(rows)
+	}
+	if offset > 0 {
+		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
+	}
+	for i := offset; i < end; i++ {
+		// Datei-Manager-Eintrag mit Leerzeile von den Verbindungen absetzen
+		if rows[i].kind == rowFileManager {
 			s.WriteString("\n")
 		}
-		if end < len(rows) {
-			s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↓ +%d", len(rows)-end)) + "\n")
-		}
-		for _, row := range rows {
-			if row.kind == rowGroup {
-				hasGroups = true
-				break
-			}
+		s.WriteString(m.renderListRow(rows[i], i == m.cursor))
+		s.WriteString("\n")
+	}
+	if end < len(rows) {
+		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↓ +%d", len(rows)-end)) + "\n")
+	}
+	for _, row := range rows {
+		if row.kind == rowGroup {
+			hasGroups = true
+			break
 		}
 	}
 
@@ -372,9 +384,17 @@ func (m AppModel) renderListRow(row listRow, selected bool) string {
 	}
 	dotStyle := base.Foreground(lipgloss.Color("46")).Bold(true)
 
-	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt
+	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt; unter zwei
+	// Verbindungen ausgegraut mit Hinweis, wie viele noch fehlen
 	if row.kind == rowFileManager {
-		return base.Render("    ▸ " + m.tr(txtFMListEntry))
+		if m.fileManagerEnabled() {
+			return base.Render("    ▸ " + m.tr(txtFMListEntry))
+		}
+		hint := m.tr(txtFMNeedTwo)
+		if len(m.connections) == 1 {
+			hint = m.tr(txtFMNeedOne)
+		}
+		return base.Bold(false).Foreground(lipgloss.Color(fmDisabledFg)).Render("    ▸ " + m.tr(txtFMListEntry) + "  – " + hint)
 	}
 
 	// Statuspunkt: Verbindung verbunden bzw. mindestens ein Gruppenmitglied

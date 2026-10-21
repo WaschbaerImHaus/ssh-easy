@@ -530,8 +530,10 @@ func TestTunnelSummarySingularAndShort(t *testing.T) {
 	}
 
 	m.connections[0].Tunnels = m.connections[0].Tunnels[:2]
-	if text := renderListText(m); !strings.Contains(text, "[Tunnel: 1,2]") || strings.Contains(text, "weiter") {
-		t.Errorf("zwei Ports sollen vollständig ohne Zusatz erscheinen:\n%s", text)
+	// Nur die Zeile der Verbindung prüfen (der Datei-Manager-Hinweis darunter
+	// enthält "weitere Verbindung")
+	if line := stripANSI(selectedLine(t, renderListText(m), "Server")); !strings.Contains(line, "[Tunnel: 1,2]") || strings.Contains(line, "weiter") {
+		t.Errorf("zwei Ports sollen vollständig ohne Zusatz erscheinen: %q", line)
 	}
 }
 

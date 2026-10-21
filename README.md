@@ -166,6 +166,7 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `Tab` | Switch between left and right panel |
 | `Insert` | Mark / unmark the entry under the cursor and move down |
 | `*` | Invert the marking of all entries (files and directories) |
+| `F5` | Copy the marked entries (or the entry under the cursor) to the other panel |
 | `F10` / `q` | Close both connections and return to the list |
 
 Markers in front of names: `/` directory, `~` symlink to a directory, `@` symlink to a
@@ -175,7 +176,16 @@ Marked entries are highlighted; the panel's info line shows their number and the
 size of the marked files. Marks belong to their panel and are cleared when you change
 the directory.
 
-*Current state (Build 56): navigation and marking. Copy, move, mkdir, delete, view,
+**Copying (`F5`)** copies into the current directory of the other panel – directories
+recursively, symlinks as symlinks, with permissions and modification time. After a
+confirmation a progress window appears (`Esc` cancels). If a target already exists you
+are asked, with size and date of both files: `j`/`y` overwrite, `n` skip, `a` all,
+`k` none, `u` all if newer, `g` all if larger, `Esc` cancel. The data flows through your
+computer, so the two servers do not need to reach each other.
+
+The file manager needs two connections; until then its entry is greyed out.
+
+*Current state (Build 57): navigation, marking and copying. Move, mkdir, delete, view,
 edit and the menu (incl. switching between the classic, ssh-easy and monochrome colour
 themes) follow step by step.*
 

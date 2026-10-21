@@ -61,7 +61,8 @@
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
 - [ ] Menü "Optionen": Farbmodus umschalten (und merken)
 - [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)
-- [ ] F5 Kopieren zwischen den Verbindungen (auch markierte Einträge, Verzeichnisse rekursiv)
+- [x] F5 Kopieren zwischen den Verbindungen: markierte Einträge, Verzeichnisse rekursiv, Symlinks als Symlink, Rechte/Zeit; Bestätigung, Fortschritt, Rückfrage j/n/a/k + "alle, wenn neuer" (u) / "alle, wenn größer" (g) (Build 57)
+- [x] Datei-Manager-Eintrag unter zwei Verbindungen ausgegraut mit Hinweis (Build 57)
 - [ ] F6 Verschieben/Umbenennen
 - [ ] F7 Verzeichnis anlegen
 - [ ] F8 Löschen (mit Bestätigung)
