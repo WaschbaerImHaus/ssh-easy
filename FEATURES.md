@@ -52,6 +52,7 @@
 ## Datei-Manager (MC-Modus, Nutzerwunsch 2026-10-21)
 - [x] Eintrag ganz unten in der Verbindungsliste, mit Leerzeile abgesetzt (Build 53)
 - [x] Linke und rechte Verbindung nacheinander wählen, q = Abbruch zurück zur Liste (Build 53)
+- [x] Platzhalter "(nicht ausgewählt)" als erster Punkt erzwingt bewusste Wahl (kein Enter-Enter); keine Verbindung mit sich selbst (Build 55)
 - [x] Eigene SSH-Verbindungen ohne Tunnel, unabhängig von bestehenden Verbindungen; Passwortabfrage bei Bedarf (Build 53)
 - [x] Zwei Fenster mit Datei-/Verzeichnisliste (SFTP), türkise Menüleiste oben, F-Tasten-Leiste unten, keine Kommandozeile (Build 53)
 - [x] Startverzeichnis Home; Verzeichnis wechseln per Enter auf Namen bzw. ".." (Build 53)

@@ -15,7 +15,7 @@
 // Menü und F1-F9 sind nur optisch vorhanden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:04
 package main
 
 import (
@@ -138,23 +138,41 @@ func (m AppModel) closeFileManager() AppModel {
 	return m
 }
 
-// fmPickConnections liefert die Verbindungen für die Auswahl: flach (ohne
-// Gruppen), alphabetisch wie in der Konfiguration.
+// fmPickConnections liefert die wählbaren Verbindungen: flach (ohne
+// Gruppen), alphabetisch wie in der Konfiguration. Bei der Wahl der
+// rechten Seite fehlt die links gewählte (keine Verbindung mit sich selbst).
+// Davor steht in der Anzeige immer der Platzhalter "(nicht ausgewählt)"
+// (Zeile 0), Verbindung i steht also in Zeile i+1.
 //
 // @return []Connection - Verbindungen
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:03
 func (m AppModel) fmPickConnections() []Connection {
-	return m.connections
+	if m.fm.pickSide == 0 {
+		return m.connections
+	}
+	leftID := m.fm.panels[0].conn.ID
+	conns := make([]Connection, 0, len(m.connections))
+	for _, conn := range m.connections {
+		if conn.ID != leftID {
+			conns = append(conns, conn)
+		}
+	}
+	return conns
 }
 
 // handleFMPickKeys verarbeitet Tasten in der Verbindungsauswahl.
+// Der Cursor startet auf dem Platzhalter "(nicht ausgewählt)"; Enter darauf
+// bewirkt nichts - so landet man nicht mit Enter-Enter versehentlich im
+// Datei-Manager, sondern muss beide Verbindungen bewusst wählen.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der 2. Wahl)
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:03
 func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	conns := m.fmPickConnections()
+	// Zeilen: Platzhalter + Verbindungen
+	rows := len(conns) + 1
 	limit := visibleRowLimit(m.termHeight)
 	switch msg.String() {
 	case "q", "esc":
@@ -170,28 +188,32 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "home":
 		m.fm.pickCursor = 0
 	case "end":
-		m.fm.pickCursor = len(conns) - 1
+		m.fm.pickCursor = rows - 1
 	case "enter":
-		if m.fm.pickCursor < 0 || m.fm.pickCursor >= len(conns) {
+		// Platzhalter oder ungültige Zeile: nichts tun
+		if m.fm.pickCursor < 1 || m.fm.pickCursor > len(conns) {
 			return m, nil
 		}
-		conn := conns[m.fm.pickCursor]
+		conn := conns[m.fm.pickCursor-1]
 		// Eigene Verbindung ohne Tunnel (Kopie - die Liste bleibt unverändert)
 		conn.Tunnels = nil
 		m.fm.panels[m.fm.pickSide] = filePanel{conn: conn}
 		if m.fm.pickSide == 0 {
+			// Rechte Seite: wieder auf dem Platzhalter beginnen
 			m.fm.pickSide = 1
+			m.fm.pickCursor = 0
+			m.fm.pickOffset = 0
 			return m, nil
 		}
 		return m.startFMConnect(0, "")
 	}
-	if m.fm.pickCursor >= len(conns) {
-		m.fm.pickCursor = len(conns) - 1
+	if m.fm.pickCursor >= rows {
+		m.fm.pickCursor = rows - 1
 	}
 	if m.fm.pickCursor < 0 {
 		m.fm.pickCursor = 0
 	}
-	m.fm.pickOffset = scrollOffset(len(conns), m.fm.pickCursor, m.fm.pickOffset, limit)
+	m.fm.pickOffset = scrollOffset(rows, m.fm.pickCursor, m.fm.pickOffset, limit)
 	return m, nil
 }
 
@@ -474,7 +496,7 @@ func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 // renderFMPick rendert die Verbindungsauswahl (linke bzw. rechte Seite).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:03
 func (m AppModel) renderFMPick(s *strings.Builder) {
 	title := m.tr(txtFMPickLeft)
 	if m.fm.pickSide == 1 {
@@ -484,18 +506,23 @@ func (m AppModel) renderFMPick(s *strings.Builder) {
 	s.WriteString("\n\n")
 
 	conns := m.fmPickConnections()
+	// Zeile 0 = Platzhalter "(nicht ausgewählt)", Zeile i = conns[i-1]
+	rows := len(conns) + 1
 	limit := visibleRowLimit(m.termHeight)
-	offset := scrollOffset(len(conns), m.fm.pickCursor, m.fm.pickOffset, limit)
+	offset := scrollOffset(rows, m.fm.pickCursor, m.fm.pickOffset, limit)
 	end := offset + limit
-	if end > len(conns) {
-		end = len(conns)
+	if end > rows {
+		end = rows
 	}
 	if offset > 0 {
 		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
 	}
 	for i := offset; i < end; i++ {
-		conn := conns[i]
-		line := fmt.Sprintf("  %s  (%s@%s)", conn.Name, conn.User, conn.Host)
+		line := "  " + m.tr(txtFMNotSelected)
+		if i > 0 {
+			conn := conns[i-1]
+			line = fmt.Sprintf("  %s  (%s@%s)", conn.Name, conn.User, conn.Host)
+		}
 		if i == m.fm.pickCursor {
 			s.WriteString(selectedStyle.Render(line))
 		} else {
@@ -503,8 +530,8 @@ func (m AppModel) renderFMPick(s *strings.Builder) {
 		}
 		s.WriteString("\n")
 	}
-	if end < len(conns) {
-		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↓ +%d", len(conns)-end)) + "\n")
+	if end < rows {
+		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↓ +%d", rows-end)) + "\n")
 	}
 	s.WriteString(helpStyle.Render(m.tr(txtFMPickHelp)))
 }

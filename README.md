@@ -151,7 +151,9 @@ The last entry of the connection list, separated by a blank line, opens a reduce
 Midnight-Commander-style file manager for working with two SSH hosts side by side:
 
 1. Choose the connection for the **left** panel, then the one for the **right** panel
-   (`q` goes back to the list at any time; both panels may use the same connection).
+   (`q` goes back to the list at any time). The list starts on the placeholder
+   *(not selected)*, which cannot be confirmed – both connections have to be chosen
+   deliberately. The left connection is not offered again for the right panel.
 2. Both connections are opened as separate SSH connections **without tunnels**
    (SSH agent / keys first, password prompt if needed; `Esc` cancels the prompt).
    Nothing needs to be installed on the servers — the file lists come via SFTP.

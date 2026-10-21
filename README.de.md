@@ -139,7 +139,9 @@ reduzierten Datei-Manager im Stil des Midnight Commander, um mit zwei SSH-Server
 nebeneinander zu arbeiten:
 
 1. Verbindung für das **linke** Fenster wählen, dann die für das **rechte** Fenster
-   (`q` führt jederzeit zurück zur Liste; beide Seiten dürfen dieselbe Verbindung nutzen).
+   (`q` führt jederzeit zurück zur Liste). Die Auswahl beginnt auf dem Platzhalter
+   *(nicht ausgewählt)*, der sich nicht bestätigen lässt – beide Verbindungen müssen
+   bewusst gewählt werden. Die linke Verbindung steht rechts nicht mehr zur Wahl.
 2. Beide Verbindungen werden als eigene SSH-Verbindungen **ohne Tunnel** aufgebaut
    (zuerst SSH-Agent/Schlüssel, bei Bedarf Passwortabfrage; `Esc` bricht sie ab).
    Auf den Servern muss nichts installiert sein – die Dateilisten kommen per SFTP.

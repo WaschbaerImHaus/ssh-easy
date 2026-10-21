@@ -12,7 +12,7 @@
 // (höchstens 7 Zeichen), sonst werden sie bei 80 Spalten gekürzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 20:04
 package main
 
 const (
@@ -56,6 +56,8 @@ const (
 	txtFMErrSFTP textKey = "fm_err_sftp"
 	// txtFMNotYet - Funktion noch nicht umgesetzt
 	txtFMNotYet textKey = "fm_not_yet"
+	// txtFMNotSelected - Platzhalter an erster Stelle der Verbindungsauswahl
+	txtFMNotSelected textKey = "fm_not_selected"
 )
 
 // init mischt die Datei-Manager-Texte in die Zusatztexte ein.
@@ -95,6 +97,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Datei-Manager: Host-Key von %s hat sich geändert – bitte zuerst normal über die Liste verbinden und bestätigen",
 		txtFMErrSFTP:        "Datei-Manager: SFTP auf %s nicht verfügbar: %s",
 		txtFMNotYet:         "Diese Funktion folgt in einer späteren Version",
+		txtFMNotSelected:    "(nicht ausgewählt)",
 	},
 	LangEnglish: {
 		txtFMListEntry:      "File manager (two connections)",
@@ -117,6 +120,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "File manager: host key of %s has changed – please connect normally from the list first and confirm",
 		txtFMErrSFTP:        "File manager: SFTP not available on %s: %s",
 		txtFMNotYet:         "This function will follow in a later version",
+		txtFMNotSelected:    "(not selected)",
 	},
 	LangFrancais: {
 		txtFMListEntry:      "Gestionnaire de fichiers (deux connexions)",
@@ -139,6 +143,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Gestionnaire de fichiers : la clé d'hôte de %s a changé – connectez-vous d'abord normalement depuis la liste et confirmez",
 		txtFMErrSFTP:        "Gestionnaire de fichiers : SFTP indisponible sur %s : %s",
 		txtFMNotYet:         "Cette fonction arrivera dans une version ultérieure",
+		txtFMNotSelected:    "(non sélectionné)",
 	},
 	LangEspanol: {
 		txtFMListEntry:      "Gestor de archivos (dos conexiones)",
@@ -161,6 +166,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Gestor de archivos: la clave de host de %s ha cambiado – conéctese primero de forma normal desde la lista y confirme",
 		txtFMErrSFTP:        "Gestor de archivos: SFTP no disponible en %s: %s",
 		txtFMNotYet:         "Esta función llegará en una versión posterior",
+		txtFMNotSelected:    "(no seleccionado)",
 	},
 	LangItaliano: {
 		txtFMListEntry:      "Gestore file (due connessioni)",
@@ -183,6 +189,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Gestore file: la chiave host di %s è cambiata – connettersi prima normalmente dalla lista e confermare",
 		txtFMErrSFTP:        "Gestore file: SFTP non disponibile su %s: %s",
 		txtFMNotYet:         "Questa funzione arriverà in una versione successiva",
+		txtFMNotSelected:    "(non selezionato)",
 	},
 	LangPortugues: {
 		txtFMListEntry:      "Gestor de ficheiros (duas ligações)",
@@ -205,6 +212,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Gestor de ficheiros: a chave do anfitrião %s mudou – ligue-se primeiro normalmente a partir da lista e confirme",
 		txtFMErrSFTP:        "Gestor de ficheiros: SFTP indisponível em %s: %s",
 		txtFMNotYet:         "Esta função chegará numa versão posterior",
+		txtFMNotSelected:    "(não selecionado)",
 	},
 	LangDutch: {
 		txtFMListEntry:      "Bestandsbeheer (twee verbindingen)",
@@ -227,6 +235,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Bestandsbeheer: hostsleutel van %s is gewijzigd – maak eerst normaal verbinding via de lijst en bevestig",
 		txtFMErrSFTP:        "Bestandsbeheer: SFTP niet beschikbaar op %s: %s",
 		txtFMNotYet:         "Deze functie volgt in een latere versie",
+		txtFMNotSelected:    "(niet gekozen)",
 	},
 	LangSwedish: {
 		txtFMListEntry:      "Filhanterare (två anslutningar)",
@@ -249,6 +258,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Filhanterare: värdnyckeln för %s har ändrats – anslut först som vanligt via listan och bekräfta",
 		txtFMErrSFTP:        "Filhanterare: SFTP är inte tillgängligt på %s: %s",
 		txtFMNotYet:         "Den här funktionen kommer i en senare version",
+		txtFMNotSelected:    "(inte vald)",
 	},
 	LangPolish: {
 		txtFMListEntry:      "Menedżer plików (dwa połączenia)",
@@ -271,6 +281,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Menedżer plików: klucz hosta %s zmienił się – najpierw połącz się normalnie z listy i potwierdź",
 		txtFMErrSFTP:        "Menedżer plików: SFTP niedostępne na %s: %s",
 		txtFMNotYet:         "Ta funkcja pojawi się w późniejszej wersji",
+		txtFMNotSelected:    "(nie wybrano)",
 	},
 	LangCzech: {
 		txtFMListEntry:      "Správce souborů (dvě připojení)",
@@ -293,6 +304,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Správce souborů: klíč hostitele %s se změnil – nejprve se připojte normálně ze seznamu a potvrďte",
 		txtFMErrSFTP:        "Správce souborů: SFTP na %s není k dispozici: %s",
 		txtFMNotYet:         "Tato funkce přijde v pozdější verzi",
+		txtFMNotSelected:    "(nevybráno)",
 	},
 	LangRomanian: {
 		txtFMListEntry:      "Manager de fișiere (două conexiuni)",
@@ -315,6 +327,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Manager de fișiere: cheia gazdei %s s-a schimbat – conectați-vă mai întâi normal din listă și confirmați",
 		txtFMErrSFTP:        "Manager de fișiere: SFTP indisponibil pe %s: %s",
 		txtFMNotYet:         "Această funcție va veni într-o versiune ulterioară",
+		txtFMNotSelected:    "(neselectat)",
 	},
 	LangBulgarian: {
 		txtFMListEntry:      "Файлов мениджър (две връзки)",
@@ -337,6 +350,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Файлов мениджър: ключът на хоста %s е променен – първо се свържете нормално от списъка и потвърдете",
 		txtFMErrSFTP:        "Файлов мениджър: SFTP не е наличен на %s: %s",
 		txtFMNotYet:         "Тази функция ще дойде в по-късна версия",
+		txtFMNotSelected:    "(не е избрано)",
 	},
 	LangRussian: {
 		txtFMListEntry:      "Файловый менеджер (два подключения)",
@@ -359,6 +373,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Файловый менеджер: ключ хоста %s изменился – сначала подключитесь обычным способом из списка и подтвердите",
 		txtFMErrSFTP:        "Файловый менеджер: SFTP недоступен на %s: %s",
 		txtFMNotYet:         "Эта функция появится в одной из следующих версий",
+		txtFMNotSelected:    "(не выбрано)",
 	},
 	LangUkrainian: {
 		txtFMListEntry:      "Файловий менеджер (два підключення)",
@@ -381,6 +396,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Файловий менеджер: ключ хоста %s змінився – спочатку підключіться звичайним способом зі списку та підтвердьте",
 		txtFMErrSFTP:        "Файловий менеджер: SFTP недоступний на %s: %s",
 		txtFMNotYet:         "Ця функція з'явиться в одній із наступних версій",
+		txtFMNotSelected:    "(не вибрано)",
 	},
 	LangGreek: {
 		txtFMListEntry:      "Διαχείριση αρχείων (δύο συνδέσεις)",
@@ -403,6 +419,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Διαχείριση αρχείων: το κλειδί κεντρικού υπολογιστή του %s άλλαξε – συνδεθείτε πρώτα κανονικά από τη λίστα και επιβεβαιώστε",
 		txtFMErrSFTP:        "Διαχείριση αρχείων: το SFTP δεν είναι διαθέσιμο στο %s: %s",
 		txtFMNotYet:         "Αυτή η λειτουργία θα έρθει σε μεταγενέστερη έκδοση",
+		txtFMNotSelected:    "(δεν επιλέχθηκε)",
 	},
 	LangTurkish: {
 		txtFMListEntry:      "Dosya yöneticisi (iki bağlantı)",
@@ -425,6 +442,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Dosya yöneticisi: %s ana bilgisayar anahtarı değişti – önce listeden normal şekilde bağlanıp onaylayın",
 		txtFMErrSFTP:        "Dosya yöneticisi: %s üzerinde SFTP kullanılamıyor: %s",
 		txtFMNotYet:         "Bu işlev sonraki bir sürümde gelecek",
+		txtFMNotSelected:    "(seçilmedi)",
 	},
 	LangGeorgian: {
 		txtFMListEntry:      "ფაილების მენეჯერი (ორი კავშირი)",
@@ -447,6 +465,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ფაილების მენეჯერი: %s-ის ჰოსტის გასაღები შეიცვალა – ჯერ ჩვეულებრივად დაუკავშირდით სიიდან და დაადასტურეთ",
 		txtFMErrSFTP:        "ფაილების მენეჯერი: SFTP მიუწვდომელია %s-ზე: %s",
 		txtFMNotYet:         "ეს ფუნქცია მომავალ ვერსიაში დაემატება",
+		txtFMNotSelected:    "(არ არის არჩეული)",
 	},
 	LangArabic: {
 		txtFMListEntry:      "مدير الملفات (اتصالان)",
@@ -469,6 +488,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "مدير الملفات: تغيّر مفتاح المضيف لـ %s – اتصل أولاً بشكل عادي من القائمة ثم أكّد",
 		txtFMErrSFTP:        "مدير الملفات: SFTP غير متاح على %s: %s",
 		txtFMNotYet:         "ستتوفر هذه الوظيفة في إصدار لاحق",
+		txtFMNotSelected:    "(غير محدد)",
 	},
 	LangPersian: {
 		txtFMListEntry:      "مدیر فایل (دو اتصال)",
@@ -491,6 +511,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "مدیر فایل: کلید میزبان %s تغییر کرده است – ابتدا به‌طور عادی از فهرست وصل شوید و تأیید کنید",
 		txtFMErrSFTP:        "مدیر فایل: SFTP روی %s در دسترس نیست: %s",
 		txtFMNotYet:         "این قابلیت در نسخه‌ای بعدی می‌آید",
+		txtFMNotSelected:    "(انتخاب نشده)",
 	},
 	LangUrdu: {
 		txtFMListEntry:      "فائل منیجر (دو کنکشن)",
@@ -513,6 +534,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "فائل منیجر: %s کی ہوسٹ کی تبدیل ہو گئی ہے – پہلے فہرست سے معمول کے مطابق جڑیں اور تصدیق کریں",
 		txtFMErrSFTP:        "فائل منیجر: %s پر SFTP دستیاب نہیں: %s",
 		txtFMNotYet:         "یہ فنکشن بعد کے ورژن میں آئے گا",
+		txtFMNotSelected:    "(منتخب نہیں)",
 	},
 	LangHindi: {
 		txtFMListEntry:      "फ़ाइल मैनेजर (दो कनेक्शन)",
@@ -535,6 +557,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "फ़ाइल मैनेजर: %s की होस्ट कुंजी बदल गई है – पहले सूची से सामान्य रूप से जुड़ें और पुष्टि करें",
 		txtFMErrSFTP:        "फ़ाइल मैनेजर: %s पर SFTP उपलब्ध नहीं: %s",
 		txtFMNotYet:         "यह सुविधा बाद के संस्करण में आएगी",
+		txtFMNotSelected:    "(चयनित नहीं)",
 	},
 	LangBengali: {
 		txtFMListEntry:      "ফাইল ম্যানেজার (দুটি সংযোগ)",
@@ -557,6 +580,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ফাইল ম্যানেজার: %s এর হোস্ট কী পরিবর্তিত হয়েছে – আগে তালিকা থেকে স্বাভাবিকভাবে সংযোগ করে নিশ্চিত করুন",
 		txtFMErrSFTP:        "ফাইল ম্যানেজার: %s এ SFTP উপলব্ধ নয়: %s",
 		txtFMNotYet:         "এই ফাংশনটি পরবর্তী সংস্করণে আসবে",
+		txtFMNotSelected:    "(নির্বাচিত নয়)",
 	},
 	LangPunjabi: {
 		txtFMListEntry:      "ਫਾਈਲ ਮੈਨੇਜਰ (ਦੋ ਕਨੈਕਸ਼ਨ)",
@@ -579,6 +603,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ਫਾਈਲ ਮੈਨੇਜਰ: %s ਦੀ ਹੋਸਟ ਕੁੰਜੀ ਬਦਲ ਗਈ ਹੈ – ਪਹਿਲਾਂ ਸੂਚੀ ਤੋਂ ਆਮ ਵਾਂਗ ਜੁੜੋ ਅਤੇ ਪੁਸ਼ਟੀ ਕਰੋ",
 		txtFMErrSFTP:        "ਫਾਈਲ ਮੈਨੇਜਰ: %s ਉੱਤੇ SFTP ਉਪਲਬਧ ਨਹੀਂ: %s",
 		txtFMNotYet:         "ਇਹ ਫੰਕਸ਼ਨ ਬਾਅਦ ਦੇ ਸੰਸਕਰਣ ਵਿੱਚ ਆਵੇਗਾ",
+		txtFMNotSelected:    "(ਚੁਣਿਆ ਨਹੀਂ)",
 	},
 	LangGujarati: {
 		txtFMListEntry:      "ફાઇલ મેનેજર (બે કનેક્શન)",
@@ -601,6 +626,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ફાઇલ મેનેજર: %s ની હોસ્ટ કી બદલાઈ ગઈ છે – પહેલાં સૂચિમાંથી સામાન્ય રીતે જોડાઓ અને પુષ્ટિ કરો",
 		txtFMErrSFTP:        "ફાઇલ મેનેજર: %s પર SFTP ઉપલબ્ધ નથી: %s",
 		txtFMNotYet:         "આ સુવિધા પછીના સંસ્કરણમાં આવશે",
+		txtFMNotSelected:    "(પસંદ નથી)",
 	},
 	LangMarathi: {
 		txtFMListEntry:      "फाइल व्यवस्थापक (दोन कनेक्शन)",
@@ -623,6 +649,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "फाइल व्यवस्थापक: %s ची होस्ट की बदलली आहे – आधी यादीतून सामान्यपणे जोडा आणि पुष्टी करा",
 		txtFMErrSFTP:        "फाइल व्यवस्थापक: %s वर SFTP उपलब्ध नाही: %s",
 		txtFMNotYet:         "हे कार्य नंतरच्या आवृत्तीत येईल",
+		txtFMNotSelected:    "(निवडलेले नाही)",
 	},
 	LangTamil: {
 		txtFMListEntry:      "கோப்பு மேலாளர் (இரண்டு இணைப்புகள்)",
@@ -645,6 +672,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "கோப்பு மேலாளர்: %s இன் ஹோஸ்ட் விசை மாறியுள்ளது – முதலில் பட்டியலிலிருந்து வழக்கம்போல் இணைத்து உறுதிப்படுத்தவும்",
 		txtFMErrSFTP:        "கோப்பு மேலாளர்: %s இல் SFTP கிடைக்கவில்லை: %s",
 		txtFMNotYet:         "இந்த செயல்பாடு பிந்தைய பதிப்பில் வரும்",
+		txtFMNotSelected:    "(தேர்ந்தெடுக்கப்படவில்லை)",
 	},
 	LangTelugu: {
 		txtFMListEntry:      "ఫైల్ మేనేజర్ (రెండు కనెక్షన్లు)",
@@ -667,6 +695,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ఫైల్ మేనేజర్: %s హోస్ట్ కీ మారింది – ముందుగా జాబితా నుండి సాధారణంగా కనెక్ట్ చేసి నిర్ధారించండి",
 		txtFMErrSFTP:        "ఫైల్ మేనేజర్: %s లో SFTP అందుబాటులో లేదు: %s",
 		txtFMNotYet:         "ఈ ఫంక్షన్ తదుపరి సంస్కరణలో వస్తుంది",
+		txtFMNotSelected:    "(ఎంచుకోలేదు)",
 	},
 	LangKannada: {
 		txtFMListEntry:      "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ (ಎರಡು ಸಂಪರ್ಕಗಳು)",
@@ -689,6 +718,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ಫೈಲ್ ಮ್ಯಾನೇಜರ್: %s ನ ಹೋಸ್ಟ್ ಕೀ ಬದಲಾಗಿದೆ – ಮೊದಲು ಪಟ್ಟಿಯಿಂದ ಸಾಮಾನ್ಯವಾಗಿ ಸಂಪರ್ಕಿಸಿ ಮತ್ತು ದೃಢೀಕರಿಸಿ",
 		txtFMErrSFTP:        "ಫೈಲ್ ಮ್ಯಾನೇಜರ್: %s ನಲ್ಲಿ SFTP ಲಭ್ಯವಿಲ್ಲ: %s",
 		txtFMNotYet:         "ಈ ಕಾರ್ಯ ನಂತರದ ಆವೃತ್ತಿಯಲ್ಲಿ ಬರುತ್ತದೆ",
+		txtFMNotSelected:    "(ಆಯ್ಕೆ ಮಾಡಿಲ್ಲ)",
 	},
 	LangChinese: {
 		txtFMListEntry:      "文件管理器（两个连接）",
@@ -711,6 +741,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "文件管理器：%s 的主机密钥已更改 – 请先从列表正常连接并确认",
 		txtFMErrSFTP:        "文件管理器：%s 上不可用 SFTP：%s",
 		txtFMNotYet:         "此功能将在后续版本中提供",
+		txtFMNotSelected:    "（未选择）",
 	},
 	LangJapanese: {
 		txtFMListEntry:      "ファイルマネージャー（2つの接続）",
@@ -733,6 +764,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ファイルマネージャー：%s のホスト鍵が変更されました – 先に一覧から通常どおり接続して確認してください",
 		txtFMErrSFTP:        "ファイルマネージャー：%s で SFTP を利用できません：%s",
 		txtFMNotYet:         "この機能は今後のバージョンで追加されます",
+		txtFMNotSelected:    "（未選択）",
 	},
 	LangKorean: {
 		txtFMListEntry:      "파일 관리자 (두 개의 연결)",
@@ -755,6 +787,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "파일 관리자: %s의 호스트 키가 변경됨 – 먼저 목록에서 일반 방식으로 연결하고 확인하세요",
 		txtFMErrSFTP:        "파일 관리자: %s에서 SFTP를 사용할 수 없음: %s",
 		txtFMNotYet:         "이 기능은 이후 버전에서 제공됩니다",
+		txtFMNotSelected:    "(선택 안 함)",
 	},
 	LangThai: {
 		txtFMListEntry:      "ตัวจัดการไฟล์ (สองการเชื่อมต่อ)",
@@ -777,6 +810,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "ตัวจัดการไฟล์: คีย์โฮสต์ของ %s เปลี่ยนไป – โปรดเชื่อมต่อตามปกติจากรายการก่อนแล้วยืนยัน",
 		txtFMErrSFTP:        "ตัวจัดการไฟล์: ไม่มี SFTP บน %s: %s",
 		txtFMNotYet:         "ฟังก์ชันนี้จะมาในเวอร์ชันถัดไป",
+		txtFMNotSelected:    "(ยังไม่ได้เลือก)",
 	},
 	LangVietnamese: {
 		txtFMListEntry:      "Trình quản lý tệp (hai kết nối)",
@@ -799,6 +833,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Trình quản lý tệp: khóa máy chủ của %s đã thay đổi – hãy kết nối bình thường từ danh sách trước và xác nhận",
 		txtFMErrSFTP:        "Trình quản lý tệp: SFTP không khả dụng trên %s: %s",
 		txtFMNotYet:         "Chức năng này sẽ có trong phiên bản sau",
+		txtFMNotSelected:    "(chưa chọn)",
 	},
 	LangIndonesian: {
 		txtFMListEntry:      "Pengelola berkas (dua koneksi)",
@@ -821,6 +856,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Pengelola berkas: kunci host %s telah berubah – hubungkan dulu secara normal dari daftar lalu konfirmasi",
 		txtFMErrSFTP:        "Pengelola berkas: SFTP tidak tersedia di %s: %s",
 		txtFMNotYet:         "Fungsi ini akan hadir di versi berikutnya",
+		txtFMNotSelected:    "(belum dipilih)",
 	},
 	LangFilipino: {
 		txtFMListEntry:      "Tagapamahala ng file (dalawang koneksyon)",
@@ -843,6 +879,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Tagapamahala ng file: nagbago ang host key ng %s – kumonekta muna nang normal mula sa listahan at kumpirmahin",
 		txtFMErrSFTP:        "Tagapamahala ng file: walang SFTP sa %s: %s",
 		txtFMNotYet:         "Darating ang function na ito sa susunod na bersyon",
+		txtFMNotSelected:    "(hindi pa napili)",
 	},
 	LangSwahili: {
 		txtFMListEntry:      "Kidhibiti faili (miunganisho miwili)",
@@ -865,6 +902,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Kidhibiti faili: ufunguo wa seva %s umebadilika – unganisha kwanza kwa kawaida kutoka kwenye orodha na uthibitishe",
 		txtFMErrSFTP:        "Kidhibiti faili: SFTP haipatikani kwenye %s: %s",
 		txtFMNotYet:         "Kipengele hiki kitakuja katika toleo la baadaye",
+		txtFMNotSelected:    "(haijachaguliwa)",
 	},
 	LangAmharic: {
 		txtFMListEntry:      "የፋይል አስተዳዳሪ (ሁለት ግንኙነቶች)",
@@ -887,6 +925,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "የፋይል አስተዳዳሪ: የ%s የአስተናጋጅ ቁልፍ ተቀይሯል – መጀመሪያ ከዝርዝሩ በተለመደው መንገድ ይገናኙና ያረጋግጡ",
 		txtFMErrSFTP:        "የፋይል አስተዳዳሪ: በ%s ላይ SFTP አይገኝም: %s",
 		txtFMNotYet:         "ይህ ተግባር በሚቀጥለው ስሪት ይመጣል",
+		txtFMNotSelected:    "(አልተመረጠም)",
 	},
 	LangHausa: {
 		txtFMListEntry:      "Mai sarrafa fayiloli (haɗi biyu)",
@@ -909,6 +948,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Mai sarrafa fayiloli: maɓallin mai masauki na %s ya canza – fara haɗawa kamar yadda aka saba daga jerin sannan ka tabbatar",
 		txtFMErrSFTP:        "Mai sarrafa fayiloli: babu SFTP a %s: %s",
 		txtFMNotYet:         "Wannan aikin zai zo a sigar gaba",
+		txtFMNotSelected:    "(ba a zaɓa ba)",
 	},
 	LangIgbo: {
 		txtFMListEntry:      "Onye njikwa faịlụ (njikọ abụọ)",
@@ -931,6 +971,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Onye njikwa faịlụ: igodo onye nnabata nke %s agbanweela – buru ụzọ jikọọ dịka ọ dị na mbụ site na ndepụta ma kwado",
 		txtFMErrSFTP:        "Onye njikwa faịlụ: SFTP adịghị na %s: %s",
 		txtFMNotYet:         "Ọrụ a ga-abịa na ụdị ọzọ",
+		txtFMNotSelected:    "(ahọrọghị)",
 	},
 	LangYoruba: {
 		txtFMListEntry:      "Olùṣàkóso fáìlì (ìsopọ̀ méjì)",
@@ -953,6 +994,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Olùṣàkóso fáìlì: kọ́kọ́rọ́ agbàlejò %s ti yípadà – kọ́kọ́ sopọ̀ bí ó ti wà láti inú àkójọ kí o sì jẹ́rìí sí i",
 		txtFMErrSFTP:        "Olùṣàkóso fáìlì: SFTP kò sí lórí %s: %s",
 		txtFMNotYet:         "Iṣẹ́ yìí yóò dé ní ẹ̀yà tó ń bọ̀",
+		txtFMNotSelected:    "(a kò yàn)",
 	},
 	LangOromo: {
 		txtFMListEntry:      "Bulchiinsa faayilii (walqunnamtii lama)",
@@ -975,5 +1017,6 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMErrHostKey:     "Bulchiinsa faayilii: furtuun keessummeessaa %s jijjiirameera – dura tarree irraa akkuma baratametti walqunnamii mirkaneessi",
 		txtFMErrSFTP:        "Bulchiinsa faayilii: SFTP %s irratti hin argamu: %s",
 		txtFMNotYet:         "Hojiin kun gosa itti aanu keessatti dhufa",
+		txtFMNotSelected:    "(hin filatamne)",
 	},
 }

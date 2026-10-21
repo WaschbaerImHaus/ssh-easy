@@ -230,15 +230,58 @@ func openFileManagerFor(t *testing.T) (AppModel, *fmConnectRecorder) {
 	rec := newConnectRecorder()
 	m.fmConnect = rec.connect
 	m.termWidth, m.termHeight = 100, 30
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter") // Datei-Manager öffnen -> linke Verbindung wählen
-	m = pressRun(t, m, "enter") // "Links" als linke Verbindung
-	m = pressRun(t, m, "down")
-	m = pressRun(t, m, "enter") // "Rechts" als rechte Verbindung -> verbinden
+	m = openPick(t, m)
+	m = pickSide(t, m, "Links")
+	m = pickSide(t, m, "Rechts") // -> beide verbinden
 	if m.state != ViewFileManager {
 		t.Fatalf("state = %v, erwartet ViewFileManager (Fehler: %q)", m.state, m.fm.message)
 	}
 	return m, rec
+}
+
+// openPick öffnet aus der Liste die Verbindungsauswahl des Datei-Managers.
+func openPick(t *testing.T, m AppModel) AppModel {
+	t.Helper()
+	m = press(t, m, "end", "enter")
+	if m.state != ViewFMPick {
+		t.Fatalf("state = %v, erwartet ViewFMPick", m.state)
+	}
+	return m
+}
+
+// pickSide wählt in der Verbindungsauswahl per Tastatur einen Eintrag
+// ("" = "(nicht ausgewählt)") und führt die Folgekommandos aus.
+func pickSide(t *testing.T, m AppModel, name string) AppModel {
+	t.Helper()
+	if m.state != ViewFMPick {
+		t.Fatalf("state = %v, erwartet ViewFMPick", m.state)
+	}
+	steps := 0
+	if name != "" {
+		steps = -1
+		for i, conn := range m.fmPickConnections() {
+			if conn.Name == name {
+				steps = i + 1
+			}
+		}
+		if steps < 0 {
+			t.Fatalf("%q steht nicht in der Auswahl", name)
+		}
+	}
+	m = press(t, m, "home")
+	for i := 0; i < steps; i++ {
+		m = pressRun(t, m, "down")
+	}
+	return pressRun(t, m, "enter")
+}
+
+// pickNames liefert die Verbindungsnamen der aktuellen Auswahl.
+func pickNames(m AppModel) []string {
+	var names []string
+	for _, conn := range m.fmPickConnections() {
+		names = append(names, conn.Name)
+	}
+	return names
 }
 
 // entryNames liefert die Namen der Einträge eines Panels.
@@ -339,9 +382,9 @@ func TestSelectConnectionByIDSkipsFileManagerRow(t *testing.T) {
 func TestFileManagerPickBothSides(t *testing.T) {
 	m := newListTestModel(t, "Links", "Rechts")
 	m.fmConnect = newConnectRecorder().connect
-	m = press(t, m, "end", "enter")
-	if m.state != ViewFMPick || m.fm.pickSide != 0 {
-		t.Fatalf("state = %v/Seite %d, erwartet ViewFMPick links", m.state, m.fm.pickSide)
+	m = openPick(t, m)
+	if m.fm.pickSide != 0 {
+		t.Fatalf("Seite %d, erwartet links", m.fm.pickSide)
 	}
 	text := stripANSI(m.View())
 	if !strings.Contains(text, m.tr(txtFMPickLeft)) {
@@ -351,8 +394,23 @@ func TestFileManagerPickBothSides(t *testing.T) {
 	if !strings.Contains(text, "Links") || !strings.Contains(text, "Rechts") {
 		t.Errorf("Verbindungen fehlen in der Auswahl:\n%s", text)
 	}
+	// Erster Punkt ist "(nicht ausgewählt)", der Cursor steht darauf
+	lines := strings.Split(text, "\n")
+	first := -1
+	for i, line := range lines {
+		if strings.Contains(line, m.tr(txtFMNotSelected)) {
+			first = i
+			break
+		}
+	}
+	if first < 0 || first > strings.Index(text, "Links") || m.fm.pickCursor != 0 {
+		t.Errorf("\"(nicht ausgewählt)\" ist nicht der erste, gewählte Punkt:\n%s", text)
+	}
+	if strings.Index(text, m.tr(txtFMNotSelected)) > strings.Index(text, "Links") {
+		t.Errorf("\"(nicht ausgewählt)\" steht nicht vor den Verbindungen:\n%s", text)
+	}
 
-	m = press(t, m, "enter")
+	m = press(t, m, "down", "enter")
 	if m.state != ViewFMPick || m.fm.pickSide != 1 {
 		t.Fatalf("nach erster Wahl: state = %v/Seite %d, erwartet rechte Seite", m.state, m.fm.pickSide)
 	}
@@ -368,7 +426,7 @@ func TestFileManagerPickBothSides(t *testing.T) {
 // mit vollem Namen, auch wenn die Gruppe in der Liste zugeklappt ist.
 func TestFileManagerPickShowsGroupedNamesFlat(t *testing.T) {
 	m := newListTestModel(t, "Büro:Server1", "Büro:Server2")
-	m = press(t, m, "end", "enter")
+	m = openPick(t, m)
 	text := stripANSI(m.View())
 	for _, name := range []string{"Büro:Server1", "Büro:Server2"} {
 		if !strings.Contains(text, name) {
@@ -380,7 +438,7 @@ func TestFileManagerPickShowsGroupedNamesFlat(t *testing.T) {
 // TestFileManagerPickQuitReturnsToFileManagerRow - q bricht ab.
 func TestFileManagerPickQuitReturnsToFileManagerRow(t *testing.T) {
 	m := newListTestModel(t, "Links", "Rechts")
-	for _, keys := range [][]string{{"q"}, {"enter", "q"}, {"esc"}} {
+	for _, keys := range [][]string{{"q"}, {"down", "enter", "q"}, {"enter", "q"}, {"esc"}} {
 		got := press(t, m, "end", "enter")
 		got = press(t, got, keys...)
 		if got.state != ViewList {
@@ -394,21 +452,85 @@ func TestFileManagerPickQuitReturnsToFileManagerRow(t *testing.T) {
 	}
 }
 
-// TestFileManagerSameConnectionTwice - beide Seiten dürfen dieselbe
-// Verbindung nutzen (z. B. Verschieben innerhalb eines Servers).
-func TestFileManagerSameConnectionTwice(t *testing.T) {
+// TestFileManagerPickExcludesLeftConnection - eine Verbindung darf nicht
+// mit sich selbst verbunden werden: Die links gewählte fehlt rechts.
+func TestFileManagerPickExcludesLeftConnection(t *testing.T) {
+	m := newListTestModel(t, "A", "B", "C")
+	m.fmConnect = newConnectRecorder().connect
+	m = openPick(t, m)
+	if got := strings.Join(pickNames(m), ","); got != "A,B,C" {
+		t.Fatalf("links: Auswahl = %s, erwartet A,B,C", got)
+	}
+	m = pickSide(t, m, "B")
+	if got := strings.Join(pickNames(m), ","); got != "A,C" {
+		t.Errorf("rechts: Auswahl = %s, erwartet A,C (ohne die linke B)", got)
+	}
+	text := stripANSI(m.View())
+	if strings.Contains(text, "  B  (") {
+		t.Errorf("linke Verbindung B steht rechts noch zur Wahl:\n%s", text)
+	}
+	if !strings.Contains(text, m.tr(txtFMNotSelected)) {
+		t.Errorf("\"(nicht ausgewählt)\" fehlt rechts:\n%s", text)
+	}
+	// Cursor beginnt rechts wieder oben auf "(nicht ausgewählt)"
+	if m.fm.pickCursor != 0 {
+		t.Errorf("Cursor rechts = %d, erwartet 0", m.fm.pickCursor)
+	}
+}
+
+// TestFileManagerPickPlaceholderForcesChoice - "(nicht ausgewählt)" ist
+// nur ein Platzhalter: Enter darauf bewirkt nichts, damit man nicht mit
+// Enter-Enter versehentlich im Datei-Manager landet.
+func TestFileManagerPickPlaceholderForcesChoice(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	rec := newConnectRecorder()
+	m.fmConnect = rec.connect
+	m = openPick(t, m)
+	for i := 0; i < 3; i++ {
+		updated, cmd := m.Update(keyMsgFor("enter"))
+		m = updated.(AppModel)
+		if cmd != nil || m.state != ViewFMPick || m.fm.pickSide != 0 {
+			t.Fatalf("Enter auf Platzhalter links: state %v, Seite %d", m.state, m.fm.pickSide)
+		}
+	}
+	m = pickSide(t, m, "Links")
+	if m.fm.pickSide != 1 {
+		t.Fatalf("nach Wahl links: Seite %d, erwartet rechts", m.fm.pickSide)
+	}
+	for i := 0; i < 3; i++ {
+		updated, cmd := m.Update(keyMsgFor("enter"))
+		m = updated.(AppModel)
+		if cmd != nil || m.state != ViewFMPick || m.fm.pickSide != 1 {
+			t.Fatalf("Enter auf Platzhalter rechts: state %v, Seite %d", m.state, m.fm.pickSide)
+		}
+	}
+	if len(rec.calls) != 0 {
+		t.Errorf("Verbindungsaufbau ohne Wahl: %v", rec.calls)
+	}
+	m = pickSide(t, m, "Rechts")
+	if m.state != ViewFileManager {
+		t.Errorf("nach bewusster Wahl: state %v, erwartet ViewFileManager", m.state)
+	}
+}
+
+// TestFileManagerSingleConnectionCannotProceed - mit nur einer Verbindung
+// bleibt rechts nur der Platzhalter: kein Datei-Manager, q führt zurück.
+func TestFileManagerSingleConnectionCannotProceed(t *testing.T) {
 	m := newListTestModel(t, "Server")
 	rec := newConnectRecorder()
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	if m.state != ViewFileManager {
-		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	m = openPick(t, m)
+	m = pickSide(t, m, "Server")
+	if names := pickNames(m); len(names) != 0 {
+		t.Errorf("rechts: Auswahl = %v, erwartet leer", names)
 	}
-	if len(rec.calls) != 2 {
-		t.Errorf("Verbindungsaufbauten = %v, erwartet zwei getrennte", rec.calls)
+	m = press(t, m, "down", "end", "enter")
+	if m.state != ViewFMPick || m.fm.pickCursor != 0 || len(rec.calls) != 0 {
+		t.Errorf("state %v, Cursor %d, Aufrufe %v - erwartet Auswahl ohne Verbindung", m.state, m.fm.pickCursor, rec.calls)
+	}
+	m = press(t, m, "q")
+	if m.state != ViewList {
+		t.Errorf("q: state %v, erwartet ViewList", m.state)
 	}
 }
 
@@ -440,17 +562,16 @@ func TestFileManagerConnectsBothWithoutTunnels(t *testing.T) {
 // TestFileManagerConnectionStripsTunnels prüft, dass die Verbindungsdaten
 // für den Datei-Manager keine Tunnel enthalten.
 func TestFileManagerConnectionStripsTunnels(t *testing.T) {
-	m := newListTestModel(t, "Server")
+	m := newListTestModel(t, "Server", "Zweit")
 	m.connections[0].Tunnels = []TunnelConfig{{LocalPort: 3306, RemotePort: 3306, Enabled: true}}
 	var seen []Connection
 	m.fmConnect = func(conn Connection, password string) (remoteFS, error) {
 		seen = append(seen, conn)
 		return newFakeFS(), nil
 	}
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Server")
+	m = pickSide(t, m, "Zweit")
 	if len(seen) != 2 {
 		t.Fatalf("Verbindungen = %d, erwartet 2", len(seen))
 	}
@@ -471,11 +592,9 @@ func TestFileManagerAsksPasswordAfterAuthFailure(t *testing.T) {
 	authFailed := errors.New("ssh: unable to authenticate")
 	rec.results["id-1"] = authFailed
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "down")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Links")
+	m = pickSide(t, m, "Rechts")
 	if m.state != ViewFMPassword || m.fm.passwordSide != 1 {
 		t.Fatalf("state = %v/Seite %d, erwartet Passwortabfrage rechts", m.state, m.fm.passwordSide)
 	}
@@ -501,14 +620,13 @@ func TestFileManagerAsksPasswordAfterAuthFailure(t *testing.T) {
 
 // TestFileManagerWrongPasswordAsksAgain - falsches Passwort: erneut fragen.
 func TestFileManagerWrongPasswordAsksAgain(t *testing.T) {
-	m := newListTestModel(t, "Server")
+	m := newListTestModel(t, "Server", "Zweit")
 	rec := newConnectRecorder()
 	rec.results["id-0"] = errors.New("ssh: unable to authenticate")
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Server")
+	m = pickSide(t, m, "Zweit")
 	m = press(t, m, "a")
 	m = pressRun(t, m, "enter")
 	if m.state != ViewFMPassword {
@@ -529,11 +647,9 @@ func TestFileManagerPasswordEscAborts(t *testing.T) {
 	rec := newConnectRecorder()
 	rec.results["id-1"] = errors.New("ssh: unable to authenticate")
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "down")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Links")
+	m = pickSide(t, m, "Rechts")
 	m = press(t, m, "esc")
 	if m.state != ViewList {
 		t.Fatalf("state = %v, erwartet ViewList", m.state)
@@ -549,11 +665,9 @@ func TestFileManagerNetworkErrorReturnsToList(t *testing.T) {
 	rec := newConnectRecorder()
 	rec.results["id-1"] = &networkError{err: errors.New("dial tcp 10.0.0.1:22: i/o timeout")}
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "down")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Links")
+	m = pickSide(t, m, "Rechts")
 	if m.state != ViewList {
 		t.Fatalf("state = %v, erwartet ViewList", m.state)
 	}
@@ -571,14 +685,13 @@ func TestFileManagerNetworkErrorReturnsToList(t *testing.T) {
 // TestFileManagerHostKeyChangedReturnsToList - geänderter Host-Key wird
 // nicht im Datei-Manager bestätigt, sondern gemeldet.
 func TestFileManagerHostKeyChangedReturnsToList(t *testing.T) {
-	m := newListTestModel(t, "Server")
+	m := newListTestModel(t, "Server", "Zweit")
 	rec := newConnectRecorder()
 	rec.results["id-0"] = &HostKeyChangedError{Hostname: "10.0.0.1"}
 	m.fmConnect = rec.connect
-	m = press(t, m, "end")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
-	m = pressRun(t, m, "enter")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Server")
+	m = pickSide(t, m, "Zweit")
 	if m.state != ViewList {
 		t.Fatalf("state = %v, erwartet ViewList", m.state)
 	}
@@ -592,7 +705,9 @@ func TestFileManagerHostKeyChangedReturnsToList(t *testing.T) {
 func TestFileManagerQuitWhileConnectingClosesLateResult(t *testing.T) {
 	m := newListTestModel(t, "Links", "Rechts")
 	m.fmConnect = newConnectRecorder().connect
-	m = press(t, m, "end", "enter", "enter", "down")
+	m = openPick(t, m)
+	m = pickSide(t, m, "Links")
+	m = press(t, m, "down") // "Rechts"
 	updated, cmd := m.Update(keyMsgFor("enter"))
 	m = updated.(AppModel)
 	if m.state != ViewFMConnecting {
@@ -1113,14 +1228,13 @@ func TestFileManagerConnectErrorsSanitized(t *testing.T) {
 		"hostkey": &HostKeyChangedError{Hostname: "host\x1b[2J"},
 	}
 	for name, connErr := range cases {
-		m := newListTestModel(t, "Server")
+		m := newListTestModel(t, "Server", "Zweit")
 		rec := newConnectRecorder()
 		rec.results["id-0"] = connErr
 		m.fmConnect = rec.connect
-		m = press(t, m, "end")
-		m = pressRun(t, m, "enter")
-		m = pressRun(t, m, "enter")
-		m = pressRun(t, m, "enter")
+		m = openPick(t, m)
+		m = pickSide(t, m, "Server")
+		m = pickSide(t, m, "Zweit")
 		if m.state != ViewList {
 			t.Fatalf("%s: state = %v, erwartet ViewList", name, m.state)
 		}

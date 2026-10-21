@@ -28,7 +28,7 @@
 - src/tui_keygen.go - Key-Generierung
 
 ## Datei-Manager (MC-Modus, ab Build 53, 2026-10-21)
-- Letzter Listeneintrag (rowFileManager, Leerzeile davor) -> linke/rechte Verbindung wählen -> eigene SSH-Verbindungen ohne Tunnel (SSHManager.ConnectStandalone) + SFTP (github.com/pkg/sftp)
+- Letzter Listeneintrag (rowFileManager, Leerzeile davor) -> linke/rechte Verbindung wählen (ab Build 55: Platzhalter "(nicht ausgewählt)" zuerst, Enter darauf wirkungslos = Zwang zur bewussten Wahl; links gewählte rechts ausgeblendet) -> eigene SSH-Verbindungen ohne Tunnel (SSHManager.ConnectStandalone) + SFTP (github.com/pkg/sftp)
 - Rohfassung: Navigation, Tab, F10/q zurück; Menü + F1-F9 nur optisch; 3 Farbmodi vorbereitet (Umschalten später über Optionen)
 - Mockups: claude-generated/mc-mockup.html
 - Nächste Schritte laut Nutzer: Kopieren, Verschieben, MkDir, Löschen, Markieren, Ansehen, Bearbeiten, Optionen-Menü

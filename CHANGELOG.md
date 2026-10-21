@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.55] – Build 55
+- **Changed** file manager connection choice: the first entry is now the placeholder "(not selected)" and the cursor starts on it. Enter on the placeholder does nothing, so you cannot end up in the file manager by accidentally pressing Enter twice – both connections have to be chosen deliberately (translated into all 41 languages)
+- **Changed** a connection can no longer be paired with itself: the connection chosen for the left panel is removed from the list for the right panel
+- **Added** 3 new tests, 1 replaced (385 total, all green)
+
 ## [v0.54] – Build 54
 - **Security** error messages from connection attempts (file manager and normal connect, key deployment/removal) are shown with control characters replaced: SSH/SFTP error texts can contain text sent by the server (e.g. during the handshake) and could otherwise inject terminal escape sequences (finding of the automated security review of Build 53)
 - **Added** 2 new tests (383 total, all green)
