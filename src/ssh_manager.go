@@ -6,7 +6,7 @@
 // ausprobiert, ohne den Benutzer nach der Methode zu fragen.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 package main
 
 import (
@@ -131,8 +131,26 @@ func (m *SSHManager) Shutdown() {
 // @param conn - Die Verbindungskonfiguration
 // @return *ConnectionStatus - Status der aufgebauten Verbindung
 // @return error - Fehler wenn keine Methode funktioniert
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
+	ctx, status, err := m.dialAuto(conn)
+	if err != nil {
+		return nil, err
+	}
+	m.registerConnection(conn, status, "", ctx)
+	return status, nil
+}
+
+// dialAuto baut eine Verbindung per Auto-Auth (Cache, Agent, Schlüssel) auf,
+// ohne sie im Manager zu registrieren. Gemeinsame Grundlage für ConnectAuto
+// und ConnectStandalone.
+//
+// @param conn - Die Verbindungskonfiguration
+// @return context.Context - Kontext der Verbindung (Tunnel/Keepalive)
+// @return *ConnectionStatus - Status der aufgebauten Verbindung
+// @return error - Fehler wenn keine Methode funktioniert
+// @date   2026-10-21 19:45
+func (m *SSHManager) dialAuto(conn Connection) (context.Context, *ConnectionStatus, error) {
 	m.logger.Info("Auto-Verbindung zu %s@%s:%d...", conn.User, conn.Host, conn.Port)
 
 	// 1. Gecachte Methode als erstes probieren (spart unnötige Versuche)
@@ -143,8 +161,7 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 			if err == nil {
 				m.logger.Info("Gecachte Methode erfolgreich für %s", conn.Name)
 				m.authCache.RecordSuccess(conn.ID, entry.Method)
-				m.registerConnection(conn, status, "", ctx)
-				return status, nil
+				return ctx, status, nil
 			}
 			// Fehlerzähler nur bei echten Auth-Fehlern erhöhen (falscher Schlüssel).
 			// Netzwerkfehler (Timeout, refused, …) lassen den Cache unberührt –
@@ -152,7 +169,7 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 			m.logger.Info("Gecachte Methode fehlgeschlagen für %s: %v", conn.Name, err)
 			// Server nicht erreichbar: weitere Methoden sind sinnlos -> sofort melden
 			if IsNetworkError(err) {
-				return nil, err
+				return nil, nil, err
 			}
 			if IsSSHAuthError(err) {
 				m.authCache.RecordFailure(conn.ID)
@@ -164,14 +181,43 @@ func (m *SSHManager) ConnectAuto(conn Connection) (*ConnectionStatus, error) {
 	ctx, status, successMethod, err := m.connectAutoDiscover(conn)
 	if err != nil {
 		m.logger.Info("Auto-Verbindung fehlgeschlagen für %s: %v", conn.Name, err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Erfolgreiche Methode für zukünftige Verbindungen merken
 	m.authCache.RecordSuccess(conn.ID, successMethod)
 	m.logger.Info("Auto-Verbindung zu %s hergestellt (%s)", conn.Name, successMethod)
-	m.registerConnection(conn, status, "", ctx)
-	return status, nil
+	return ctx, status, nil
+}
+
+// ConnectStandalone baut eine eigenständige SSH-Verbindung ohne Tunnel auf,
+// z. B. für den Datei-Manager. Sie wird NICHT im Manager registriert (kein
+// Keepalive, kein Reconnect, erscheint nicht als "verbunden" in der Liste);
+// der Aufrufer schließt den Client selbst.
+// Leeres Passwort = Auto-Auth (Cache, Agent, Schlüssel), sonst Passwort-Auth.
+//
+// @param conn - Die Verbindungskonfiguration (Tunnel werden ignoriert)
+// @param password - Passwort oder leer für Auto-Auth
+// @return *ssh.Client - Verbundener SSH-Client
+// @return error - Fehler beim Verbindungsaufbau
+// @date   2026-10-21 19:45
+func (m *SSHManager) ConnectStandalone(conn Connection, password string) (*ssh.Client, error) {
+	// Kopie ohne Tunnel: dialSSH startet dann keine Port-Weiterleitungen
+	conn.Tunnels = nil
+
+	var status *ConnectionStatus
+	var err error
+	if password == "" {
+		_, status, err = m.dialAuto(conn)
+	} else {
+		_, status, err = m.dialPassword(conn, password)
+	}
+	if err != nil {
+		return nil, err
+	}
+	// Kontext wird nur für Tunnel/Keepalive gebraucht - sofort freigeben
+	status.Cancel()
+	return status.SSHClient, nil
 }
 
 // connectAutoDiscover probiert Auth-Methoden einzeln durch (Agent → konfigurierter Key
@@ -377,8 +423,26 @@ func (m *SSHManager) ClearAuthCache(connID string) {
 // @param password - Das eingegebene Passwort
 // @return *ConnectionStatus - Status der aufgebauten Verbindung
 // @return error - Fehler beim Verbindungsaufbau
-// @date   2026-03-15 00:00
+// @date   2026-10-21 19:45
 func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*ConnectionStatus, error) {
+	ctx, status, err := m.dialPassword(conn, password)
+	if err != nil {
+		return nil, err
+	}
+	m.registerConnection(conn, status, password, ctx)
+	return status, nil
+}
+
+// dialPassword baut eine Verbindung per Passwort (bzw. Keyboard-Interactive)
+// auf, ohne sie im Manager zu registrieren.
+//
+// @param conn - Die Verbindungskonfiguration
+// @param password - Das eingegebene Passwort
+// @return context.Context - Kontext der Verbindung (Tunnel/Keepalive)
+// @return *ConnectionStatus - Status der aufgebauten Verbindung
+// @return error - Fehler beim Verbindungsaufbau
+// @date   2026-10-21 19:45
+func (m *SSHManager) dialPassword(conn Connection, password string) (context.Context, *ConnectionStatus, error) {
 	m.logger.Info("Passwort-Verbindung zu %s@%s:%d ...", conn.User, conn.Host, conn.Port)
 
 	var methods []ssh.AuthMethod
@@ -403,12 +467,11 @@ func (m *SSHManager) ConnectWithPassword(conn Connection, password string) (*Con
 	ctx, status, err := m.dialSSH(conn, methods, InitialConnectTimeout)
 	if err != nil {
 		m.logger.Error("Passwort-Verbindung zu %s fehlgeschlagen: %v", conn.Name, err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	m.logger.Info("Passwort-Verbindung zu %s hergestellt", conn.Name)
-	m.registerConnection(conn, status, password, ctx)
-	return status, nil
+	return ctx, status, nil
 }
 
 // Connect baut eine SSH-Verbindung mit expliziter Auth-Methode auf (Legacy).

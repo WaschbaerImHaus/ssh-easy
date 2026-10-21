@@ -10,7 +10,7 @@
 //   - Validierung von Gruppennamen im Formular
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 package main
 
 import (
@@ -276,9 +276,10 @@ func TestGroupExpandCollapseKeys(t *testing.T) {
 	m := newListTestModel(t, "Abc:123", "Abc:234", "Zeta")
 
 	// Cursor steht auf der Gruppe Abc; Enter klappt auf
+	// (Zeilen jeweils inkl. Datei-Manager-Eintrag ganz unten)
 	m = press(t, m, "enter")
-	if len(m.listRows()) != 4 {
-		t.Fatalf("nach Enter: %d Zeilen, erwartet 4 (aufgeklappt)", len(m.listRows()))
+	if len(m.listRows()) != 5 {
+		t.Fatalf("nach Enter: %d Zeilen, erwartet 5 (aufgeklappt)", len(m.listRows()))
 	}
 	if m.state != ViewList {
 		t.Errorf("Enter auf Gruppe darf nicht verbinden (state=%v)", m.state)
@@ -286,8 +287,8 @@ func TestGroupExpandCollapseKeys(t *testing.T) {
 
 	// Enter erneut klappt wieder zu
 	m = press(t, m, "enter")
-	if len(m.listRows()) != 2 {
-		t.Fatalf("nach zweitem Enter: %d Zeilen, erwartet 2", len(m.listRows()))
+	if len(m.listRows()) != 3 {
+		t.Fatalf("nach zweitem Enter: %d Zeilen, erwartet 3", len(m.listRows()))
 	}
 
 	// Pfeil rechts klappt auf, Pfeil runter auf das erste Kind
@@ -299,8 +300,8 @@ func TestGroupExpandCollapseKeys(t *testing.T) {
 
 	// Pfeil links auf einem Kind: Gruppe zuklappen, Cursor auf Gruppe
 	m = press(t, m, "left")
-	if len(m.listRows()) != 2 || m.cursor != 0 {
-		t.Errorf("nach links: %d Zeilen, cursor=%d, erwartet 2 Zeilen und cursor 0", len(m.listRows()), m.cursor)
+	if len(m.listRows()) != 3 || m.cursor != 0 {
+		t.Errorf("nach links: %d Zeilen, cursor=%d, erwartet 3 Zeilen und cursor 0", len(m.listRows()), m.cursor)
 	}
 	if _, ok := m.selectedConnection(); ok {
 		t.Error("auf einer Gruppenzeile darf keine Verbindung ausgewählt sein")
@@ -416,44 +417,46 @@ func namesN(n int) []string {
 	return names
 }
 
-// TestListShowsAllUpToFifteen prüft dass bis 15 Einträge alles sichtbar
-// ist und keine Bildlauf-Hinweise erscheinen.
+// TestListShowsAllUpToFifteen prüft dass bis 15 Zeilen (14 Verbindungen +
+// Datei-Manager-Eintrag) alles sichtbar ist und keine Bildlauf-Hinweise
+// erscheinen.
 func TestListShowsAllUpToFifteen(t *testing.T) {
-	m := newListTestModel(t, namesN(15)...)
+	m := newListTestModel(t, namesN(14)...)
 	text := renderListText(m)
-	if !strings.Contains(text, "Host01") || !strings.Contains(text, "Host15") {
-		t.Errorf("bei 15 Einträgen fehlen Zeilen:\n%s", text)
+	if !strings.Contains(text, "Host01") || !strings.Contains(text, "Host14") || !strings.Contains(text, m.tr(txtFMListEntry)) {
+		t.Errorf("bei 15 Zeilen fehlen Zeilen:\n%s", text)
 	}
 	if strings.Contains(text, "↑") || strings.Contains(text, "↓") {
-		t.Errorf("bei 15 Einträgen darf kein Bildlauf-Hinweis erscheinen:\n%s", text)
+		t.Errorf("bei 15 Zeilen darf kein Bildlauf-Hinweis erscheinen:\n%s", text)
 	}
 }
 
-// TestListScrollsBeyondFifteen prüft Fenster und Hinweise ab 16 Einträgen.
+// TestListScrollsBeyondFifteen prüft Fenster und Hinweise ab 16 Zeilen
+// (20 Verbindungen + Datei-Manager-Eintrag = 21 Zeilen).
 func TestListScrollsBeyondFifteen(t *testing.T) {
 	m := newListTestModel(t, namesN(20)...)
 	text := renderListText(m)
 	if !strings.Contains(text, "Host15") || strings.Contains(text, "Host16") {
 		t.Errorf("Startfenster soll Host01..Host15 zeigen:\n%s", text)
 	}
-	if !strings.Contains(text, "↓ +5") || strings.Contains(text, "↑") {
-		t.Errorf("Startfenster: Hinweis '↓ +5' erwartet, kein '↑':\n%s", text)
+	if !strings.Contains(text, "↓ +6") || strings.Contains(text, "↑") {
+		t.Errorf("Startfenster: Hinweis '↓ +6' erwartet, kein '↑':\n%s", text)
 	}
 
-	// Ans Ende scrollen
+	// Ans Ende scrollen: Host07..Host20 + Datei-Manager-Eintrag
 	m = press(t, m, "end")
 	text = renderListText(m)
-	if strings.Contains(text, "Host05") || !strings.Contains(text, "Host20") {
-		t.Errorf("Ende: Fenster soll Host06..Host20 zeigen:\n%s", text)
+	if strings.Contains(text, "Host06") || !strings.Contains(text, "Host20") || !strings.Contains(text, m.tr(txtFMListEntry)) {
+		t.Errorf("Ende: Fenster soll Host07..Host20 und den Datei-Manager zeigen:\n%s", text)
 	}
-	if !strings.Contains(text, "↑ +5") || strings.Contains(text, "↓") {
-		t.Errorf("Ende: Hinweis '↑ +5' erwartet, kein '↓':\n%s", text)
+	if !strings.Contains(text, "↑ +6") || strings.Contains(text, "↓") {
+		t.Errorf("Ende: Hinweis '↑ +6' erwartet, kein '↓':\n%s", text)
 	}
 
 	// Schrittweise wieder hoch: Fenster folgt erst am oberen Rand
 	m = press(t, m, "up")
-	if m.listOffset != 5 {
-		t.Errorf("listOffset nach einem Schritt hoch = %d, erwartet 5", m.listOffset)
+	if m.listOffset != 6 {
+		t.Errorf("listOffset nach einem Schritt hoch = %d, erwartet 6", m.listOffset)
 	}
 	m = press(t, m, "home")
 	if m.cursor != 0 || m.listOffset != 0 {
@@ -468,22 +471,24 @@ func TestListPageKeys(t *testing.T) {
 	if m.cursor != maxVisibleListRows {
 		t.Errorf("PgDown: cursor=%d, erwartet %d", m.cursor, maxVisibleListRows)
 	}
+	// Letzte Zeile ist der Datei-Manager-Eintrag (Index 40)
 	m = press(t, m, "pgdown", "pgdown", "pgdown")
-	if m.cursor != 39 {
-		t.Errorf("PgDown am Ende: cursor=%d, erwartet 39", m.cursor)
+	if m.cursor != 40 {
+		t.Errorf("PgDown am Ende: cursor=%d, erwartet 40", m.cursor)
 	}
 	m = press(t, m, "pgup")
-	if m.cursor != 39-maxVisibleListRows {
-		t.Errorf("PgUp: cursor=%d, erwartet %d", m.cursor, 39-maxVisibleListRows)
+	if m.cursor != 40-maxVisibleListRows {
+		t.Errorf("PgUp: cursor=%d, erwartet %d", m.cursor, 40-maxVisibleListRows)
 	}
 }
 
-// TestListDownStopsAtEnd prüft dass der Cursor nicht über das Ende läuft.
+// TestListDownStopsAtEnd prüft dass der Cursor nicht über das Ende
+// (Datei-Manager-Eintrag, Index 2) läuft.
 func TestListDownStopsAtEnd(t *testing.T) {
 	m := newListTestModel(t, "A", "B")
-	m = press(t, m, "down", "down", "down")
-	if m.cursor != 1 {
-		t.Errorf("cursor=%d, erwartet 1", m.cursor)
+	m = press(t, m, "down", "down", "down", "down")
+	if m.cursor != 2 {
+		t.Errorf("cursor=%d, erwartet 2", m.cursor)
 	}
 	m = press(t, m, "up", "up", "up")
 	if m.cursor != 0 {

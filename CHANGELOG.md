@@ -5,6 +5,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.53] – Build 53
+- **Added** file manager (first draft of a reduced Midnight Commander clone for copying between two SSH hosts): new last entry in the connection list, separated by a blank line. Choose the left and the right connection one after the other (`q` goes back at any time); both are opened as separate SSH connections without tunnels, independent of connections already open in the list (agent/keys, password prompt if needed, known_hosts check as usual). Files are listed via SFTP, nothing has to be installed on the servers
+- **Added** two-panel view: turquoise menu bar at the top, F-key bar at the bottom, no command line. Each panel shows `user@host:path`, name, size and modification time; directories first, `..` on top, start directory is the user's home. `Enter` changes into a directory or `..` (cursor lands on the directory you came from), `Tab` switches panels, arrows/PgUp/PgDn/Home/End move the cursor, `F10` or `q` closes both connections and returns to the list with the file manager entry still selected
+- **Added** a directory without permission keeps the panel in the current directory and shows a message; symlinks to directories are marked with `~` and are not followed (message instead)
+- **Added** three colour themes prepared (classic mc, ssh-easy, monochrome); switching via the Options menu follows in a later build. Menu and F1–F9 are visual only in this draft
+- **Security** file names from the server are shown with control characters replaced (no terminal escape injection via crafted file names)
+- **Fixed** after deleting the last connection the cursor stays on a connection instead of jumping to the file manager entry
+- **Added** 43 new tests (381 total, all green)
+
 ## [v0.50] – Build 50
 - **Changed** the status view no longer shows an empty "Tunnel:" heading for connections without (enabled) tunnels; it shows "No tunnels" instead (translated into all 41 languages)
 - **Added** 1 new test (280 total, all green)

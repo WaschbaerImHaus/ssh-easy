@@ -10,7 +10,7 @@
 // und dadurch einfach testbar.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 package main
 
 import "strings"
@@ -27,8 +27,8 @@ const minVisibleListRows = 3
 
 // listChromeLines - Zeilen, die außer der Liste selbst auf dem Bildschirm
 // stehen (Titel, Bildlauf-Hinweise, Meldungen, Hilfe, Export-Hinweis,
-// Auto-Update-Zeile).
-const listChromeLines = 12
+// Auto-Update-Zeile, Leerzeile vor dem Datei-Manager-Eintrag).
+const listChromeLines = 13
 
 // listRowKind unterscheidet die Zeilentypen der Liste.
 type listRowKind int
@@ -40,6 +40,8 @@ const (
 	rowGroup
 	// rowChild - Verbindung innerhalb einer aufgeklappten Gruppe
 	rowChild
+	// rowFileManager - Eintrag "Datei-Manager" ganz unten (keine Verbindung)
+	rowFileManager
 )
 
 // listRow ist eine sichtbare Zeile der Verbindungsliste.
@@ -50,7 +52,7 @@ type listRow struct {
 	label string
 	// Gruppenschlüssel in Kleinbuchstaben (nur rowGroup/rowChild)
 	groupKey string
-	// Index in der Verbindungsliste (-1 bei rowGroup)
+	// Index in der Verbindungsliste (-1 bei rowGroup und rowFileManager)
 	connIndex int
 	// Indizes aller Verbindungen der Gruppe (nur rowGroup)
 	children []int

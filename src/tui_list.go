@@ -5,7 +5,7 @@
 // Auto-Connect (Agent + alle verfügbaren Keys) ohne Nutzerabfrage.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 package main
 
 import (
@@ -112,6 +112,10 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "enter":
+		// Datei-Manager-Eintrag ganz unten
+		if row != nil && row.kind == rowFileManager {
+			return m.openFileManager()
+		}
 		// Gruppe: auf-/zuklappen
 		if row != nil && row.kind == rowGroup {
 			if m.expandedGroups[row.groupKey] {
@@ -204,22 +208,29 @@ func (m AppModel) startAutoConnect(conn Connection) (tea.Model, tea.Cmd) {
 }
 
 // listRows liefert die aktuell sichtbaren Zeilen der Verbindungsliste.
+// Gibt es Verbindungen, steht ganz unten der Datei-Manager-Eintrag.
 //
-// @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen)
-// @date   2026-10-16 10:00
+// @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen,
+// Datei-Manager)
+// @date   2026-10-21 19:45
 func (m AppModel) listRows() []listRow {
-	return buildListRows(m.connections, m.expandedGroups)
+	rows := buildListRows(m.connections, m.expandedGroups)
+	if len(rows) > 0 {
+		rows = append(rows, listRow{kind: rowFileManager, connIndex: -1})
+	}
+	return rows
 }
 
 // selectedConnection liefert die Verbindung unter dem Cursor.
-// Auf einer Gruppenzeile gibt es keine Verbindung (ok = false).
+// Auf einer Gruppenzeile und dem Datei-Manager-Eintrag gibt es keine
+// Verbindung (ok = false).
 //
 // @return Connection - Ausgewählte Verbindung
-// @return bool - false bei leerer Liste oder Gruppenzeile
-// @date   2026-10-16 10:00
+// @return bool - false bei leerer Liste, Gruppe oder Datei-Manager
+// @date   2026-10-21 19:45
 func (m AppModel) selectedConnection() (Connection, bool) {
 	rows := m.listRows()
-	if m.cursor < 0 || m.cursor >= len(rows) || rows[m.cursor].kind == rowGroup {
+	if m.cursor < 0 || m.cursor >= len(rows) || rows[m.cursor].connIndex < 0 {
 		return Connection{}, false
 	}
 	return m.connections[rows[m.cursor].connIndex], true
@@ -270,7 +281,7 @@ func (m *AppModel) selectConnectionByID(id string) {
 		break
 	}
 	for i, row := range m.listRows() {
-		if row.kind != rowGroup && m.connections[row.connIndex].ID == id {
+		if row.connIndex >= 0 && m.connections[row.connIndex].ID == id {
 			m.cursor = i
 			break
 		}
@@ -305,6 +316,10 @@ func (m AppModel) renderList(s *strings.Builder) {
 			s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
 		}
 		for i := offset; i < end; i++ {
+			// Datei-Manager-Eintrag mit Leerzeile von den Verbindungen absetzen
+			if rows[i].kind == rowFileManager && i > 0 {
+				s.WriteString("\n")
+			}
 			s.WriteString(m.renderListRow(rows[i], i == m.cursor))
 			s.WriteString("\n")
 		}
@@ -349,13 +364,18 @@ func (m AppModel) renderList(s *strings.Builder) {
 // @param row - Darzustellende Zeile
 // @param selected - true wenn der Cursor auf der Zeile steht
 // @return string - Gerenderte Zeile
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 func (m AppModel) renderListRow(row listRow, selected bool) string {
 	base := normalStyle
 	if selected {
 		base = selectedStyle
 	}
 	dotStyle := base.Foreground(lipgloss.Color("46")).Bold(true)
+
+	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt
+	if row.kind == rowFileManager {
+		return base.Render("    ▸ " + m.tr(txtFMListEntry))
+	}
 
 	// Statuspunkt: Verbindung verbunden bzw. mindestens ein Gruppenmitglied
 	connected := false
@@ -515,7 +535,7 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-03-07 21:00
+// @date   2026-10-21 19:45
 func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "j":
@@ -533,6 +553,12 @@ func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.configCache.Invalidate()
 		m.reloadConfig()
 		m.clampListCursor()
+		// Wurde die letzte Verbindung gelöscht, nicht auf dem
+		// Datei-Manager-Eintrag stehen bleiben, sondern auf der Verbindung davor
+		if rows := m.listRows(); m.cursor > 0 && m.cursor < len(rows) && rows[m.cursor].kind == rowFileManager {
+			m.cursor--
+			m.clampListCursor()
+		}
 		m.state = ViewList
 
 	case "n", "esc":

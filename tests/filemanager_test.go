@@ -1,0 +1,1103 @@
+// Paket main - Tests für den Datei-Manager (MC-Modus, Build 53)
+//
+// Prüft die Rohfassung des Zwei-Fenster-Datei-Managers:
+//   - Eintrag "Datei-Manager" ganz unten in der Verbindungsliste
+//   - Auswahl von linker und rechter Verbindung nacheinander, q = zurück
+//   - Verbindungsaufbau (Auto-Auth, Passwort, Fehler) über austauschbare
+//     Verbindungsfunktion - ohne echtes Netzwerk
+//   - Navigation: Verzeichnis betreten, "..", fehlende Rechte,
+//     Verzeichnis-Symlinks (werden nicht verfolgt), Tab, F10
+//   - Hilfsfunktionen: Sortierung, Größenformat, Namensbereinigung
+//   - Darstellung: Bildschirm exakt so hoch/breit wie das Terminal
+//
+// @author Kurt Ingwer
+// @date   2026-10-21 19:45
+package main
+
+import (
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"sort"
+	"strings"
+	"testing"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// --- Testdoubles ---
+
+// fakeFileInfo ist eine minimale os.FileInfo für das Fake-Dateisystem.
+type fakeFileInfo struct {
+	name    string
+	size    int64
+	mode    fs.FileMode
+	modTime time.Time
+}
+
+func (f fakeFileInfo) Name() string       { return f.name }
+func (f fakeFileInfo) Size() int64        { return f.size }
+func (f fakeFileInfo) Mode() fs.FileMode  { return f.mode }
+func (f fakeFileInfo) ModTime() time.Time { return f.modTime }
+func (f fakeFileInfo) IsDir() bool        { return f.mode.IsDir() }
+func (f fakeFileInfo) Sys() any           { return nil }
+
+// fakeRemoteFS bildet ein entferntes Dateisystem im Speicher nach.
+// dirs: Verzeichnispfad -> Einträge; links: Symlink-Pfad -> Ziel-Info
+// (nil = defektes Ziel); denied: Pfade ohne Leserecht.
+type fakeRemoteFS struct {
+	home   string
+	dirs   map[string][]os.FileInfo
+	links  map[string]os.FileInfo
+	denied map[string]bool
+	closed bool
+	reads  []string
+}
+
+func (f *fakeRemoteFS) Getwd() (string, error) { return f.home, nil }
+
+func (f *fakeRemoteFS) ReadDir(p string) ([]os.FileInfo, error) {
+	f.reads = append(f.reads, p)
+	if f.denied[p] {
+		return nil, os.ErrPermission
+	}
+	entries, ok := f.dirs[p]
+	if !ok {
+		return nil, os.ErrNotExist
+	}
+	return entries, nil
+}
+
+func (f *fakeRemoteFS) Stat(p string) (os.FileInfo, error) {
+	if info, ok := f.links[p]; ok {
+		if info == nil {
+			return nil, os.ErrNotExist
+		}
+		return info, nil
+	}
+	if _, ok := f.dirs[p]; ok {
+		return fakeFileInfo{name: path.Base(p), mode: fs.ModeDir | 0o755}, nil
+	}
+	return nil, os.ErrNotExist
+}
+
+func (f *fakeRemoteFS) Close() error {
+	f.closed = true
+	return nil
+}
+
+// dirInfo / fileInfo / linkInfo erzeugen Einträge für das Fake-FS.
+func dirInfo(name string) os.FileInfo {
+	return fakeFileInfo{name: name, mode: fs.ModeDir | 0o755, size: 4096}
+}
+
+func fileInfo(name string, size int64) os.FileInfo {
+	return fakeFileInfo{name: name, mode: 0o644, size: size}
+}
+
+func linkInfo(name string) os.FileInfo {
+	return fakeFileInfo{name: name, mode: fs.ModeSymlink | 0o777, size: 12}
+}
+
+// newFakeFS liefert ein typisches Home-Verzeichnis:
+//
+//	/home/kurt: projekte/, geheim/ (kein Recht), logs -> /var/log (Symlink auf
+//	Verzeichnis), aktuell.txt -> notes.txt (Symlink auf Datei), kaputt ->
+//	(defekt), Notes.txt, b.txt
+func newFakeFS() *fakeRemoteFS {
+	return &fakeRemoteFS{
+		home: "/home/kurt",
+		dirs: map[string][]os.FileInfo{
+			"/":     {dirInfo("home"), dirInfo("var")},
+			"/home": {dirInfo("kurt"), dirInfo("anna")},
+			"/home/kurt": {
+				fileInfo("b.txt", 10),
+				dirInfo("projekte"),
+				fileInfo("Notes.txt", 2048),
+				dirInfo("geheim"),
+				linkInfo("logs"),
+				linkInfo("aktuell.txt"),
+				linkInfo("kaputt"),
+			},
+			"/home/kurt/projekte": {fileInfo("main.go", 100)},
+			"/home/kurt/geheim":   {},
+			"/var/log":            {fileInfo("syslog", 1)},
+		},
+		links: map[string]os.FileInfo{
+			"/home/kurt/logs":        dirInfo("log"),
+			"/home/kurt/aktuell.txt": fileInfo("Notes.txt", 2048),
+			"/home/kurt/kaputt":      nil,
+		},
+		denied: map[string]bool{"/home/kurt/geheim": true},
+	}
+}
+
+// fmConnectRecorder ersetzt den echten Verbindungsaufbau im Test.
+type fmConnectRecorder struct {
+	// Ergebnis pro Verbindungs-ID; fehlt die ID: neues newFakeFS()
+	results map[string]error
+	// Aufrufe als "id/passwort"
+	calls []string
+	// Zuletzt erzeugte Dateisysteme pro ID
+	created map[string]*fakeRemoteFS
+}
+
+func newConnectRecorder() *fmConnectRecorder {
+	return &fmConnectRecorder{results: map[string]error{}, created: map[string]*fakeRemoteFS{}}
+}
+
+func (r *fmConnectRecorder) connect(conn Connection, password string) (remoteFS, error) {
+	r.calls = append(r.calls, conn.ID+"/"+password)
+	if err := r.results[conn.ID]; err != nil {
+		return nil, err
+	}
+	fsys := newFakeFS()
+	r.created[conn.ID] = fsys
+	return fsys, nil
+}
+
+// runCmd führt ein Kommando aus und speist die Nachricht(en) ins Modell.
+// tea.Batch-Ergebnisse werden einzeln ausgeführt; Blink-Nachrichten u. ä.
+// laufen ohne Wirkung durch.
+func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
+	t.Helper()
+	for i := 0; cmd != nil && i < 20; i++ {
+		msg := cmd()
+		if batch, ok := msg.(tea.BatchMsg); ok {
+			var next tea.Cmd
+			for _, c := range batch {
+				if c == nil {
+					continue
+				}
+				inner := c()
+				if isFileManagerMsg(inner) {
+					updated, follow := m.Update(inner)
+					m = updated.(AppModel)
+					next = follow
+				}
+			}
+			cmd = next
+			continue
+		}
+		if !isFileManagerMsg(msg) {
+			return m
+		}
+		updated, follow := m.Update(msg)
+		m = updated.(AppModel)
+		cmd = follow
+	}
+	return m
+}
+
+// isFileManagerMsg erkennt die asynchronen Nachrichten des Datei-Managers.
+func isFileManagerMsg(msg tea.Msg) bool {
+	switch msg.(type) {
+	case fmConnectedMsg, fmDirLoadedMsg:
+		return true
+	}
+	return false
+}
+
+// pressRun sendet eine Taste und führt das Folgekommando aus.
+func pressRun(t *testing.T, m AppModel, key string) AppModel {
+	t.Helper()
+	updated, cmd := m.Update(fmKey(key))
+	return runCmd(t, updated.(AppModel), cmd)
+}
+
+// fmKey ergänzt keyMsgFor um die F-Tasten.
+func fmKey(key string) tea.KeyMsg {
+	switch key {
+	case "f10":
+		return tea.KeyMsg{Type: tea.KeyF10}
+	case "f5":
+		return tea.KeyMsg{Type: tea.KeyF5}
+	case "backspace":
+		return tea.KeyMsg{Type: tea.KeyBackspace}
+	}
+	return keyMsgFor(key)
+}
+
+// openFileManagerFor startet den Datei-Manager mit zwei Verbindungen
+// ("Links" und "Rechts") und liefert das Modell in der Zwei-Fenster-Ansicht.
+func openFileManagerFor(t *testing.T) (AppModel, *fmConnectRecorder) {
+	t.Helper()
+	m := newListTestModel(t, "Links", "Rechts")
+	rec := newConnectRecorder()
+	m.fmConnect = rec.connect
+	m.termWidth, m.termHeight = 100, 30
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter") // Datei-Manager öffnen -> linke Verbindung wählen
+	m = pressRun(t, m, "enter") // "Links" als linke Verbindung
+	m = pressRun(t, m, "down")
+	m = pressRun(t, m, "enter") // "Rechts" als rechte Verbindung -> verbinden
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager (Fehler: %q)", m.state, m.fm.message)
+	}
+	return m, rec
+}
+
+// entryNames liefert die Namen der Einträge eines Panels.
+func entryNames(p filePanel) []string {
+	names := make([]string, len(p.entries))
+	for i, e := range p.entries {
+		names[i] = e.name
+	}
+	return names
+}
+
+// cursorTo setzt den Cursor des aktiven Panels auf einen Eintrag.
+func cursorTo(t *testing.T, m AppModel, name string) AppModel {
+	t.Helper()
+	p := &m.fm.panels[m.fm.active]
+	for i, e := range p.entries {
+		if e.name == name {
+			p.cursor = i
+			return m
+		}
+	}
+	t.Fatalf("Eintrag %q nicht gefunden in %v", name, entryNames(*p))
+	return m
+}
+
+// --- Verbindungsliste ---
+
+// TestFileManagerRowIsLastListRow prüft den Eintrag ganz unten.
+func TestFileManagerRowIsLastListRow(t *testing.T) {
+	m := newListTestModel(t, "Abc:1", "Abc:2", "Server")
+	rows := m.listRows()
+	last := rows[len(rows)-1]
+	if last.kind != rowFileManager {
+		t.Fatalf("letzte Zeile hat Typ %v, erwartet rowFileManager", last.kind)
+	}
+	for _, row := range rows[:len(rows)-1] {
+		if row.kind == rowFileManager {
+			t.Error("Datei-Manager-Zeile darf nur einmal (ganz unten) vorkommen")
+		}
+	}
+}
+
+// TestFileManagerRowHiddenWithoutConnections - ohne Verbindungen kein Eintrag.
+func TestFileManagerRowHiddenWithoutConnections(t *testing.T) {
+	m := newListTestModel(t)
+	if rows := m.listRows(); len(rows) != 0 {
+		t.Errorf("leere Liste hat %d Zeilen, erwartet 0", len(rows))
+	}
+}
+
+// TestFileManagerRowSeparatedByBlankLine prüft die Leerzeile davor.
+func TestFileManagerRowSeparatedByBlankLine(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	lines := strings.Split(stripANSI(renderListText(m)), "\n")
+	entry := m.tr(txtFMListEntry)
+	for i, line := range lines {
+		if strings.Contains(line, entry) {
+			if i == 0 || strings.TrimSpace(lines[i-1]) != "" {
+				t.Errorf("vor %q fehlt die Leerzeile:\n%s", entry, strings.Join(lines, "\n"))
+			}
+			if !strings.Contains(lines[i-2], "Server") {
+				t.Errorf("Leerzeile steht nicht direkt nach der letzten Verbindung:\n%s", strings.Join(lines, "\n"))
+			}
+			return
+		}
+	}
+	t.Fatalf("Eintrag %q nicht gefunden:\n%s", entry, strings.Join(lines, "\n"))
+}
+
+// TestFileManagerRowIgnoresConnectionKeys - e/d/x wirken nicht auf den Eintrag.
+func TestFileManagerRowIgnoresConnectionKeys(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	m = press(t, m, "end")
+	if _, ok := m.selectedConnection(); ok {
+		t.Fatal("Datei-Manager-Zeile darf keine Verbindung liefern")
+	}
+	for _, key := range []string{"e", "d", "x"} {
+		if got := press(t, m, key); got.state != ViewList {
+			t.Errorf("Taste %q auf Datei-Manager-Zeile wechselt nach %v", key, got.state)
+		}
+	}
+}
+
+// TestSelectConnectionByIDSkipsFileManagerRow - darf nicht abstürzen
+// (Datei-Manager-Zeile hat keinen Verbindungsindex).
+func TestSelectConnectionByIDSkipsFileManagerRow(t *testing.T) {
+	m := newListTestModel(t, "A", "B")
+	m.selectConnectionByID("unbekannt")
+	m.selectConnectionByID("id-1")
+	if conn, ok := m.selectedConnection(); !ok || conn.ID != "id-1" {
+		t.Errorf("Auswahl = %v/%v, erwartet id-1", conn.ID, ok)
+	}
+}
+
+// --- Verbindungsauswahl ---
+
+// TestFileManagerPickBothSides prüft Auswahl links, dann rechts.
+func TestFileManagerPickBothSides(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	m.fmConnect = newConnectRecorder().connect
+	m = press(t, m, "end", "enter")
+	if m.state != ViewFMPick || m.fm.pickSide != 0 {
+		t.Fatalf("state = %v/Seite %d, erwartet ViewFMPick links", m.state, m.fm.pickSide)
+	}
+	text := stripANSI(m.View())
+	if !strings.Contains(text, m.tr(txtFMPickLeft)) {
+		t.Errorf("Titel für linke Seite fehlt:\n%s", text)
+	}
+	// Auswahl ist flach: Gruppen werden nicht zusammengeklappt, Tunnel egal
+	if !strings.Contains(text, "Links") || !strings.Contains(text, "Rechts") {
+		t.Errorf("Verbindungen fehlen in der Auswahl:\n%s", text)
+	}
+
+	m = press(t, m, "enter")
+	if m.state != ViewFMPick || m.fm.pickSide != 1 {
+		t.Fatalf("nach erster Wahl: state = %v/Seite %d, erwartet rechte Seite", m.state, m.fm.pickSide)
+	}
+	if !strings.Contains(stripANSI(m.View()), m.tr(txtFMPickRight)) {
+		t.Error("Titel für rechte Seite fehlt")
+	}
+	if m.fm.panels[0].conn.Name != "Links" {
+		t.Errorf("linke Verbindung = %q, erwartet Links", m.fm.panels[0].conn.Name)
+	}
+}
+
+// TestFileManagerPickShowsGroupedNamesFlat - Gruppenmitglieder erscheinen
+// mit vollem Namen, auch wenn die Gruppe in der Liste zugeklappt ist.
+func TestFileManagerPickShowsGroupedNamesFlat(t *testing.T) {
+	m := newListTestModel(t, "Büro:Server1", "Büro:Server2")
+	m = press(t, m, "end", "enter")
+	text := stripANSI(m.View())
+	for _, name := range []string{"Büro:Server1", "Büro:Server2"} {
+		if !strings.Contains(text, name) {
+			t.Errorf("%q fehlt in der Auswahl:\n%s", name, text)
+		}
+	}
+}
+
+// TestFileManagerPickQuitReturnsToFileManagerRow - q bricht ab.
+func TestFileManagerPickQuitReturnsToFileManagerRow(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	for _, keys := range [][]string{{"q"}, {"enter", "q"}, {"esc"}} {
+		got := press(t, m, "end", "enter")
+		got = press(t, got, keys...)
+		if got.state != ViewList {
+			t.Errorf("Tasten %v: state = %v, erwartet ViewList", keys, got.state)
+			continue
+		}
+		rows := got.listRows()
+		if rows[got.cursor].kind != rowFileManager {
+			t.Errorf("Tasten %v: Cursor steht nicht auf dem Datei-Manager-Eintrag", keys)
+		}
+	}
+}
+
+// TestFileManagerSameConnectionTwice - beide Seiten dürfen dieselbe
+// Verbindung nutzen (z. B. Verschieben innerhalb eines Servers).
+func TestFileManagerSameConnectionTwice(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	rec := newConnectRecorder()
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	}
+	if len(rec.calls) != 2 {
+		t.Errorf("Verbindungsaufbauten = %v, erwartet zwei getrennte", rec.calls)
+	}
+}
+
+// --- Verbindungsaufbau ---
+
+// TestFileManagerConnectsBothWithoutTunnels prüft den Aufbau.
+func TestFileManagerConnectsBothWithoutTunnels(t *testing.T) {
+	m, rec := openFileManagerFor(t)
+	if want := []string{"id-0/", "id-1/"}; strings.Join(rec.calls, ",") != strings.Join(want, ",") {
+		t.Errorf("Aufrufe = %v, erwartet %v", rec.calls, want)
+	}
+	for side, p := range m.fm.panels {
+		if p.path != "/home/kurt" {
+			t.Errorf("Seite %d: Pfad = %q, erwartet Home /home/kurt", side, p.path)
+		}
+		if len(p.entries) == 0 || p.entries[0].name != ".." {
+			t.Errorf("Seite %d: erster Eintrag = %v, erwartet ..", side, entryNames(p))
+		}
+	}
+	if m.fm.active != 0 {
+		t.Errorf("aktive Seite = %d, erwartet links (0)", m.fm.active)
+	}
+	// Datei-Manager-Verbindungen gehören nicht in den normalen Manager
+	if m.sshManager.IsConnected("id-0") || m.sshManager.IsConnected("id-1") {
+		t.Error("Datei-Manager-Verbindungen dürfen nicht als normale Verbindung gelten")
+	}
+}
+
+// TestFileManagerConnectionStripsTunnels prüft, dass die Verbindungsdaten
+// für den Datei-Manager keine Tunnel enthalten.
+func TestFileManagerConnectionStripsTunnels(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	m.connections[0].Tunnels = []TunnelConfig{{LocalPort: 3306, RemotePort: 3306, Enabled: true}}
+	var seen []Connection
+	m.fmConnect = func(conn Connection, password string) (remoteFS, error) {
+		seen = append(seen, conn)
+		return newFakeFS(), nil
+	}
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	if len(seen) != 2 {
+		t.Fatalf("Verbindungen = %d, erwartet 2", len(seen))
+	}
+	for _, conn := range seen {
+		if len(conn.Tunnels) != 0 {
+			t.Errorf("Datei-Manager-Verbindung hat Tunnel: %v", conn.Tunnels)
+		}
+	}
+	if len(m.connections[0].Tunnels) != 1 {
+		t.Error("Tunnel der gespeicherten Verbindung dürfen nicht verändert werden")
+	}
+}
+
+// TestFileManagerAsksPasswordAfterAuthFailure prüft die Passwortabfrage.
+func TestFileManagerAsksPasswordAfterAuthFailure(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	rec := newConnectRecorder()
+	authFailed := errors.New("ssh: unable to authenticate")
+	rec.results["id-1"] = authFailed
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "down")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewFMPassword || m.fm.passwordSide != 1 {
+		t.Fatalf("state = %v/Seite %d, erwartet Passwortabfrage rechts", m.state, m.fm.passwordSide)
+	}
+	if !strings.Contains(stripANSI(m.View()), "Rechts") {
+		t.Error("Passwortabfrage nennt die Verbindung nicht")
+	}
+	// q ist im Passwortfeld ein normales Zeichen
+	m = press(t, m, "q")
+	if m.state != ViewFMPassword {
+		t.Fatalf("q im Passwortfeld bricht ab (state %v)", m.state)
+	}
+	// Passwort stimmt -> verbunden
+	delete(rec.results, "id-1")
+	m = press(t, m, "x")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	}
+	if got := rec.calls[len(rec.calls)-1]; got != "id-1/qx" {
+		t.Errorf("letzter Aufruf = %q, erwartet id-1/qx", got)
+	}
+}
+
+// TestFileManagerWrongPasswordAsksAgain - falsches Passwort: erneut fragen.
+func TestFileManagerWrongPasswordAsksAgain(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	rec := newConnectRecorder()
+	rec.results["id-0"] = errors.New("ssh: unable to authenticate")
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = press(t, m, "a")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewFMPassword {
+		t.Fatalf("state = %v, erwartet erneute Passwortabfrage", m.state)
+	}
+	if m.fm.message == "" {
+		t.Error("falsches Passwort ohne Meldung")
+	}
+	if m.fm.passwordInput.Value() != "" {
+		t.Error("Passwortfeld muss nach Fehlversuch leer sein")
+	}
+}
+
+// TestFileManagerPasswordEscAborts - Esc bricht die Passwortabfrage ab und
+// schließt die bereits aufgebaute linke Verbindung.
+func TestFileManagerPasswordEscAborts(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	rec := newConnectRecorder()
+	rec.results["id-1"] = errors.New("ssh: unable to authenticate")
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "down")
+	m = pressRun(t, m, "enter")
+	m = press(t, m, "esc")
+	if m.state != ViewList {
+		t.Fatalf("state = %v, erwartet ViewList", m.state)
+	}
+	if !rec.created["id-0"].closed {
+		t.Error("linke Verbindung wurde beim Abbruch nicht geschlossen")
+	}
+}
+
+// TestFileManagerNetworkErrorReturnsToList - Server nicht erreichbar.
+func TestFileManagerNetworkErrorReturnsToList(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	rec := newConnectRecorder()
+	rec.results["id-1"] = &networkError{err: errors.New("dial tcp 10.0.0.1:22: i/o timeout")}
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "down")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewList {
+		t.Fatalf("state = %v, erwartet ViewList", m.state)
+	}
+	if m.errorMsg == "" || !strings.Contains(m.errorMsg, "Rechts") {
+		t.Errorf("Fehlermeldung = %q, erwartet Hinweis auf Rechts", m.errorMsg)
+	}
+	if !rec.created["id-0"].closed {
+		t.Error("linke Verbindung wurde nicht geschlossen")
+	}
+	if rows := m.listRows(); rows[m.cursor].kind != rowFileManager {
+		t.Error("Cursor steht nicht auf dem Datei-Manager-Eintrag")
+	}
+}
+
+// TestFileManagerHostKeyChangedReturnsToList - geänderter Host-Key wird
+// nicht im Datei-Manager bestätigt, sondern gemeldet.
+func TestFileManagerHostKeyChangedReturnsToList(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	rec := newConnectRecorder()
+	rec.results["id-0"] = &HostKeyChangedError{Hostname: "10.0.0.1"}
+	m.fmConnect = rec.connect
+	m = press(t, m, "end")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewList {
+		t.Fatalf("state = %v, erwartet ViewList", m.state)
+	}
+	if !strings.Contains(m.errorMsg, "10.0.0.1") {
+		t.Errorf("Fehlermeldung = %q, erwartet Host", m.errorMsg)
+	}
+}
+
+// TestFileManagerQuitWhileConnectingClosesLateResult - q während des
+// Verbindungsaufbaus: später eintreffende Verbindung wird geschlossen.
+func TestFileManagerQuitWhileConnectingClosesLateResult(t *testing.T) {
+	m := newListTestModel(t, "Links", "Rechts")
+	m.fmConnect = newConnectRecorder().connect
+	m = press(t, m, "end", "enter", "enter", "down")
+	updated, cmd := m.Update(keyMsgFor("enter"))
+	m = updated.(AppModel)
+	if m.state != ViewFMConnecting {
+		t.Fatalf("state = %v, erwartet ViewFMConnecting", m.state)
+	}
+	m = press(t, m, "q")
+	if m.state != ViewList {
+		t.Fatalf("q beim Verbinden: state = %v, erwartet ViewList", m.state)
+	}
+	msg := cmd()
+	connected, ok := msg.(fmConnectedMsg)
+	if !ok {
+		t.Fatalf("Nachricht %T, erwartet fmConnectedMsg", msg)
+	}
+	updated, _ = m.Update(connected)
+	m = updated.(AppModel)
+	if m.state != ViewList {
+		t.Errorf("veraltete Verbindung öffnet den Datei-Manager (state %v)", m.state)
+	}
+	if !connected.fs.(*fakeRemoteFS).closed {
+		t.Error("veraltete Verbindung wurde nicht geschlossen")
+	}
+}
+
+// --- Navigation ---
+
+// TestFileManagerSortsEntries prüft: "..", Verzeichnisse (inkl. Symlinks
+// auf Verzeichnisse), dann Dateien - jeweils ohne Groß-/Kleinschreibung.
+func TestFileManagerSortsEntries(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	got := entryNames(m.fm.panels[0])
+	want := []string{"..", "geheim", "logs", "projekte", "aktuell.txt", "b.txt", "kaputt", "Notes.txt"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("Reihenfolge = %v, erwartet %v", got, want)
+	}
+}
+
+// TestFileManagerEnterDirectory prüft das Betreten eines Verzeichnisses.
+func TestFileManagerEnterDirectory(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "projekte")
+	m = pressRun(t, m, "enter")
+	p := m.fm.panels[0]
+	if p.path != "/home/kurt/projekte" {
+		t.Fatalf("Pfad = %q, erwartet /home/kurt/projekte", p.path)
+	}
+	if p.cursor != 0 {
+		t.Errorf("Cursor = %d, erwartet 0", p.cursor)
+	}
+	if got := entryNames(p); strings.Join(got, ",") != "..,main.go" {
+		t.Errorf("Einträge = %v", got)
+	}
+	// Rechte Seite bleibt unverändert
+	if m.fm.panels[1].path != "/home/kurt" {
+		t.Errorf("rechte Seite hat sich verändert: %q", m.fm.panels[1].path)
+	}
+}
+
+// TestFileManagerParentKeepsCursorOnPreviousDir prüft ".." wie im mc:
+// Der Cursor steht danach auf dem Verzeichnis, aus dem man kam.
+func TestFileManagerParentKeepsCursorOnPreviousDir(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "..")
+	m = pressRun(t, m, "enter")
+	p := m.fm.panels[0]
+	if p.path != "/home" {
+		t.Fatalf("Pfad = %q, erwartet /home", p.path)
+	}
+	if p.entries[p.cursor].name != "kurt" {
+		t.Errorf("Cursor auf %q, erwartet kurt", p.entries[p.cursor].name)
+	}
+}
+
+// TestFileManagerRootHasNoParentEntry - im Wurzelverzeichnis kein "..".
+func TestFileManagerRootHasNoParentEntry(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "..")
+	m = pressRun(t, m, "enter")
+	m = cursorTo(t, m, "..")
+	m = pressRun(t, m, "enter")
+	p := m.fm.panels[0]
+	if p.path != "/" {
+		t.Fatalf("Pfad = %q, erwartet /", p.path)
+	}
+	for _, name := range entryNames(p) {
+		if name == ".." {
+			t.Error("Wurzelverzeichnis darf kein .. haben")
+		}
+	}
+	if p.entries[p.cursor].name != "home" {
+		t.Errorf("Cursor auf %q, erwartet home", p.entries[p.cursor].name)
+	}
+}
+
+// TestFileManagerPermissionDeniedStays - ohne Rechte bleibt man im
+// bisherigen Verzeichnis und bekommt eine Meldung.
+func TestFileManagerPermissionDeniedStays(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "geheim")
+	before := m.fm.panels[0]
+	m = pressRun(t, m, "enter")
+	p := m.fm.panels[0]
+	if p.path != "/home/kurt" {
+		t.Errorf("Pfad = %q, erwartet unverändert /home/kurt", p.path)
+	}
+	if p.entries[p.cursor].name != "geheim" {
+		t.Errorf("Cursor auf %q, erwartet geheim", p.entries[p.cursor].name)
+	}
+	if len(p.entries) != len(before.entries) {
+		t.Error("Liste hat sich verändert")
+	}
+	if !strings.Contains(m.fm.message, "/home/kurt/geheim") {
+		t.Errorf("Meldung = %q, erwartet Pfad", m.fm.message)
+	}
+	want := fmt.Sprintf(m.tr(txtFMErrPermission), "/home/kurt/geheim")
+	if m.fm.message != want {
+		t.Errorf("Meldung = %q, erwartet %q", m.fm.message, want)
+	}
+}
+
+// TestFileManagerSymlinkDirNotFollowed - Symlink auf Verzeichnis: Meldung,
+// kein Verzeichniswechsel, kein Lesezugriff auf das Ziel.
+func TestFileManagerSymlinkDirNotFollowed(t *testing.T) {
+	m, rec := openFileManagerFor(t)
+	m = cursorTo(t, m, "logs")
+	m = pressRun(t, m, "enter")
+	if p := m.fm.panels[0]; p.path != "/home/kurt" {
+		t.Errorf("Pfad = %q, Symlink wurde verfolgt", p.path)
+	}
+	if want := fmt.Sprintf(m.tr(txtFMErrSymlink), "logs"); m.fm.message != want {
+		t.Errorf("Meldung = %q, erwartet %q", m.fm.message, want)
+	}
+	for _, read := range rec.created["id-0"].reads {
+		if read == "/home/kurt/logs" || read == "/var/log" {
+			t.Errorf("Symlink-Ziel wurde gelesen: %s", read)
+		}
+	}
+}
+
+// TestFileManagerEnterOnFileDoesNothing - Enter auf Datei / Datei-Symlink /
+// defektem Symlink wechselt nichts (Ansehen kommt später mit F3).
+func TestFileManagerEnterOnFileDoesNothing(t *testing.T) {
+	for _, name := range []string{"b.txt", "aktuell.txt", "kaputt"} {
+		m, _ := openFileManagerFor(t)
+		m = cursorTo(t, m, name)
+		m = pressRun(t, m, "enter")
+		if p := m.fm.panels[0]; p.path != "/home/kurt" || p.entries[p.cursor].name != name {
+			t.Errorf("%s: Pfad %q / Cursor %q verändert", name, p.path, p.entries[p.cursor].name)
+		}
+	}
+}
+
+// TestFileManagerMessageClearedOnNextKey - Meldung verschwindet beim
+// nächsten Tastendruck.
+func TestFileManagerMessageClearedOnNextKey(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "logs")
+	m = pressRun(t, m, "enter")
+	if m.fm.message == "" {
+		t.Fatal("keine Meldung")
+	}
+	m = pressRun(t, m, "down")
+	if m.fm.message != "" {
+		t.Errorf("Meldung bleibt stehen: %q", m.fm.message)
+	}
+}
+
+// TestFileManagerTabSwitchesSide prüft den Seitenwechsel.
+func TestFileManagerTabSwitchesSide(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = pressRun(t, m, "tab")
+	if m.fm.active != 1 {
+		t.Fatalf("aktive Seite = %d, erwartet 1", m.fm.active)
+	}
+	m = pressRun(t, m, "down")
+	if m.fm.panels[1].cursor != 1 || m.fm.panels[0].cursor != 0 {
+		t.Errorf("Cursor links %d / rechts %d, erwartet 0 / 1", m.fm.panels[0].cursor, m.fm.panels[1].cursor)
+	}
+	m = pressRun(t, m, "tab")
+	if m.fm.active != 0 {
+		t.Errorf("aktive Seite = %d, erwartet 0", m.fm.active)
+	}
+}
+
+// TestFileManagerCursorKeys prüft Pfeile, Pos1/Ende und Bildtasten.
+func TestFileManagerCursorKeys(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	last := len(m.fm.panels[0].entries) - 1
+	steps := []struct {
+		key  string
+		want int
+	}{
+		{"up", 0}, {"down", 1}, {"end", last}, {"down", last}, {"home", 0},
+		{"pgdown", last}, {"pgup", 0},
+	}
+	for _, step := range steps {
+		m = pressRun(t, m, step.key)
+		if got := m.fm.panels[0].cursor; got != step.want {
+			t.Errorf("nach %q: Cursor = %d, erwartet %d", step.key, got, step.want)
+		}
+	}
+}
+
+// TestFileManagerScrollsLongDirectory prüft das Scrollen langer Listen.
+func TestFileManagerScrollsLongDirectory(t *testing.T) {
+	m, rec := openFileManagerFor(t)
+	var many []os.FileInfo
+	for i := 0; i < 200; i++ {
+		many = append(many, fileInfo(fmt.Sprintf("datei%03d.txt", i), int64(i)))
+	}
+	rec.created["id-0"].dirs["/home/kurt/projekte"] = many
+	m = cursorTo(t, m, "projekte")
+	m = pressRun(t, m, "enter")
+	m = pressRun(t, m, "end")
+	text := stripANSI(m.View())
+	if !strings.Contains(text, "datei199.txt") {
+		t.Errorf("letzter Eintrag nach Ende nicht sichtbar:\n%s", text)
+	}
+	if strings.Contains(text, "datei000.txt") {
+		t.Error("erster Eintrag dürfte nach Ende nicht mehr sichtbar sein")
+	}
+	assertScreenSize(t, m)
+}
+
+// TestFileManagerF10ReturnsToList - F10 schließt beide Verbindungen und
+// kehrt mit Cursor auf dem Datei-Manager-Eintrag zur Liste zurück.
+func TestFileManagerF10ReturnsToList(t *testing.T) {
+	for _, key := range []string{"f10", "q"} {
+		m, rec := openFileManagerFor(t)
+		m = pressRun(t, m, key)
+		if m.state != ViewList {
+			t.Fatalf("%s: state = %v, erwartet ViewList", key, m.state)
+		}
+		if rows := m.listRows(); rows[m.cursor].kind != rowFileManager {
+			t.Errorf("%s: Cursor steht nicht auf dem Datei-Manager-Eintrag", key)
+		}
+		for id, fsys := range rec.created {
+			if !fsys.closed {
+				t.Errorf("%s: Verbindung %s nicht geschlossen", key, id)
+			}
+		}
+	}
+}
+
+// TestFileManagerOtherFKeysNotYet - noch nicht umgesetzte F-Tasten melden
+// sich, ändern aber nichts.
+func TestFileManagerOtherFKeysNotYet(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = pressRun(t, m, "f5")
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v", m.state)
+	}
+	if m.fm.message != m.tr(txtFMNotYet) {
+		t.Errorf("Meldung = %q, erwartet Hinweis 'noch nicht verfügbar'", m.fm.message)
+	}
+}
+
+// TestFileManagerStaleDirResultIgnored - Ergebnis einer alten Sitzung
+// (nach F10) darf den Zustand nicht verändern.
+func TestFileManagerStaleDirResultIgnored(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "projekte")
+	updated, cmd := m.Update(keyMsgFor("enter"))
+	m = updated.(AppModel)
+	m = pressRun(t, m, "f10")
+	updated, _ = m.Update(cmd())
+	m = updated.(AppModel)
+	if m.state != ViewList {
+		t.Errorf("veraltetes Verzeichnis-Ergebnis ändert die Ansicht: %v", m.state)
+	}
+}
+
+// TestFileManagerIgnoresKeysWhileLoading - während ein Verzeichnis lädt,
+// startet Enter keinen zweiten Wechsel.
+func TestFileManagerIgnoresKeysWhileLoading(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "projekte")
+	updated, cmd := m.Update(keyMsgFor("enter"))
+	m = updated.(AppModel)
+	if !m.fm.panels[0].loading {
+		t.Fatal("Panel lädt nicht")
+	}
+	updated, second := m.Update(keyMsgFor("enter"))
+	m = updated.(AppModel)
+	if second != nil {
+		t.Error("zweites Enter während des Ladens startet einen weiteren Wechsel")
+	}
+	m = runCmd(t, m, cmd)
+	if m.fm.panels[0].path != "/home/kurt/projekte" {
+		t.Errorf("Pfad = %q", m.fm.panels[0].path)
+	}
+}
+
+// --- Darstellung ---
+
+// assertScreenSize prüft: genau termHeight Zeilen, jede genau termWidth breit.
+func assertScreenSize(t *testing.T, m AppModel) {
+	t.Helper()
+	lines := strings.Split(m.View(), "\n")
+	if len(lines) != m.termHeight {
+		t.Errorf("Zeilen = %d, erwartet %d", len(lines), m.termHeight)
+	}
+	for i, line := range lines {
+		if w := lipgloss.Width(line); w != m.termWidth {
+			t.Errorf("Zeile %d ist %d breit, erwartet %d: %q", i, w, m.termWidth, stripANSI(line))
+		}
+	}
+}
+
+// TestFileManagerScreenLayout prüft Menüleiste, Panels und F-Tasten-Leiste.
+func TestFileManagerScreenLayout(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	for _, size := range [][2]int{{100, 30}, {81, 24}, {80, 25}, {40, 12}, {200, 60}} {
+		m.termWidth, m.termHeight = size[0], size[1]
+		assertScreenSize(t, m)
+	}
+	m.termWidth, m.termHeight = 100, 30
+	lines := strings.Split(stripANSI(m.View()), "\n")
+	menu := strings.Split(m.tr(txtFMMenuBar), "|")
+	for _, item := range menu {
+		if !strings.Contains(lines[0], item) {
+			t.Errorf("Menüleiste ohne %q: %q", item, lines[0])
+		}
+	}
+	bottom := lines[len(lines)-1]
+	if !strings.HasPrefix(bottom, "1") || !strings.Contains(bottom, "10") {
+		t.Errorf("F-Tasten-Leiste unerwartet: %q", bottom)
+	}
+	for _, label := range strings.Split(m.tr(txtFMFKeys), "|") {
+		if !strings.Contains(bottom, label) {
+			t.Errorf("F-Tasten-Leiste ohne %q: %q", label, bottom)
+		}
+	}
+	if !strings.Contains(lines[1], "root@10.0.0.1:/home/kurt") {
+		t.Errorf("Panel-Titel fehlt: %q", lines[1])
+	}
+}
+
+// TestFileManagerUnknownSizeFallback - ohne Fenstergröße 80x24.
+func TestFileManagerUnknownSizeFallback(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m.termWidth, m.termHeight = 0, 0
+	lines := strings.Split(m.View(), "\n")
+	if len(lines) != 24 || lipgloss.Width(lines[0]) != 80 {
+		t.Errorf("Fallback = %dx%d, erwartet 80x24", lipgloss.Width(lines[0]), len(lines))
+	}
+}
+
+// TestFileManagerShowsMessage - Meldungen erscheinen auf dem Bildschirm.
+func TestFileManagerShowsMessage(t *testing.T) {
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "logs")
+	m = pressRun(t, m, "enter")
+	// Meldung kann gekürzt werden - der Anfang muss sichtbar sein
+	text := stripANSI(m.View())
+	if !strings.Contains(text, m.fm.message[:20]) {
+		t.Errorf("Meldung nicht sichtbar:\n%s", text)
+	}
+	assertScreenSize(t, m)
+}
+
+// TestFileManagerAllThemesRender - alle Farbmodi erzeugen ein gültiges Bild.
+func TestFileManagerAllThemesRender(t *testing.T) {
+	withColorProfile(t)
+	m, _ := openFileManagerFor(t)
+	for i := range fmThemes {
+		m.fm.theme = i
+		assertScreenSize(t, m)
+	}
+	if len(fmThemes) != 3 {
+		t.Errorf("Farbmodi = %d, erwartet 3 (klassisch, ssh-easy, monochrom)", len(fmThemes))
+	}
+}
+
+// --- Hilfsfunktionen ---
+
+// TestSanitizeFileName - Steuerzeichen aus fremden Dateinamen dürfen das
+// Terminal nicht steuern (z. B. ESC-Sequenzen im Namen).
+func TestSanitizeFileName(t *testing.T) {
+	cases := map[string]string{
+		"normal.txt":      "normal.txt",
+		"böse\x1b[2J.txt": "böse?[2J.txt",
+		"zeile\numbruch":  "zeile?umbruch",
+		"tab\there":       "tab?here",
+		"c1\u009bsequenz": "c1?sequenz",
+		"del\x7f":         "del?",
+		"ungültig\xff":    "ungültig?",
+		"日本語.txt":         "日本語.txt",
+	}
+	for in, want := range cases {
+		if got := sanitizeFileName(in); got != want {
+			t.Errorf("sanitizeFileName(%q) = %q, erwartet %q", in, got, want)
+		}
+	}
+}
+
+// TestFormatFileSize prüft die Größenanzeige (max. 7 Zeichen).
+func TestFormatFileSize(t *testing.T) {
+	cases := map[int64]string{
+		0:             "0",
+		999:           "999",
+		9999999:       "9999999",
+		10000000:      "9765K",
+		1048576 * 500: "500M",
+		1 << 40:       "1024G",
+		-1:            "0",
+	}
+	for in, want := range cases {
+		got := formatFileSize(in)
+		if got != want {
+			t.Errorf("formatFileSize(%d) = %q, erwartet %q", in, got, want)
+		}
+		if len(got) > 7 {
+			t.Errorf("formatFileSize(%d) = %q ist länger als 7 Zeichen", in, got)
+		}
+	}
+}
+
+// TestParentDir prüft die Elternverzeichnisse entfernter (POSIX-)Pfade -
+// unabhängig vom lokalen Betriebssystem (auch unter Windows "/").
+func TestParentDir(t *testing.T) {
+	cases := map[string]string{
+		"/home/kurt": "/home",
+		"/home":      "/",
+		"/":          "/",
+		"/a/b/c/":    "/a/b",
+		"":           "/",
+	}
+	for in, want := range cases {
+		if got := remoteParentDir(in); got != want {
+			t.Errorf("remoteParentDir(%q) = %q, erwartet %q", in, got, want)
+		}
+	}
+}
+
+// TestReadPanelDirMarksEntryKinds prüft die Einordnung der Einträge.
+func TestReadPanelDirMarksEntryKinds(t *testing.T) {
+	entries, err := readPanelDir(newFakeFS(), "/home/kurt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]fmEntry{}
+	for _, e := range entries {
+		kinds[e.name] = e
+	}
+	if e := kinds["logs"]; !e.symlink || !e.dir || e.broken {
+		t.Errorf("logs = %+v, erwartet Symlink auf Verzeichnis", e)
+	}
+	if e := kinds["aktuell.txt"]; !e.symlink || e.dir || e.broken {
+		t.Errorf("aktuell.txt = %+v, erwartet Symlink auf Datei", e)
+	}
+	if e := kinds["kaputt"]; !e.symlink || !e.broken {
+		t.Errorf("kaputt = %+v, erwartet defekten Symlink", e)
+	}
+	if e := kinds["projekte"]; e.symlink || !e.dir {
+		t.Errorf("projekte = %+v, erwartet Verzeichnis", e)
+	}
+	if e := kinds[".."]; !e.parent || !e.dir {
+		t.Errorf(".. = %+v, erwartet Elterneintrag", e)
+	}
+}
+
+// TestReadPanelDirError liefert den Fehler unverändert weiter.
+func TestReadPanelDirError(t *testing.T) {
+	_, err := readPanelDir(newFakeFS(), "/home/kurt/geheim")
+	if !errors.Is(err, os.ErrPermission) {
+		t.Errorf("Fehler = %v, erwartet ErrPermission", err)
+	}
+}
+
+// TestFileManagerI18nLists - Menü, Spaltenköpfe und F-Tasten haben in jeder
+// Sprache die richtige Anzahl Teile (mit "|" getrennt).
+func TestFileManagerI18nLists(t *testing.T) {
+	parts := map[textKey]int{txtFMMenuBar: 5, txtFMFKeys: 10, txtFMColumns: 3}
+	for _, opt := range AvailableLanguages {
+		for key, want := range parts {
+			text := extraText(opt.Code, key)
+			got := strings.Split(text, "|")
+			if len(got) != want {
+				t.Errorf("%s %s: %d Teile, erwartet %d (%q)", opt.Code, key, len(got), want, text)
+			}
+			for _, part := range got {
+				if strings.TrimSpace(part) == "" {
+					t.Errorf("%s %s: leerer Teil in %q", opt.Code, key, text)
+				}
+			}
+		}
+	}
+}
+
+// TestFMEntriesSortStable prüft die Sortierfunktion direkt.
+func TestFMEntriesSortStable(t *testing.T) {
+	entries := []fmEntry{
+		{name: "b"}, {name: "A", dir: true}, {name: "..", dir: true, parent: true},
+		{name: "a"}, {name: "c", dir: true, symlink: true},
+	}
+	sortFMEntries(entries)
+	var got []string
+	for _, e := range entries {
+		got = append(got, e.name)
+	}
+	if want := []string{"..", "A", "c", "a", "b"}; strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("Sortierung = %v, erwartet %v", got, want)
+	}
+	if !sort.SliceIsSorted(got[1:3], func(i, j int) bool { return strings.ToLower(got[1+i]) < strings.ToLower(got[1+j]) }) {
+		t.Error("Verzeichnisse nicht alphabetisch")
+	}
+}

@@ -12,6 +12,10 @@
 
 ## Offen
 
+- **Datei-Manager: Symlink-Ziele einzeln geprüft** (Build 53): `readPanelDir` ruft für jeden Symlink ein eigenes SFTP-`Stat` auf (ein Roundtrip pro Link). In Verzeichnissen mit sehr vielen Symlinks (z. B. `/usr/lib`, `/etc/alternatives`) über langsame Leitungen spürbar. Möglich: Stat-Aufrufe parallel (SFTP erlaubt mehrere offene Anfragen) oder erst beim Anwählen prüfen.
+- **Datei-Manager: Meldungen nur in der Infozeile des aktiven Fensters** (Build 53): Lange Meldungen werden bei schmalen Fenstern gekürzt. Alternative: Meldungsdialog in Fenstermitte wie im mc (kommt ohnehin mit den Bestätigungsdialogen für Kopieren/Löschen).
+- **Datei-Manager: keine Keepalives** (Build 53): Die eigenständigen Verbindungen laufen ohne Keepalive/Reconnect; bei langen Pausen kann ein NAT-Router sie trennen. Für Kopiervorgänge ggf. Keepalive ergänzen.
+
 - **Log-Rotation**: Automatische Rotation/Komprimierung der Log-Datei
 - **Config-Backup**: Vor Aenderungen Backup der Config-Datei erstellen
 - **Terminal-Groesse**: TUI an Fenstergroesse anpassen (responsive Layout)

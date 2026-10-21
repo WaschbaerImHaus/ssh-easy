@@ -72,6 +72,7 @@ Start the program:
 | `u` | Toggle auto-update (shown in the last menu line) |
 | `E` | Export connections (all or a selection) |
 | `I` | Import connections from an export file |
+| `Enter` on *File manager* | Open the two-panel file manager (last list entry) |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
@@ -143,6 +144,33 @@ Press `I` (Shift+I) in the list — this also works with an empty list, e.g. on 
 2. The connections of the file are shown with check boxes, like in the export (`Space`, `a`, groups toggle all members). Names that already exist are marked **(exists)** and are *not* selected at first. If you select one, it replaces the existing connection (host, port, user and tunnels come from the file; the local ID and a local SSH key setting are kept). `Enter` imports, `Esc` goes back.
 
 The file is treated as untrusted: at most 1 MiB, every entry is validated (name, host, port, user, tunnels), entries with control characters (e.g. terminal escape sequences) are skipped, duplicate names inside the file are skipped, and key paths are never taken over. Only connections are imported — settings like language or auto-update stay as they are.
+
+### File manager (two connections)
+
+The last entry of the connection list, separated by a blank line, opens a reduced
+Midnight-Commander-style file manager for working with two SSH hosts side by side:
+
+1. Choose the connection for the **left** panel, then the one for the **right** panel
+   (`q` goes back to the list at any time; both panels may use the same connection).
+2. Both connections are opened as separate SSH connections **without tunnels**
+   (SSH agent / keys first, password prompt if needed; `Esc` cancels the prompt).
+   Nothing needs to be installed on the servers — the file lists come via SFTP.
+3. Both panels start in the user's home directory.
+
+| Key | Action |
+|-----|--------|
+| `↑` / `↓` / `PgUp` / `PgDn` / `Home` / `End` | Move the cursor |
+| `Enter` | Change into the directory or `..` |
+| `Tab` | Switch between left and right panel |
+| `F10` / `q` | Close both connections and return to the list |
+
+Markers in front of names: `/` directory, `~` symlink to a directory, `@` symlink to a
+file, `!` broken symlink. Symlinks to directories are not followed (a message is shown).
+If you lack permission for a directory, you stay where you are and get a message.
+
+*Current state (Build 53): navigation only. Copy, move, mkdir, delete, marking, view,
+edit and the menu (incl. switching between the classic, ssh-easy and monochrome colour
+themes) follow step by step.*
 
 ### Password prompt
 

@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:45
 package main
 
 import (
@@ -52,6 +52,14 @@ const (
 	ViewImportFile
 	// ViewImportSelect - Import Schritt 2: Verbindungen auswählen
 	ViewImportSelect
+	// ViewFMPick - Datei-Manager: linke/rechte Verbindung wählen
+	ViewFMPick
+	// ViewFMConnecting - Datei-Manager: Verbindungsaufbau läuft
+	ViewFMConnecting
+	// ViewFMPassword - Datei-Manager: Passwortabfrage
+	ViewFMPassword
+	// ViewFileManager - Datei-Manager: Zwei-Fenster-Ansicht
+	ViewFileManager
 )
 
 // Eingabefeld-Indizes für das Verbindungsformular.
@@ -255,6 +263,10 @@ type AppModel struct {
 	importSkipped int
 	// Import: geladene Datei (Anzeige)
 	importFile string
+	// Datei-Manager (MC-Modus): Zustand
+	fm fileManager
+	// Datei-Manager: Verbindungsaufbau (in Tests austauschbar)
+	fmConnect fmConnectFunc
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -273,6 +285,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		configPath:     configPath,
 		buildNumber:    buildNumber,
 		expandedGroups: make(map[string]bool),
+		fmConnect:      newSFTPConnector(sshManager),
 	}
 	if home, err := os.UserHomeDir(); err == nil {
 		m.exportHomeDir = home
@@ -425,6 +438,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case updateResultMsg:
 		return m.handleUpdateResult(msg)
+
+	case fmConnectedMsg:
+		return m.handleFMConnected(msg)
+
+	case fmDirLoadedMsg:
+		return m.handleFMDirLoaded(msg)
 
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
@@ -601,6 +620,14 @@ func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleImportFileKeys(msg)
 	case ViewImportSelect:
 		return m.handleImportSelectKeys(msg)
+	case ViewFMPick:
+		return m.handleFMPickKeys(msg)
+	case ViewFMConnecting:
+		return m.handleFMConnectingKeys(msg)
+	case ViewFMPassword:
+		return m.handleFMPasswordKeys(msg)
+	case ViewFileManager:
+		return m.handleFileManagerKeys(msg)
 	}
 
 	return m, nil
@@ -626,6 +653,8 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.exportPathInput, cmd = m.exportPathInput.Update(msg)
 	case ViewImportFile:
 		m.importPathInput, cmd = m.importPathInput.Update(msg)
+	case ViewFMPassword:
+		m.fm.passwordInput, cmd = m.fm.passwordInput.Update(msg)
 	}
 
 	return m, cmd
@@ -667,6 +696,14 @@ func (m AppModel) View() string {
 		m.renderImportFile(&s)
 	case ViewImportSelect:
 		m.renderImportSelect(&s)
+	case ViewFMPick:
+		m.renderFMPick(&s)
+	case ViewFMConnecting:
+		m.renderFMConnecting(&s)
+	case ViewFMPassword:
+		m.renderFMPassword(&s)
+	case ViewFileManager:
+		m.renderFileManager(&s)
 	}
 
 	return s.String()

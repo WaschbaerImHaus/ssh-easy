@@ -59,6 +59,7 @@ Programm starten:
 | `u` | Auto-Update ein-/ausschalten (letzte Menüzeile) |
 | `E` | Verbindungen exportieren (alle oder Auswahl) |
 | `I` | Verbindungen aus einer Exportdatei importieren |
+| `Enter` auf *Datei-Manager* | Zwei-Fenster-Datei-Manager öffnen (letzter Listeneintrag) |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
 | `Strg+Hoch` / `Strg+Runter` | Schriftgroesse aendern (Windows, wird gespeichert; Strg+Mausrad geht auch) |
@@ -130,6 +131,35 @@ Die Datei hat das Format von `connections.json` und kann damit auf einem anderen
 2. Die Verbindungen der Datei erscheinen mit Häkchen wie beim Export (`Leertaste`, `a`, Gruppen schalten alle Mitglieder). Namen, die es schon gibt, sind mit **(vorhanden)** markiert und anfangs *nicht* gewählt. Wer sie wählt, ersetzt die vorhandene Verbindung (Host, Port, Benutzer und Tunnel kommen aus der Datei; die lokale ID und eine lokale SSH-Schlüssel-Einstellung bleiben). `Enter` importiert, `Esc` geht zurück.
 
 Die Datei gilt als nicht vertrauenswürdig: höchstens 1 MiB, jeder Eintrag wird geprüft (Name, Host, Port, Benutzer, Tunnel), Einträge mit Steuerzeichen (z. B. Terminal-Escape-Sequenzen) und doppelte Namen innerhalb der Datei werden übersprungen, Schlüsselpfade werden nie übernommen. Importiert werden nur Verbindungen – Einstellungen wie Sprache oder Auto-Update bleiben unverändert.
+
+### Datei-Manager (zwei Verbindungen)
+
+Der letzte Eintrag der Verbindungsliste, durch eine Leerzeile abgesetzt, öffnet einen
+reduzierten Datei-Manager im Stil des Midnight Commander, um mit zwei SSH-Servern
+nebeneinander zu arbeiten:
+
+1. Verbindung für das **linke** Fenster wählen, dann die für das **rechte** Fenster
+   (`q` führt jederzeit zurück zur Liste; beide Seiten dürfen dieselbe Verbindung nutzen).
+2. Beide Verbindungen werden als eigene SSH-Verbindungen **ohne Tunnel** aufgebaut
+   (zuerst SSH-Agent/Schlüssel, bei Bedarf Passwortabfrage; `Esc` bricht sie ab).
+   Auf den Servern muss nichts installiert sein – die Dateilisten kommen per SFTP.
+3. Beide Fenster starten im Home-Verzeichnis des Users.
+
+| Taste | Aktion |
+|-------|--------|
+| `↑` / `↓` / `Bild↑` / `Bild↓` / `Pos1` / `Ende` | Cursor bewegen |
+| `Enter` | In das Verzeichnis bzw. `..` wechseln |
+| `Tab` | Zwischen linkem und rechtem Fenster wechseln |
+| `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
+
+Kennzeichen vor den Namen: `/` Verzeichnis, `~` Symlink auf ein Verzeichnis, `@` Symlink
+auf eine Datei, `!` defekter Symlink. Symlinks auf Verzeichnisse werden nicht verfolgt
+(es erscheint eine Meldung). Fehlen die Rechte für ein Verzeichnis, bleibt man im
+bisherigen und bekommt eine Meldung.
+
+*Stand Build 53: nur Navigation. Kopieren, Verschieben, Verzeichnis anlegen, Löschen,
+Markieren, Ansehen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
+klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
 
 ### Passwortabfrage
 

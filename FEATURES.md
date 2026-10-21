@@ -49,6 +49,25 @@
 - [x] Import von Verbindungen (Taste `I`, auch bei leerer Liste): Datei wählen, Auswahl wie beim Export, vorhandene Namen markiert und nur auf Wunsch ersetzt; Datei als nicht vertrauenswürdig geprüft (1 MiB, Validate, keine Steuerzeichen, keine Schlüsselpfade, neue IDs) (Build 52)
 - [x] Bracketed Paste für Shift+Einfg in der SSH-Session (Remote-Modus `ESC[?2004h/l` wird erkannt, Inhalt in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker entfernt) (Build 47)
 
+## Datei-Manager (MC-Modus, Nutzerwunsch 2026-10-21)
+- [x] Eintrag ganz unten in der Verbindungsliste, mit Leerzeile abgesetzt (Build 53)
+- [x] Linke und rechte Verbindung nacheinander wählen, q = Abbruch zurück zur Liste (Build 53)
+- [x] Eigene SSH-Verbindungen ohne Tunnel, unabhängig von bestehenden Verbindungen; Passwortabfrage bei Bedarf (Build 53)
+- [x] Zwei Fenster mit Datei-/Verzeichnisliste (SFTP), türkise Menüleiste oben, F-Tasten-Leiste unten, keine Kommandozeile (Build 53)
+- [x] Startverzeichnis Home; Verzeichnis wechseln per Enter auf Namen bzw. ".." (Build 53)
+- [x] Fehlende Rechte: im bisherigen Verzeichnis bleiben + Meldung; Symlinks auf Verzeichnisse nicht folgen + Meldung (Build 53)
+- [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
+- [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
+- [ ] Menü "Optionen": Farbmodus umschalten (und merken)
+- [ ] Datei/Dateien/Verzeichnisse markieren (Einfg/Leertaste)
+- [ ] F5 Kopieren zwischen den Verbindungen (auch markierte Einträge, Verzeichnisse rekursiv)
+- [ ] F6 Verschieben/Umbenennen
+- [ ] F7 Verzeichnis anlegen
+- [ ] F8 Löschen (mit Bestätigung)
+- [ ] F3 Ansehen
+- [ ] F4 Bearbeiten
+- [ ] Menüs Links/Datei/Befehl/Optionen/Rechts (F9)
+
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste

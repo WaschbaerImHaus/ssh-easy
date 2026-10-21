@@ -68,3 +68,10 @@ Unterstuetzung und Keepalive. Die TUI ist modular in Views aufgeteilt.
 - `\uXXXX` in Tool-Parametern (Write/Edit) wird beim JSON-Dekodieren zum echten Zeichen. Für unsichtbare Zeichen in Go-Quelltext danach per Skript in Go-Escapes umwandeln – der Hygiene-Test (`tests/source_hygiene_test.go`) fängt es zuverlässig.
 - Import-Dateien wie Netzwerkeingaben behandeln: Größenlimit, strenge Prüfung je Eintrag, Steuerzeichen ablehnen (TUI-Ausgabe!), Pfadfelder (key_path) nie übernehmen, IDs neu vergeben.
 - Gemeinsame UI-Bausteine (connChecklist) als eigener Typ mit Wertsemantik + Map halten den Bubbletea-Modellcode klein und sind direkt testbar.
+
+## Stand 2026-10-21 (Build 53)
+
+- **Datei-Manager (MC-Modus)** ist ein schrittweise wachsendes Teilprojekt. Nutzer will „Funktion für Funktion“: erst Rohfassung (Navigation), dann Kopieren/Verschieben/MkDir/Löschen/Markieren/Ansehen/Bearbeiten, Optionen-Menü mit drei Farbmodi (classic, ssh-easy, mono). Motivation: Schlüssel/Passwörter nicht doppelt in WinSCP pflegen; unter Linux kein WinSCP; der echte mc läuft auf eingeschränkten Hoster-Servern schlecht → alles muss per SFTP gehen, nichts auf dem Server voraussetzen.
+- **Architektur**: Fachlogik ohne Bubbletea in `filemanager_panel.go` hinter `remoteFS`-Interface (Fake im Test). Alles Netzwerk asynchron als tea.Cmd mit Sitzungsnummer – veraltete Ergebnisse werden verworfen und Verbindungen geschlossen. Entfernte Pfade nur mit `path` (POSIX), nie `filepath` (Windows!).
+- **Gelernt**: Eine neue Listenzeile bricht Tests, die „letzte Zeile = Verbindung“ annehmen – und deckt echte Folgefehler auf (Cursor nach Löschen). Zusatzzeilen immer über `connIndex < 0` abfragen, nicht über `kind == rowGroup`.
+- **Für die nächsten Schritte**: Kopieren zwischen zwei Servern läuft lokal durch (SFTP-Read → SFTP-Write, gestreamt), Fortschrittsanzeige + Abbruch nötig; Bestätigungsdialoge wie im mc (Fenstermitte). Einfg ist unter Windows Rune 0x00 (siehe isNulKey) – fürs Markieren zusätzlich Leertaste anbieten. F-Tasten kommen unter Windows an; unter Linux fangen manche Terminals F10 ab (q funktioniert immer).
