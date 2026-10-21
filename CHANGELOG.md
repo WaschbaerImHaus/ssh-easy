@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.54] – Build 54
+- **Security** error messages from connection attempts (file manager and normal connect, key deployment/removal) are shown with control characters replaced: SSH/SFTP error texts can contain text sent by the server (e.g. during the handshake) and could otherwise inject terminal escape sequences (finding of the automated security review of Build 53)
+- **Added** 2 new tests (383 total, all green)
+
 ## [v0.53] – Build 53
 - **Added** file manager (first draft of a reduced Midnight Commander clone for copying between two SSH hosts): new last entry in the connection list, separated by a blank line. Choose the left and the right connection one after the other (`q` goes back at any time); both are opened as separate SSH connections without tunnels, independent of connections already open in the list (agent/keys, password prompt if needed, known_hosts check as usual). Files are listed via SFTP, nothing has to be installed on the servers
 - **Added** two-panel view: turquoise menu bar at the top, F-key bar at the bottom, no command line. Each panel shows `user@host:path`, name, size and modification time; directories first, `..` on top, start directory is the user's home. `Enter` changes into a directory or `..` (cursor lands on the directory you came from), `Tab` switches panels, arrows/PgUp/PgDn/Home/End move the cursor, `F10` or `q` closes both connections and returns to the list with the file manager entry still selected

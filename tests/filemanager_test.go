@@ -11,7 +11,7 @@
 //   - Darstellung: Bildschirm exakt so hoch/breit wie das Terminal
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 19:53
 package main
 
 import (
@@ -1099,5 +1099,46 @@ func TestFMEntriesSortStable(t *testing.T) {
 	}
 	if !sort.SliceIsSorted(got[1:3], func(i, j int) bool { return strings.ToLower(got[1+i]) < strings.ToLower(got[1+j]) }) {
 		t.Error("Verzeichnisse nicht alphabetisch")
+	}
+}
+
+// TestFileManagerConnectErrorsSanitized - Fehlertexte von SSH/SFTP können
+// Text vom Server enthalten (z. B. aus dem Handshake) und dürfen keine
+// Steuerzeichen ins Terminal bringen (Security-Review Build 53).
+func TestFileManagerConnectErrorsSanitized(t *testing.T) {
+	evil := "server says \x1b]0;pwned\x07\x1b[2J"
+	cases := map[string]error{
+		"netz":    &networkError{err: errors.New("i/o timeout " + evil)},
+		"sftp":    &fmSFTPError{err: errors.New(evil)},
+		"hostkey": &HostKeyChangedError{Hostname: "host\x1b[2J"},
+	}
+	for name, connErr := range cases {
+		m := newListTestModel(t, "Server")
+		rec := newConnectRecorder()
+		rec.results["id-0"] = connErr
+		m.fmConnect = rec.connect
+		m = press(t, m, "end")
+		m = pressRun(t, m, "enter")
+		m = pressRun(t, m, "enter")
+		m = pressRun(t, m, "enter")
+		if m.state != ViewList {
+			t.Fatalf("%s: state = %v, erwartet ViewList", name, m.state)
+		}
+		if strings.ContainsAny(m.errorMsg, "\x1b\x07") {
+			t.Errorf("%s: Fehlermeldung enthält Steuerzeichen: %q", name, m.errorMsg)
+		}
+		if strings.ContainsAny(stripANSI(renderListText(m)), "\x07") || strings.Contains(renderListText(m), "\x1b]0;") {
+			t.Errorf("%s: Steuersequenz erreicht die Ausgabe", name)
+		}
+	}
+}
+
+// TestConnectErrorSanitized - dasselbe für den normalen Verbindungsaufbau.
+func TestConnectErrorSanitized(t *testing.T) {
+	m := newListTestModel(t, "Server")
+	updated, _ := m.Update(sshErrorMsg{id: "id-0", err: errors.New("banner \x1b[2J\x1b]0;x\x07")})
+	m = updated.(AppModel)
+	if strings.ContainsAny(m.errorMsg, "\x1b\x07") {
+		t.Errorf("Fehlermeldung enthält Steuerzeichen: %q", m.errorMsg)
 	}
 }

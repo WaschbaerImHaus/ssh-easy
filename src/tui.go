@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-21 19:53
 package main
 
 import (
@@ -416,7 +416,7 @@ func (m AppModel) Init() tea.Cmd {
 // @param msg - Eingehende Nachricht
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-10-16 10:00
+// @date   2026-10-21 19:53
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -468,7 +468,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.reloadConfig()
 		m.state = ViewList
 		if msg.err != nil {
-			m.errorMsg = m.lang.ErrPrefix + msg.err.Error()
+			m.errorMsg = m.lang.ErrPrefix + sanitizeFileName(msg.err.Error())
 		} else {
 			m.successMsg = m.lang.KeyRemovedMsg
 		}
@@ -516,7 +516,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case sshKeyDeployedMsg:
 		// Key-Deployment abgeschlossen
 		if msg.err != nil {
-			m.errorMsg = m.lang.KeyDeployFailed + msg.err.Error()
+			m.errorMsg = m.lang.KeyDeployFailed + sanitizeFileName(msg.err.Error())
 		} else {
 			m.successMsg = fmt.Sprintf(m.lang.KeyDeployedMsg, msg.keyPath)
 			// Konfiguration neu laden (Key-Pfad wurde gespeichert)
@@ -526,7 +526,8 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case sshErrorMsg:
-		m.errorMsg = m.lang.ConnErrPrefix + msg.err.Error()
+		// Fehlertext kann Text vom Server enthalten (Handshake) -> bereinigen
+		m.errorMsg = m.lang.ConnErrPrefix + sanitizeFileName(msg.err.Error())
 		// Unbekannter Host über öffentlichen Fallback-DNS: verständlich erklären
 		var untrusted *untrustedHostError
 		if errors.As(msg.err, &untrusted) {

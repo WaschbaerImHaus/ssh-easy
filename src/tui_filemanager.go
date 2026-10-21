@@ -229,11 +229,13 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // handleFMConnected übernimmt das Ergebnis eines Verbindungsaufbaus.
 // Auth-Fehler führen zur Passwortabfrage; Netzwerk-, Host-Key- und
 // SFTP-Fehler beenden den Datei-Manager mit Meldung in der Liste.
+// Fehlertexte können Text vom Server enthalten und werden deshalb von
+// Steuerzeichen bereinigt.
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken)
-// @date   2026-10-21 19:45
+// @date   2026-10-21 19:53
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -248,15 +250,15 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 		switch {
 		case IsHostKeyChangedError(msg.err):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrHostKey), parseHostKeyChangedHostname(msg.err))
+			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrHostKey), sanitizeFileName(parseHostKeyChangedHostname(msg.err)))
 			return m, nil
 		case errors.As(msg.err, &sftpErr):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrSFTP), conn.Name, sftpErr.err.Error())
+			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrSFTP), conn.Name, sanitizeFileName(sftpErr.err.Error()))
 			return m, nil
 		case IsNetworkError(msg.err):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, msg.err.Error())
+			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error()))
 			return m, nil
 		}
 		// Anmeldung fehlgeschlagen: Passwort abfragen
