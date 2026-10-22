@@ -2,8 +2,8 @@
 //
 // Testet Logger-Erstellung und Log-Ausgaben.
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 22:00
+// @author Kurt Ingwer
+// @date   2026-10-22 10:36
 package main
 
 import (

@@ -4,8 +4,8 @@
 // Ermöglicht das Verwalten, Speichern und Aufbauen von SSH-Verbindungen
 // mit Local-Port-Forwarding-Tunneln.
 //
-// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
-// @date   2026-10-16 10:00
+// @author Kurt Ingwer
+// @date   2026-10-22 10:36
 package main
 
 import (

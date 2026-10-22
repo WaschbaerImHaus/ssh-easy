@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.75] – Build 75
+- **Changed** source file headers now consistently name Kurt Ingwer as author (11 files had a wrong author line); no functional changes
+
 ## [v0.74] – Build 74
 - **Security** symlinks are no longer created at all when copying or moving from a server to the local PC; they are skipped with a message (and stay on the server when moving). Even a target without `..` could point to existing local files such as `~/.ssh` (finding of the automated security review of Build 73). Copies between servers keep symlinks as before
 

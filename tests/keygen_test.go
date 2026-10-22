@@ -1,7 +1,7 @@
 // Tests fuer die SSH-Key-Generierung
 //
-// @author Reisen macht Spass... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 19:00
+// @author Kurt Ingwer
+// @date   2026-10-22 10:36
 package main
 
 import (

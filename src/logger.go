@@ -3,8 +3,8 @@
 // Einfaches dateibasiertes Logging für Debugging und Audit.
 // Logdatei wird unter ~/.ssh-easy/ssh-easy.log gespeichert.
 //
-// @author Reisen macht Spaß... mit Pia und Dirk e.Kfm.
-// @date   2026-03-07 21:00
+// @author Kurt Ingwer
+// @date   2026-10-22 10:36
 package main
 
 import (
