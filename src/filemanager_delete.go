@@ -14,21 +14,21 @@
 // Schutz vor ausgetauschten Verzeichnissen: SFTP arbeitet nur mit Pfaden.
 // Ersetzt jemand ein Verzeichnis während des Löschens durch einen Symlink,
 // würden die folgenden Pfade in das Ziel des Links führen. Deshalb wird
-// am Anfang der kanonische Pfad des Fensterverzeichnisses ermittelt
-// (RealPath, löst serverseitig alle Symlinks auf). Nach dem Einlesen jedes
-// Verzeichnisses und vor jedem Löschen muss der kanonische Pfad des
-// betroffenen Verzeichnisses genau dem erwarteten entsprechen - so fällt
-// ein Austausch an jeder Stelle der Kette auf, mit einer einzigen Anfrage.
-// Kann der Server kein RealPath, wird stattdessen die ganze Kette per
-// Lstat geprüft. Bei einer Abweichung wird darin nichts mehr gelöscht
-// (errDeleteRace). Ein Restfenster zwischen Prüfung und Löschen bleibt
-// (siehe SECURITY_RISKS.md).
+// immer per Lstat geprüft: nach dem Einlesen eines Verzeichnisses die ganze
+// Kette vom gewählten Eintrag bis zu ihm, vor jedem Löschen das direkte
+// Elternverzeichnis (ohne RealPath: auch hier die ganze Kette).
+// Zusätzlich - nie statt dessen, denn nicht jeder Server löst bei
+// realpath wirklich Symlinks auf - muss der kanonische Pfad (RealPath)
+// des betroffenen Verzeichnisses dem erwarteten entsprechen; so fällt bei
+// üblichen Servern (OpenSSH) ein Austausch an jeder Stelle der Kette auf.
+// Bei einer Abweichung wird darin nichts mehr gelöscht (errDeleteRace).
+// Ein Restfenster zwischen Prüfung und Löschen bleibt (SECURITY_RISKS.md).
 //
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt und das
 // Ergebnis als deleteEvent.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:55
+// @date   2026-10-22 06:05
 package main
 
 import (
@@ -179,7 +179,7 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 			return false
 		}
 		// Seit dem Lstat ausgetauscht? Ganze Kette bis hierher prüfen
-		if !d.unchanged(top, p) {
+		if !d.unchanged(top, p, true) {
 			d.fail(p, errDeleteRace)
 			return false
 		}
@@ -208,7 +208,7 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 		}
 	}
 	// Kette bis zum Elternverzeichnis unmittelbar vor dem Löschen unverändert?
-	if !d.unchanged(top, path.Dir(p)) {
+	if !d.unchanged(top, path.Dir(p), false) {
 		d.fail(path.Dir(p), errDeleteRace)
 		return false
 	}
@@ -222,17 +222,29 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 }
 
 // unchanged prüft, ob ein Verzeichnis noch an der erwarteten Stelle liegt:
-// sein kanonischer Pfad muss dem kanonischen Fensterverzeichnis plus dem
-// relativen Pfad entsprechen (kein Bestandteil ist inzwischen ein Symlink).
-// Ohne RealPath: Lstat-Prüfung der Kette von top bis dir.
+//  1. immer Lstat: dir (wholeChain bzw. ohne RealPath: die ganze Kette von
+//     top bis dir) muss aus echten Verzeichnissen bestehen - außer dem
+//     Fensterverzeichnis selbst, das ein Symlink sein darf
+//  2. zusätzlich, wenn der Server RealPath kann: der kanonische Pfad muss
+//     dem kanonischen Fensterverzeichnis plus relativem Pfad entsprechen
 //
 // @param top - Pfad des gewählten obersten Eintrags
 // @param dir - zu prüfendes Verzeichnis (req.dir, top oder darunter)
+// @param wholeChain - ganze Kette per Lstat prüfen (nach dem Einlesen)
 // @return bool - true = unverändert
-// @date   2026-10-22 05:55
-func (d *deleteRun) unchanged(top, dir string) bool {
+// @date   2026-10-22 06:05
+func (d *deleteRun) unchanged(top, dir string, wholeChain bool) bool {
+	from := dir
+	if wholeChain || d.base == "" {
+		from = top
+	}
+	// Das Fensterverzeichnis selbst darf ein Symlink sein (z. B. verlinktes
+	// Home); dafür gilt nur der RealPath-Vergleich
+	if path.Clean(dir) != path.Clean(d.req.dir) && !d.realDirectories(from, dir) {
+		return false
+	}
 	if d.base == "" {
-		return d.realDirectories(top, dir)
+		return true
 	}
 	real, err := d.req.fs.RealPath(dir)
 	if err != nil {

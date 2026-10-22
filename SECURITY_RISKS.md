@@ -24,9 +24,11 @@ jemand mit Schreibrecht im betroffenen Verzeichnis es durch einen Symlink auf ei
 Verzeichnis ersetzen; dessen Inhalt würde dann mit den Rechten des Nutzers gelöscht.
 `rm -rf` vermeidet das mit `openat()`/`unlinkat()`, SFTP kennt dafür keine Operationen.
 Abschwächung: Symlinks selbst werden nie verfolgt, Namen mit `/`, `\` oder Steuerzeichen
-werden abgelehnt; seit Build 67 muss nach jedem Einlesen und vor jedem Löschen der kanonische
-Pfad (SFTP `realpath`) des Verzeichnisses dem erwarteten entsprechen (ganze Kette), ein
-Austausch bricht das Löschen dort ab. Übrig bleibt nur das kurze Fenster zwischen Prüfung und `Remove`. Nur
+werden abgelehnt; seit Build 68 wird nach jedem Einlesen die Kette und vor jedem Löschen das
+Elternverzeichnis per Lstat geprüft und zusätzlich der kanonische Pfad (SFTP `realpath`)
+verglichen (ganze Kette), ein Austausch bricht das Löschen dort ab. Bei Servern, deren
+`realpath` Symlinks nicht auflöst, bleibt für weiter oben liegende Verzeichnisse nur die
+Lstat-Prüfung nach dem Einlesen. Übrig bleibt nur das kurze Fenster zwischen Prüfung und `Remove`. Nur
 relevant beim Löschen in Verzeichnissen, in die Dritte schreiben dürfen.
 
 ### Datei-Manager: unbegrenzte Verzeichnisliste beim Anzeigen (Restrisiko)

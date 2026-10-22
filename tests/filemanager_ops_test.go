@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -1142,3 +1143,70 @@ func (a *aliasFS) Lstat(p string) (os.FileInfo, error)     { return a.memFS.Lsta
 func (a *aliasFS) ReadDir(p string) ([]os.FileInfo, error) { return a.memFS.ReadDir(a.real(p)) }
 func (a *aliasFS) Remove(p string) error                   { return a.memFS.Remove(a.real(p)) }
 func (a *aliasFS) RealPath(p string) (string, error)       { return a.memFS.RealPath(a.real(p)) }
+
+// literalRealPathFS ist ein Server, dessen realpath Symlinks NICHT auflöst
+// (nur den Pfad bereinigt) - die RealPath-Prüfung allein wäre dann wirkungslos.
+type literalRealPathFS struct{ *swapFS }
+
+func (l *literalRealPathFS) RealPath(p string) (string, error) { return path.Clean(p), nil }
+
+// TestDeleteDetectsSwapWithoutResolvingRealPath - auch bei einem solchen
+// Server fällt ein ausgetauschtes Elternverzeichnis auf (Lstat-Prüfung
+// läuft immer, RealPath nur zusätzlich).
+func TestDeleteDetectsSwapWithoutResolvingRealPath(t *testing.T) {
+	base := newCopySource()
+	fsys := &literalRealPathFS{&swapFS{memFS: base, swapOnRemove: "/home/a/projekt"}}
+	result := runDeleteSync(t, context.Background(), fsys, "projekt")
+	found := false
+	for _, f := range result.failures {
+		found = found || errors.Is(f.err, errDeleteRace)
+	}
+	if !found {
+		t.Fatalf("keine errDeleteRace-Meldung: %s", failureErrors(result.failures))
+	}
+	for _, p := range []string{"/home/a/projekt/main.go", "/home/a/projekt/run.sh"} {
+		if base.node(p) == nil {
+			t.Errorf("%s nach dem Austausch gelöscht", p)
+		}
+	}
+}
+
+// TestDeleteInSymlinkedPanelDirWithLiteralRealPath - das Fensterverzeichnis
+// selbst ist ein Symlink (z. B. verlinktes Home) und der Server löst
+// realpath nicht auf: Löschen darin funktioniert trotzdem.
+func TestDeleteInSymlinkedPanelDirWithLiteralRealPath(t *testing.T) {
+	base := newMemFS("/data/a")
+	base.addFile("/data/a/notiz.txt", "x", 0o644, copyTestTime)
+	base.addDir("/data/a/leer", 0o755)
+	base.addLink("/home/a", "/data/a")
+	fsys := &literalRealPathFS{&swapFS{memFS: base}}
+	alias := &aliasFS{memFS: base, from: "/home/a", to: "/data/a"}
+	events := make(chan deleteEvent, 16)
+	go runDelete(context.Background(), deleteRequest{fs: &literalAlias{alias, fsys}, dir: "/home/a", names: []string{"notiz.txt", "leer"}}, events)
+	for ev := range events {
+		if ev.result != nil {
+			if len(ev.result.failures) != 0 {
+				t.Fatalf("Fehler: %s", failureErrors(ev.result.failures))
+			}
+			break
+		}
+	}
+	if base.node("/data/a/notiz.txt") != nil || base.node("/data/a/leer") != nil {
+		t.Error("nicht gelöscht")
+	}
+}
+
+// literalAlias: Pfade wie aliasFS, Lstat des Fensterverzeichnisses zeigt
+// aber den Symlink selbst, realpath löst nicht auf.
+type literalAlias struct {
+	*aliasFS
+	literal *literalRealPathFS
+}
+
+func (l *literalAlias) Lstat(p string) (os.FileInfo, error) {
+	if p == l.from {
+		return l.memFS.Lstat(p)
+	}
+	return l.aliasFS.Lstat(p)
+}
+func (l *literalAlias) RealPath(p string) (string, error) { return l.literal.RealPath(p) }

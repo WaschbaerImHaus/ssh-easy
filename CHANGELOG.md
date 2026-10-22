@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.68] – Build 68
+- **Security** `F8` always checks the directories with `Lstat` again and compares the canonical path (`realpath`) only in addition – a server whose `realpath` does not resolve symlinks can no longer make the check pass by itself (finding of the automated security review of Build 67). The panel directory itself may still be a symlink (e.g. a linked home)
+- **Added** 2 new tests (557 total, all green)
+
 ## [v0.67] – Build 67
 - **Security** `F8` now checks the whole path chain before every removal, not only the parent directory: the canonical path (SFTP `realpath`) of the directory must match the expected one, so a directory replaced anywhere above is detected (finding of the automated security review of Build 66). Panels whose own path goes through a symlink keep working
 - **Added** 2 new tests (555 total, all green)
