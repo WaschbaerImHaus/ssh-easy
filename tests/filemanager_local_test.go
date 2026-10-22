@@ -325,10 +325,15 @@ func TestSafeLinkTarget(t *testing.T) {
 		ok          bool
 	}{
 		{"projekt/aktuell", "main.go", true},
-		{"projekt/lib/x", "../main.go", true},
 		{"projekt/link", ".", true},
-		{"projekt/link", "..", true},
 		{"link", "projekt", true},
+		{"link", "projekt/lib/x.go", true},
+		// ".." wird grundsätzlich abgelehnt: über einen anderen Link im
+		// kopierten Baum (sub/l1 -> "..") führte "l1/../x" sonst hinaus
+		{"projekt/lib/x", "../main.go", false},
+		{"projekt/link", "..", false},
+		{"sub/l2", "l1/../x", false},
+		{"link", "a/./../b", false},
 		{"link", "..", false},
 		{"projekt/link", "../..", false},
 		{"projekt/link", "../../x", false},

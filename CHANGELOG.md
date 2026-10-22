@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.72] – Build 72
+- **Security** when copying from a server to the PC, symlinks whose target contains `..` are no longer created (another link in the copied tree could turn such a target into a way out of the directory; finding of the automated security review of Build 71)
+
 ## [v0.71] – Build 71
 - **Security** files copied from a server to the PC are now marked as downloaded before their original permissions are applied, so read-only files are marked too; if marking fails, the file is not placed (drives without alternate data streams such as FAT are exempt) (finding of the automated security review of Build 70)
 - **Security** symlinks copied from a server to the PC are only created if they are relative and stay inside the copied directory; links to absolute paths, other drives or outside the directory are refused with a message (finding of the automated security review of Build 70)
