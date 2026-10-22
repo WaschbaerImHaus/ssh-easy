@@ -111,6 +111,12 @@ func (m AppModel) fmOpenCopyConfirm(move bool) (tea.Model, tea.Cmd) {
 	if m.fm.panels[source].loading || target.loading || target.fs == nil || m.fm.panels[source].fs == nil {
 		return m, nil
 	}
+	// Windows-Laufwerksliste: weder Quelle noch Ziel (F5 auf "C:" würde ein
+	// ganzes Laufwerk kopieren, F6 es danach löschen)
+	if m.fmInDriveList(source) || m.fmInDriveList(1-source) {
+		m.fm.message = m.tr(txtFMDriveList)
+		return m, nil
+	}
 	names := m.fmSelection()
 	if len(names) == 0 {
 		m.fm.message = m.tr(txtFMNothingSelected)
@@ -140,6 +146,8 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 		names:    m.fm.copy.names,
 		sameHost: strings.EqualFold(src.conn.Host, dst.conn.Host) && src.conn.Port == dst.conn.Port,
 		move:     m.fm.copy.move,
+		// Vom Server auf den PC: Dateien als heruntergeladen kennzeichnen
+		markDownloads: fmShouldMarkDownloads(src.fs, dst.fs),
 	}
 	go runCopy(ctx, req, m.fm.copy.events, m.fm.copy.answers)
 	m.fm.dialog = fmDialogCopying

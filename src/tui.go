@@ -267,6 +267,8 @@ type AppModel struct {
 	fm fileManager
 	// Datei-Manager: Verbindungsaufbau (in Tests austauschbar)
 	fmConnect fmConnectFunc
+	// Datei-Manager: "Lokaler PC" öffnen (in Tests austauschbar)
+	fmLocalConnect func() (remoteFS, error)
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -286,6 +288,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		buildNumber:    buildNumber,
 		expandedGroups: make(map[string]bool),
 		fmConnect:      newSFTPConnector(sshManager),
+		fmLocalConnect: newLocalFS,
 	}
 	if home, err := os.UserHomeDir(); err == nil {
 		m.exportHomeDir = home

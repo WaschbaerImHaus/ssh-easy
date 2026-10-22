@@ -336,12 +336,26 @@ func (p *filePanel) markedSummary() (int, int64) {
 	return count, size
 }
 
-// title liefert die Titelzeile des Fensters, z. B. "root@host:/home/root".
+// title liefert die Titelzeile des Fensters, z. B. "root@host:/home/root"
+// bzw. "Lokaler PC:/home/a".
 //
 // @return string - Titel (bereinigt, ohne Steuerzeichen)
-// @date   2026-10-21 19:45
+// @date   2026-10-22 06:40
 func (p *filePanel) title() string {
-	return sanitizeFileName(p.conn.User + "@" + p.conn.Host + ":" + p.path)
+	return p.location(p.path)
+}
+
+// location beschreibt einen Pfad dieses Fensters für Titel (Fenster,
+// Betrachter, Editor): "user@host:pfad" bzw. "Lokaler PC:pfad".
+//
+// @param filePath - Pfad im Fenster
+// @return string - Text (bereinigt, ohne Steuerzeichen)
+// @date   2026-10-22 06:40
+func (p *filePanel) location(filePath string) string {
+	if p.conn.ID == fmLocalConnID {
+		return sanitizeFileName(p.conn.Name + ":" + filePath)
+	}
+	return sanitizeFileName(p.conn.User + "@" + p.conn.Host + ":" + filePath)
 }
 
 // sanitizeFileName ersetzt Steuerzeichen, unsichtbare Formatzeichen und

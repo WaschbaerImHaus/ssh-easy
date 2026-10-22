@@ -150,7 +150,9 @@ The file is treated as untrusted: at most 1 MiB, every entry is validated (name,
 The last entry of the connection list, separated by a blank line, opens a reduced
 Midnight-Commander-style file manager for working with two SSH hosts side by side:
 
-1. Choose the connection for the **left** panel, then the one for the **right** panel
+1. Choose the connection for the **left** panel, then the one for the **right** panel.
+   *Local PC* (first entry) shows the file system of your own computer, so you can copy
+   between your PC and a server; on Windows `..` above `C:\` shows the drive list
    (`q` goes back to the list at any time). The list starts on the placeholder
    *(not selected)*, which cannot be confirmed – both connections have to be chosen
    deliberately. The left connection is not offered again for the right panel.
@@ -216,7 +218,9 @@ unknown types are refused because opening them could run them. On Windows the co
 downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
 ssh-easy exits.
 
-The file manager needs two connections; until then its entry is greyed out.
+The file manager needs at least one connection (the other side can be *Local PC*); until
+then its entry is greyed out. Files copied from a server to your PC are marked as
+downloaded (Windows SmartScreen warns before running them).
 
 *Current state (Build 65): navigation, marking, viewing, editing, copying, moving, creating
 directories and deleting. The menu (incl. switching between the classic, ssh-easy and

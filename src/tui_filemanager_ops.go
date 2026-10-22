@@ -125,14 +125,29 @@ func (m AppModel) fmRemainingMarks(side int, done []string) map[string]bool {
 
 // --- F7: Verzeichnis anlegen ---
 
+// fmInDriveList meldet, ob ein Fenster die Windows-Laufwerksliste zeigt
+// (lokaler PC, "/"): dort sind Dateifunktionen gesperrt.
+//
+// @param side - Seite
+// @return bool - true in der Laufwerksliste
+// @date   2026-10-22 06:40
+func (m AppModel) fmInDriveList(side int) bool {
+	panel := m.fm.panels[side]
+	return panel.fs != nil && panelIsDriveList(panel.fs, panel.path)
+}
+
 // fmOpenMkdir öffnet nach F7 die Namensabfrage.
 //
 // @return tea.Model - Modell mit Dialog
 // @return tea.Cmd - Cursor-Blinken
-// @date   2026-10-22 05:17
+// @date   2026-10-22 06:40
 func (m AppModel) fmOpenMkdir() (tea.Model, tea.Cmd) {
 	panel := m.fm.panels[m.fm.active]
 	if panel.loading || panel.fs == nil {
+		return m, nil
+	}
+	if m.fmInDriveList(m.fm.active) {
+		m.fm.message = m.tr(txtFMDriveList)
 		return m, nil
 	}
 	input := textinput.New()
@@ -161,7 +176,7 @@ func (m AppModel) handleFMMkdirKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if name == "" {
 			return m, nil
 		}
-		if !safeCopyName(name) {
+		if !safeCopyName(name) || !fsAcceptsName(m.fm.panels[m.fm.active].fs, name) {
 			// Dialog bleibt offen, damit der Name korrigiert werden kann
 			m.fm.message = m.tr(txtFMMkdirBadName)
 			return m, nil
@@ -237,6 +252,11 @@ func (m AppModel) fmOpenDeleteConfirm() (tea.Model, tea.Cmd) {
 	side := m.fm.active
 	panel := m.fm.panels[side]
 	if panel.loading || panel.fs == nil {
+		return m, nil
+	}
+	if m.fmInDriveList(side) {
+		// F8 auf "C:" würde ein ganzes Laufwerk leeren
+		m.fm.message = m.tr(txtFMDriveList)
 		return m, nil
 	}
 	names := m.fmSelection()

@@ -138,7 +138,9 @@ Der letzte Eintrag der Verbindungsliste, durch eine Leerzeile abgesetzt, öffnet
 reduzierten Datei-Manager im Stil des Midnight Commander, um mit zwei SSH-Servern
 nebeneinander zu arbeiten:
 
-1. Verbindung für das **linke** Fenster wählen, dann die für das **rechte** Fenster
+1. Verbindung für das **linke** Fenster wählen, dann die für das **rechte** Fenster.
+   *Lokaler PC* (erster Eintrag) zeigt das Dateisystem deines eigenen Rechners, so kopierst
+   du zwischen PC und Server; unter Windows zeigt `..` oberhalb von `C:\` die Laufwerksliste
    (`q` führt jederzeit zurück zur Liste). Die Auswahl beginnt auf dem Platzhalter
    *(nicht ausgewählt)*, der sich nicht bestätigen lässt – beide Verbindungen müssen
    bewusst gewählt werden. Die linke Verbindung steht rechts nicht mehr zur Wahl.
@@ -206,7 +208,9 @@ unbekannte Typen werden abgelehnt, weil „Öffnen“ dort „Ausführen“ hei�
 Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
 von ssh-easy gelöscht.
 
-Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
+Der Datei-Manager braucht mindestens eine Verbindung (die andere Seite kann *Lokaler PC*
+sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dateien werden
+als heruntergeladen gekennzeichnet (Windows-SmartScreen warnt vor dem Ausführen).
 
 *Stand Build 65: Navigation, Markieren, Ansehen, Bearbeiten, Kopieren, Verschieben,
 Verzeichnis anlegen und Löschen. Das Menü (inkl. Umschalten zwischen den Farbmodi

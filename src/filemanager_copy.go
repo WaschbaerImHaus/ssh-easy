@@ -104,6 +104,8 @@ type copyRequest struct {
 	sameHost bool
 	// Verschieben: Quelle nach erfolgreichem Kopieren löschen
 	move bool
+	// Kopierte Dateien als heruntergeladen kennzeichnen (Server -> PC)
+	markDownloads bool
 }
 
 // copyConflictAnswer ist die Antwort auf "Ziel existiert schon".
@@ -376,7 +378,7 @@ func (r *copyRun) scan() []copyNode {
 				if child.Name() == "." || child.Name() == ".." {
 					continue
 				}
-				if !safeCopyName(child.Name()) {
+				if !safeCopyName(child.Name()) || !fsAcceptsName(r.req.dst, child.Name()) {
 					// Nicht path.Join: das würde ".." auflösen
 					r.fail(node, srcPath+"/"+child.Name(), errUnsafeName)
 					continue
@@ -392,7 +394,7 @@ func (r *copyRun) scan() []copyNode {
 		r.sendProgress(false)
 	}
 	for _, name := range r.req.names {
-		if !safeCopyName(name) {
+		if !safeCopyName(name) || !fsAcceptsName(r.req.dst, name) {
 			r.fail(copyNode{top: name}, name, errUnsafeName)
 			continue
 		}
@@ -633,7 +635,26 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 	// Rechte und Zeit übernehmen; Fehler ignorieren (eingeschränkte Hoster)
 	_ = r.req.dst.Chmod(tmp, perm)
 	_ = r.req.dst.Chtimes(tmp, info.ModTime(), info.ModTime())
-	return r.req.dst.RenameOverwrite(tmp, dstPath)
+	if err := r.req.dst.RenameOverwrite(tmp, dstPath); err != nil {
+		return err
+	}
+	if marker, ok := r.req.dst.(downloadMarker); ok && r.req.markDownloads {
+		// Herkunft "Internet": Windows warnt vor dem Ausführen (SmartScreen)
+		marker.MarkDownloaded(dstPath)
+	}
+	return nil
+}
+
+// fsAcceptsName meldet, ob ein Dateisystem einen Namen unverändert anlegen
+// kann (lokales Windows: keine Gerätenamen, kein ":" usw.).
+//
+// @param fsys - Dateisystem
+// @param name - Name
+// @return bool - true wenn anlegbar
+// @date   2026-10-22 06:40
+func fsAcceptsName(fsys remoteFS, name string) bool {
+	v, ok := fsys.(nameValidator)
+	return !ok || v.ValidName(name)
 }
 
 // tempCopyName liefert einen zufälligen Temp-Namen im Verzeichnis des Ziels.

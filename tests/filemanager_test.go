@@ -365,39 +365,30 @@ func TestFileManagerRowIsLastListRow(t *testing.T) {
 	}
 }
 
-// TestFileManagerRowGreyedBelowTwoConnections - mit weniger als zwei
-// Verbindungen ist der Eintrag ausgegraut, nennt die fehlende Anzahl und
-// öffnet nichts.
-func TestFileManagerRowGreyedBelowTwoConnections(t *testing.T) {
-	cases := []struct {
-		names []string
-		hint  textKey
-	}{
-		{nil, txtFMNeedTwo},
-		{[]string{"Server"}, txtFMNeedOne},
+// TestFileManagerRowGreyedWithoutConnection - ohne Verbindung ist der
+// Eintrag ausgegraut, zeigt den Hinweis und öffnet nichts (seit Build 70
+// genügt eine Verbindung, die andere Seite kann "Lokaler PC" sein).
+func TestFileManagerRowGreyedWithoutConnection(t *testing.T) {
+	m := newListTestModel(t)
+	rows := m.listRows()
+	if len(rows) != 1 || rows[0].kind != rowFileManager {
+		t.Fatalf("Zeilen %v, erwartet nur den Datei-Manager", rows)
 	}
-	for _, c := range cases {
-		m := newListTestModel(t, c.names...)
-		rows := m.listRows()
-		if len(rows) != len(c.names)+1 || rows[len(rows)-1].kind != rowFileManager {
-			t.Fatalf("%d Verbindungen: Zeilen %v, erwartet Datei-Manager als letzte", len(c.names), rows)
-		}
-		text := stripANSI(renderListText(m))
-		if !strings.Contains(text, m.tr(txtFMListEntry)) || !strings.Contains(text, m.tr(c.hint)) {
-			t.Errorf("%d Verbindungen: Eintrag/Hinweis fehlt:\n%s", len(c.names), text)
-		}
-		if len(c.names) == 0 && !strings.Contains(text, m.lang.NoConnections) {
-			t.Errorf("Hinweis \"keine Verbindungen\" fehlt:\n%s", text)
-		}
-		m = press(t, m, "end", "enter")
-		if m.state != ViewList {
-			t.Errorf("%d Verbindungen: Enter öffnet den Datei-Manager (state %v)", len(c.names), m.state)
-		}
-		// Auch e/d/x tun nichts
-		for _, key := range []string{"e", "d", "x"} {
-			if got := press(t, m, key); got.state != ViewList {
-				t.Errorf("Taste %q auf ausgegrautem Eintrag wechselt nach %v", key, got.state)
-			}
+	text := stripANSI(renderListText(m))
+	if !strings.Contains(text, m.tr(txtFMListEntry)) || !strings.Contains(text, m.tr(txtFMNeedConnection)) {
+		t.Errorf("Eintrag/Hinweis fehlt:\n%s", text)
+	}
+	if !strings.Contains(text, m.lang.NoConnections) {
+		t.Errorf("Hinweis \"keine Verbindungen\" fehlt:\n%s", text)
+	}
+	m = press(t, m, "end", "enter")
+	if m.state != ViewList {
+		t.Errorf("Enter öffnet den Datei-Manager (state %v)", m.state)
+	}
+	// Auch e/d/x tun nichts
+	for _, key := range []string{"e", "d", "x"} {
+		if got := press(t, m, key); got.state != ViewList {
+			t.Errorf("Taste %q auf ausgegrautem Eintrag wechselt nach %v", key, got.state)
 		}
 	}
 }
@@ -407,7 +398,7 @@ func TestFileManagerRowGreyedBelowTwoConnections(t *testing.T) {
 func TestFileManagerRowEnabledFromTwoConnections(t *testing.T) {
 	m := newListTestModel(t, "A", "B")
 	text := stripANSI(renderListText(m))
-	if strings.Contains(text, m.tr(txtFMNeedOne)) || strings.Contains(text, m.tr(txtFMNeedTwo)) {
+	if strings.Contains(text, m.tr(txtFMNeedConnection)) {
 		t.Errorf("Hinweis trotz zwei Verbindungen:\n%s", text)
 	}
 	m = press(t, m, "end", "enter")
@@ -421,7 +412,7 @@ func TestFileManagerRowEnabledFromTwoConnections(t *testing.T) {
 func TestFileManagerRowGreyedStyle(t *testing.T) {
 	withColorProfile(t)
 	grey := "38;5;" + fmDisabledFg
-	m := newListTestModel(t, "Server")
+	m := newListTestModel(t)
 	line := selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
 	if !strings.Contains(line, grey) {
 		t.Errorf("nicht ausgegraut: %q", line)
@@ -431,10 +422,10 @@ func TestFileManagerRowGreyedStyle(t *testing.T) {
 	if !strings.Contains(line, grey) {
 		t.Errorf("als Cursorzeile nicht ausgegraut: %q", line)
 	}
-	m = newListTestModel(t, "A", "B")
+	m = newListTestModel(t, "A")
 	line = selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
 	if strings.Contains(line, grey) {
-		t.Errorf("trotz zwei Verbindungen ausgegraut: %q", line)
+		t.Errorf("trotz Verbindung ausgegraut: %q", line)
 	}
 }
 
@@ -516,7 +507,8 @@ func TestFileManagerPickBothSides(t *testing.T) {
 		t.Errorf("\"(nicht ausgewählt)\" steht nicht vor den Verbindungen:\n%s", text)
 	}
 
-	m = press(t, m, "down", "enter")
+	// Zeile 1 ist "Lokaler PC", Zeile 2 die erste Verbindung
+	m = press(t, m, "down", "down", "enter")
 	if m.state != ViewFMPick || m.fm.pickSide != 1 {
 		t.Fatalf("nach erster Wahl: state = %v/Seite %d, erwartet rechte Seite", m.state, m.fm.pickSide)
 	}
@@ -564,12 +556,13 @@ func TestFileManagerPickExcludesLeftConnection(t *testing.T) {
 	m := newListTestModel(t, "A", "B", "C")
 	m.fmConnect = newConnectRecorder().connect
 	m = openPick(t, m)
-	if got := strings.Join(pickNames(m), ","); got != "A,B,C" {
-		t.Fatalf("links: Auswahl = %s, erwartet A,B,C", got)
+	local := m.tr(txtFMLocalPC)
+	if got := strings.Join(pickNames(m), ","); got != local+",A,B,C" {
+		t.Fatalf("links: Auswahl = %s, erwartet %s,A,B,C", got, local)
 	}
 	m = pickSide(t, m, "B")
-	if got := strings.Join(pickNames(m), ","); got != "A,C" {
-		t.Errorf("rechts: Auswahl = %s, erwartet A,C (ohne die linke B)", got)
+	if got := strings.Join(pickNames(m), ","); got != local+",A,C" {
+		t.Errorf("rechts: Auswahl = %s, erwartet %s,A,C (ohne die linke B)", got, local)
 	}
 	text := stripANSI(m.View())
 	if strings.Contains(text, "  B  (") {

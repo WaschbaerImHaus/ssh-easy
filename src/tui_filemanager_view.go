@@ -127,7 +127,7 @@ func (m AppModel) fmOpenViewer() (tea.Model, tea.Cmd) {
 	m.fm.viewSeq++
 	m.fm.viewing = true
 	m.fm.view = fmViewer{
-		title:       sanitizeFileName(panel.conn.User + "@" + panel.conn.Host + ":" + filePath),
+		title:       panel.location(filePath),
 		name:        sanitizeFileName(entry.name),
 		rawName:     entry.name,
 		remotePath:  filePath,

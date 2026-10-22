@@ -5,6 +5,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.70] – Build 70
+- **Added** *Local PC* as a connection in the file manager: it is offered first in the connection choice (left or right, not on both sides) and shows the file system of your computer, starting in your home directory. Copying, moving, creating directories, deleting, viewing and editing work between your PC and a server just like between two servers
+- **Added** on Windows `..` above a drive root (e.g. `C:\`) leads to the drive list (`C:`, `D:`, …) to switch drives; copying, moving, creating and deleting are refused in the drive list
+- **Security** files copied from a server to the local PC are marked as downloaded (Windows: Mark of the Web, so SmartScreen warns before running them; macOS: quarantine). On Windows names that Windows would not create unchanged (`CON`, `NUL`, `a:b` = alternate data stream, trailing dot or space, `<>:"|?*`) are refused when copying to the PC and in `F7`
+- **Changed** the file manager now needs only one connection (the other side can be *Local PC*); without any connection its entry stays greyed out
+- **Added** 16 new tests (574 total, all green)
+
 ## [v0.69] – Build 69
 - **Security** `F8` on servers without `realpath`: the panel directory itself is now compared with its state at the start (type and symlink target) before every removal (finding of the automated security review of Build 68)
 - **Added** 1 new test (558 total, all green)

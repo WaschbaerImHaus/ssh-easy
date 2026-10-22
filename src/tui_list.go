@@ -211,8 +211,8 @@ func (m AppModel) startAutoConnect(conn Connection) (tea.Model, tea.Cmd) {
 }
 
 // listRows liefert die aktuell sichtbaren Zeilen der Verbindungsliste.
-// Ganz unten steht immer der Datei-Manager-Eintrag (unter zwei
-// Verbindungen ausgegraut, siehe fileManagerEnabled).
+// Ganz unten steht immer der Datei-Manager-Eintrag (ohne Verbindung
+// ausgegraut, siehe fileManagerEnabled).
 //
 // @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen,
 // Datei-Manager)
@@ -226,12 +226,13 @@ func (m AppModel) listRows() []listRow {
 const fmDisabledFg = "244"
 
 // fileManagerEnabled meldet, ob der Datei-Manager nutzbar ist: Er braucht
-// zwei verschiedene Verbindungen (keine Verbindung mit sich selbst).
+// zwei verschiedene Seiten - seit Build 70 genügt dafür eine Verbindung,
+// die andere Seite kann "Lokaler PC" sein.
 //
-// @return bool - true ab zwei Verbindungen
-// @date   2026-10-21 21:06
+// @return bool - true ab einer Verbindung
+// @date   2026-10-22 06:40
 func (m AppModel) fileManagerEnabled() bool {
-	return len(m.connections) >= 2
+	return len(m.connections) >= 1
 }
 
 // selectedConnection liefert die Verbindung unter dem Cursor.
@@ -384,16 +385,13 @@ func (m AppModel) renderListRow(row listRow, selected bool) string {
 	}
 	dotStyle := base.Foreground(lipgloss.Color("46")).Bold(true)
 
-	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt; unter zwei
-	// Verbindungen ausgegraut mit Hinweis, wie viele noch fehlen
+	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt; ohne
+	// Verbindung ausgegraut mit Hinweis
 	if row.kind == rowFileManager {
 		if m.fileManagerEnabled() {
 			return base.Render("    ▸ " + m.tr(txtFMListEntry))
 		}
-		hint := m.tr(txtFMNeedTwo)
-		if len(m.connections) == 1 {
-			hint = m.tr(txtFMNeedOne)
-		}
+		hint := m.tr(txtFMNeedConnection)
 		return base.Bold(false).Foreground(lipgloss.Color(fmDisabledFg)).Render("    ▸ " + m.tr(txtFMListEntry) + "  – " + hint)
 	}
 

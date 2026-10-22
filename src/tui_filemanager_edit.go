@@ -161,7 +161,7 @@ func (m AppModel) fmOpenEditor() (tea.Model, tea.Cmd) {
 	m.fm.editSeq++
 	m.fm.editing = true
 	m.fm.edit = fmEditor{
-		title:   sanitizeFileName(panel.conn.User + "@" + panel.conn.Host + ":" + filePath),
+		title:   panel.location(filePath),
 		name:    sanitizeFileName(entry.name),
 		rawName: entry.name,
 		path:    filePath,

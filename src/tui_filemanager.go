@@ -160,26 +160,36 @@ func (m AppModel) closeFileManager() AppModel {
 	return m
 }
 
-// fmPickConnections liefert die wählbaren Verbindungen: flach (ohne
-// Gruppen), alphabetisch wie in der Konfiguration. Bei der Wahl der
-// rechten Seite fehlt die links gewählte (keine Verbindung mit sich selbst).
-// Davor steht in der Anzeige immer der Platzhalter "(nicht ausgewählt)"
-// (Zeile 0), Verbindung i steht also in Zeile i+1.
+// fmPickConnections liefert die wählbaren Verbindungen: zuerst "Lokaler
+// PC", dann die Verbindungen flach (ohne Gruppen), alphabetisch wie in der
+// Konfiguration. Bei der Wahl der rechten Seite fehlt die links gewählte
+// (keine Verbindung mit sich selbst). Davor steht in der Anzeige immer der
+// Platzhalter "(nicht ausgewählt)" (Zeile 0), Verbindung i steht also in
+// Zeile i+1.
 //
 // @return []Connection - Verbindungen
-// @date   2026-10-21 20:03
+// @date   2026-10-22 06:40
 func (m AppModel) fmPickConnections() []Connection {
+	all := append([]Connection{m.fmLocalConnection()}, m.connections...)
 	if m.fm.pickSide == 0 {
-		return m.connections
+		return all
 	}
 	leftID := m.fm.panels[0].conn.ID
-	conns := make([]Connection, 0, len(m.connections))
-	for _, conn := range m.connections {
+	conns := make([]Connection, 0, len(all))
+	for _, conn := range all {
 		if conn.ID != leftID {
 			conns = append(conns, conn)
 		}
 	}
 	return conns
+}
+
+// fmLocalConnection liefert die Pseudo-Verbindung "Lokaler PC".
+//
+// @return Connection - nur ID und (übersetzter) Name sind gesetzt
+// @date   2026-10-22 06:40
+func (m AppModel) fmLocalConnection() Connection {
+	return Connection{ID: fmLocalConnID, Name: m.tr(txtFMLocalPC)}
 }
 
 // handleFMPickKeys verarbeitet Tasten in der Verbindungsauswahl.
@@ -252,6 +262,11 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 	m.fm.connectSide = side
 	connect := m.fmConnect
 	conn := m.fm.panels[side].conn
+	if conn.ID == fmLocalConnID {
+		// Lokaler PC: keine Anmeldung, kein Netzwerk
+		local := m.fmLocalConnect
+		connect = func(Connection, string) (remoteFS, error) { return local() }
+	}
 	session := m.fm.session
 	return m, func() tea.Msg {
 		result := fmConnectedMsg{session: session, side: side, withPassword: password != ""}
@@ -292,6 +307,11 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	if msg.err != nil {
 		var sftpErr *fmSFTPError
 		switch {
+		case conn.ID == fmLocalConnID:
+			// Lokaler PC: es gibt kein Passwort, das helfen könnte
+			m = m.closeFileManager()
+			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error()))
+			return m, nil
 		case IsHostKeyChangedError(msg.err):
 			m = m.closeFileManager()
 			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrHostKey), sanitizeFileName(parseHostKeyChangedHostname(msg.err)))
@@ -589,6 +609,9 @@ func (m AppModel) renderFMPick(s *strings.Builder) {
 		if i > 0 {
 			conn := conns[i-1]
 			line = fmt.Sprintf("  %s  (%s@%s)", conn.Name, conn.User, conn.Host)
+			if conn.ID == fmLocalConnID {
+				line = "  " + conn.Name
+			}
 		}
 		if i == m.fm.pickCursor {
 			s.WriteString(selectedStyle.Render(line))
