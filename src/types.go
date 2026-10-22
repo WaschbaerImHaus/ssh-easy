@@ -83,6 +83,11 @@ type AppConfig struct {
 	// Auto-Update über GitHub-Releases (Standard: aus). Download beim Start,
 	// Installation beim Beenden.
 	AutoUpdate bool `json:"auto_update,omitempty"`
+	// Datei-Manager: Farbmodus ("classic", "ssh-easy", "mono"; leer = classic)
+	FileManagerTheme string `json:"file_manager_theme,omitempty"`
+	// Datei-Manager: erlaubte Endungen für F9 "lokal öffnen" (leer = sichere
+	// Standardliste allowedOpenExtensions)
+	FileManagerOpenExtensions []string `json:"file_manager_open_extensions,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

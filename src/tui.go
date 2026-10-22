@@ -269,6 +269,8 @@ type AppModel struct {
 	fmConnect fmConnectFunc
 	// Datei-Manager: "Lokaler PC" öffnen (in Tests austauschbar)
 	fmLocalConnect func() (remoteFS, error)
+	// Datei-Manager: erlaubte Endungen für F9 (nil = sichere Standardliste)
+	fmOpenExtensions []string
 }
 
 // NewAppModel erstellt ein neues TUI-Modell mit geladener Konfiguration.
@@ -306,6 +308,7 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		m.connections = sortConnectionsByName(cfg.Connections)
 		m.language = cfg.Language
 		m.autoUpdate = cfg.AutoUpdate
+		m.applyFMSettings(cfg)
 	}
 
 	// Sprache initialisieren
@@ -688,6 +691,8 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fm.view.input, cmd = m.fm.view.input.Update(msg)
 		} else if m.fm.dialog == fmDialogMkdir {
 			m.fm.mkdirInput, cmd = m.fm.mkdirInput.Update(msg)
+		} else if m.fm.dialog == fmDialogExtensions {
+			m.fm.extInput, cmd = m.fm.extInput.Update(msg)
 		}
 	}
 

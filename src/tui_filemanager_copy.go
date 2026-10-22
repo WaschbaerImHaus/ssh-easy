@@ -27,6 +27,7 @@ import (
 	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -48,6 +49,12 @@ const (
 	fmDialogDeleteConfirm
 	// fmDialogDeleting - Fortschritt des Löschens
 	fmDialogDeleting
+	// fmDialogTheme - Optionen -> Aussehen (Farbmodus)
+	fmDialogTheme
+	// fmDialogExtensions - Optionen -> Endungen für F9
+	fmDialogExtensions
+	// fmDialogExtRisk - kräftiger Risikohinweis zu riskanten Endungen
+	fmDialogExtRisk
 )
 
 // Höchstbreite der Dialoge in Zeichen
@@ -288,6 +295,8 @@ func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleFMMkdirKeys(msg)
 	case fmDialogDeleteConfirm, fmDialogDeleting:
 		return m.handleFMDeleteKeys(key)
+	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk:
+		return m.handleFMOptionKeys(msg)
 	case fmDialogCopyConfirm:
 		switch key {
 		case "enter":
@@ -343,6 +352,8 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 	switch m.fm.dialog {
 	case fmDialogMkdir, fmDialogDeleteConfirm, fmDialogDeleting:
 		return m.fmOpsDialogLines(inner)
+	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk:
+		return m.fmOptionDialogLines(inner)
 	case fmDialogCopyConfirm:
 		target := m.fm.panels[1-c.source].title()
 		text := fmt.Sprintf(m.tr(confirmMany), len(c.names), target)
@@ -403,6 +414,10 @@ func (m AppModel) renderFMDialogBox(st fmStyles, width, height int) ([]string, i
 	boxWidth := dialogBoxWidth(width)
 	inner := max(boxWidth-4, 1)
 	title, content, help := m.fmDialogLines(inner)
+	if m.fm.dialog == fmDialogExtRisk {
+		// Warnung: Kasten in der Meldungsfarbe (klassisch weiß auf rot)
+		return renderDialogBoxWith(st.message, st.message, boxWidth, height, title, content, help), boxWidth
+	}
 	return renderDialogBox(st, boxWidth, height, title, content, help), boxWidth
 }
 
@@ -431,14 +446,30 @@ func dialogBoxWidth(width int) int {
 // @return []string - Zeilen des Kastens
 // @date   2026-10-21 21:35
 func renderDialogBox(st fmStyles, boxWidth, height int, title string, content []string, help string) []string {
+	return renderDialogBoxWith(st.dialog, st.dialogTitle, boxWidth, height, title, content, help)
+}
+
+// renderDialogBoxWith zeichnet einen Dialogkasten mit eigenen Stilen
+// (z. B. Warnung in der Meldungsfarbe).
+//
+// @param box - Stil von Rahmen und Inhalt
+// @param titleStyle - Stil des Titels
+// @param boxWidth - Breite des Kastens
+// @param height - Bildschirmhöhe
+// @param title - Titel
+// @param content - Inhaltszeilen
+// @param help - Tastenhilfe
+// @return []string - Zeilen des Kastens
+// @date   2026-10-22 07:50
+func renderDialogBoxWith(box, titleStyle lipgloss.Style, boxWidth, height int, title string, content []string, help string) []string {
 	inner := max(boxWidth-4, 1)
 	row := func(text string) string {
-		return st.dialog.Render("│ " + fitWidth(text, inner) + " │")
+		return box.Render("│ " + fitWidth(text, inner) + " │")
 	}
 	titleText := fitWidthLeft(" "+title+" ", max(boxWidth-2, 0))
 	fill := max(boxWidth-2-ansi.StringWidth(titleText), 0)
-	lines := []string{st.dialog.Render("┌"+strings.Repeat("─", fill/2)) + st.dialogTitle.Render(titleText) +
-		st.dialog.Render(strings.Repeat("─", fill-fill/2)+"┐")}
+	lines := []string{box.Render("┌"+strings.Repeat("─", fill/2)) + titleStyle.Render(titleText) +
+		box.Render(strings.Repeat("─", fill-fill/2)+"┐")}
 	for _, line := range content {
 		lines = append(lines, row(line))
 	}
@@ -446,7 +477,7 @@ func renderDialogBox(st fmStyles, boxWidth, height int, title string, content []
 	for _, line := range wrapHelp(help, inner) {
 		lines = append(lines, row(line))
 	}
-	lines = append(lines, st.dialog.Render("└"+strings.Repeat("─", max(boxWidth-2, 0))+"┘"))
+	lines = append(lines, box.Render("└"+strings.Repeat("─", max(boxWidth-2, 0))+"┘"))
 
 	// Zu hoch für das Terminal: Mitte kürzen, Rahmen behalten
 	if len(lines) > height && height >= 2 {
@@ -463,8 +494,20 @@ func renderDialogBox(st fmStyles, boxWidth, height int, title string, content []
 // @param width - Bildschirmbreite
 // @date   2026-10-21 21:03
 func overlayDialog(lines, box []string, boxWidth, width int) {
-	top := max((len(lines)-len(box))/2, 0)
-	left := max((width-boxWidth)/2, 0)
+	overlayAt(lines, box, boxWidth, max((len(lines)-len(box))/2, 0), max((width-boxWidth)/2, 0), width)
+}
+
+// overlayAt legt einen Kasten an eine feste Stelle über die
+// Bildschirmzeilen (z. B. aufgeklapptes Menü unter seinem Titel).
+//
+// @param lines - Bildschirmzeilen (werden verändert)
+// @param box - Zeilen des Kastens
+// @param boxWidth - Breite des Kastens
+// @param top - oberste Zeile
+// @param left - linke Spalte
+// @param width - Bildschirmbreite
+// @date   2026-10-22 07:50
+func overlayAt(lines, box []string, boxWidth, top, left, width int) {
 	for i, boxLine := range box {
 		y := top + i
 		if y >= len(lines) {

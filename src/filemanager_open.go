@@ -141,12 +141,14 @@ func localOpenName(name string) string {
 // Erlaubnisliste steht (auch: keine Endung).
 //
 // @param localName - Ergebnis von localOpenName
+// @param allowed - erlaubte Endungen (Standard: allowedOpenExtensions,
+// änderbar unter Optionen -> Endungen für F9)
 // @return string - Endung in Kleinbuchstaben (mit Punkt; "" ohne Endung)
 // @return bool - true wenn gesperrt
-// @date   2026-10-22 00:43
-func blockedOpenExtension(localName string) (string, bool) {
+// @date   2026-10-22 07:50
+func blockedOpenExtension(localName string, allowed map[string]bool) (string, bool) {
 	ext := strings.ToLower(filepath.Ext(strings.TrimRight(localName, ". ")))
-	return ext, !allowedOpenExtensions[ext]
+	return ext, ext == "" || !allowed[ext]
 }
 
 // downloadForOpen lädt eine Datei in einen eigenen privaten Ordner.

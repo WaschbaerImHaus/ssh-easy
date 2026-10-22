@@ -11,12 +11,12 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Stand Build 65: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
+// Stand Build 73: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
 // alle Markierungen um), Ansehen (F3, tui_filemanager_view.go), Bearbeiten
 // (F4, tui_filemanager_edit.go), Kopieren (F5, tui_filemanager_copy.go),
-// Verschieben (F6), Verzeichnis anlegen (F7) und Löschen (F8,
-// tui_filemanager_ops.go) funktionieren; Menü, F1, F2 und F9 sind nur
-// optisch vorhanden.
+// Verschieben (F6), Verzeichnis anlegen (F7), Löschen (F8,
+// tui_filemanager_ops.go), Menüs (F9, tui_filemanager_menu.go) und Neu
+// einlesen (Strg+R) funktionieren; F1 und F2 sind nur optisch vorhanden.
 //
 // @author Kurt Ingwer
 // @date   2026-10-22 05:17
@@ -85,6 +85,15 @@ type fileManager struct {
 	// Namensfeld von F7 und Zustand des Löschens (F8)
 	mkdirInput textinput.Model
 	del        fmDeleteState
+	// Menü (F9): offen?, gewähltes Menü (0 Links … 3 Rechts) und Eintrag
+	menuOpen  bool
+	menuIndex int
+	menuItem  int
+	// Optionen: Cursor im Farbmodus-Dialog, Eingabe der F9-Endungen und
+	// die geprüfte Liste, die auf die Bestätigung des Risikohinweises wartet
+	themeCursor int
+	extInput    textinput.Model
+	extPending  []string
 	// Betrachter (F3): offen?, Zustand, laufende Nummer (veraltete Ladeergebnisse)
 	viewing bool
 	view    fmViewer
@@ -455,6 +464,9 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.fm.viewing {
 		return m.handleFMViewerKeys(msg)
 	}
+	if m.fm.menuOpen {
+		return m.handleFMMenuKeys(msg)
+	}
 	if m.fm.dialog != fmDialogNone {
 		return m.handleFMDialogKeys(msg)
 	}
@@ -506,7 +518,11 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.fmOpenMkdir()
 	case "f8":
 		return m.fmOpenDeleteConfirm()
-	case "f1", "f2", "f9":
+	case "f9":
+		return m.fmOpenMenu()
+	case "ctrl+r":
+		return m, m.fmRescan(m.fm.active)
+	case "f1", "f2":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
 	}
@@ -672,7 +688,7 @@ func (m AppModel) renderFileManager(s *strings.Builder) {
 	st := fmThemeStyles(m.fm.theme)
 
 	lines := make([]string, 0, height)
-	lines = append(lines, m.renderFMMenuBar(st, width))
+	lines = append(lines, m.renderFMMenuBarLine(st, width))
 
 	panelHeight := height - fmScreenChromeLines
 	if panelHeight < 0 {
@@ -691,23 +707,17 @@ func (m AppModel) renderFileManager(s *strings.Builder) {
 		box, boxWidth := m.renderFMDialogBox(st, width, height)
 		overlayDialog(lines, box, boxWidth, width)
 	}
+	// Aufgeklapptes Menü unter seinem Titel
+	if m.fm.menuOpen && len(lines) > 1 {
+		box, boxWidth, left := m.renderFMMenuBox(st, width, height)
+		overlayAt(lines, box, boxWidth, 1, left, width)
+	}
 
 	// Sehr kleine Fenster: auf die Terminalhöhe kürzen
 	if len(lines) > height {
 		lines = lines[:height]
 	}
 	s.WriteString(strings.Join(lines, "\n"))
-}
-
-// renderFMMenuBar rendert die Menüleiste (vorerst nur optisch).
-//
-// @param st - Stile des Farbmodus
-// @param width - Bildschirmbreite
-// @return string - Zeile
-// @date   2026-10-21 19:45
-func (m AppModel) renderFMMenuBar(st fmStyles, width int) string {
-	items := strings.Split(m.tr(txtFMMenuBar), "|")
-	return st.menu.Render(fitWidth("  "+strings.Join(items, "    "), width))
 }
 
 // renderFMKeyBar rendert die F-Tasten-Leiste: zehn gleich breite Felder

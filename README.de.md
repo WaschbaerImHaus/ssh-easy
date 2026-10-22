@@ -161,6 +161,8 @@ nebeneinander zu arbeiten:
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F6` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster verschieben |
 | `F7` | Verzeichnis im aktiven Fenster anlegen |
+| `F9` | Menü öffnen (Links, Datei, Optionen, Rechts) – `←`/`→`/`↑`/`↓`, `Enter`, `Esc` |
+| `Strg+R` | Aktives Fenster neu einlesen |
 | `F8` | Markierte Einträge (bzw. den unter dem Cursor) löschen, Verzeichnisse samt Inhalt – mit `j`/`y` bestätigen |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
@@ -212,9 +214,12 @@ Der Datei-Manager braucht mindestens eine Verbindung (die andere Seite kann *Lok
 sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dateien werden
 als heruntergeladen gekennzeichnet (Windows-SmartScreen warnt vor dem Ausführen).
 
-*Stand Build 65: Navigation, Markieren, Ansehen, Bearbeiten, Kopieren, Verschieben,
-Verzeichnis anlegen und Löschen. Das Menü (inkl. Umschalten zwischen den Farbmodi
-klassisch, ssh-easy und monochrom) folgt Schritt für Schritt.*
+**Optionen (`F9` → Optionen):** *Aussehen* schaltet zwischen den Farbmodi klassisch (mc),
+ssh-easy und monochrom um. *Endungen für F9* legt fest, welche Dateitypen `F9` im Betrachter
+lokal öffnet (leer = sichere Standardliste). Typen außerhalb der sicheren Liste (Programme,
+Skripte, Office …) werden nur nach einem deutlichen Sicherheitshinweis übernommen, und beim
+Öffnen einer solchen Datei fragt ssh-easy noch einmal nach. Beide Einstellungen werden
+gespeichert.
 
 ### Passwortabfrage
 

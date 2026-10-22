@@ -33,7 +33,8 @@
 - Mockups: claude-generated/mc-mockup.html
 - Build 66-68: F8 prüft nach ReadDir (Lstat ganze Kette) und vor jedem Remove (Lstat Eltern) IMMER per Lstat, zusätzlich RealPath-Vergleich (remoteFS.RealPath); Fensterverzeichnis selbst darf Symlink sein (ohne RealPath: Vergleich mit Zustand beim Start, Build 69); errDeleteRace. RealPath nie als Ersatz (fail-open, Review Build 67)
 - Build 70: "Lokaler PC" (localFS in filemanager_local.go, Pseudo-Verbindung fmLocalConnID, erster Eintrag der Auswahl; Windows: "/" = Laufwerksliste, "/C:/x" = C:\x, ".." über C:\ -> Laufwerke; F5-F8 in der Laufwerksliste gesperrt; validWindowsName + nameValidator; Server->PC markDownloads; Build 71: MOTW vor chmod auf Temp-Datei, Fehler = nicht ablegen; nur sichere relative Symlinks auf den PC). Datei-Manager ab EINER Verbindung (txtFMNeedConnection)
-- Nächste Schritte: Menüs bedienbar; Optionen: Farbmodus + erlaubte F9-Endungen (KEINE harte Sperre, kräftiger Risikohinweis + Rückfrage "wirklich lokal öffnen?" - Nutzerentscheidung). Herunterladen (tar.gz) vom Nutzer GESTRICHEN
+- Build 73: Menüs wie mc (tui_filemanager_menu.go; F9 öffnet Menü des aktiven Fensters; Links/Rechts: Neu einlesen + Strg+R; Datei: F3-F8, *, F10; Optionen: Aussehen + Endungen für F9; "Befehl" entfällt). Einstellungen in AppConfig (file_manager_theme, file_manager_open_extensions). F9-Endungen: keine harte Sperre, Risikohinweis j/y + Rückfrage beim Öffnen. Herunterladen (tar.gz) vom Nutzer GESTRICHEN
+- Nächste Schritte (Nutzerwunsch 2026-10-22): Agents für dieses Projekt anlegen (Lead/Vorarbeiter, Specialists, Helper, Analysts, Worker), dazu alte exports/ auswerten
 
 ## Bekannte Probleme
 - /tmp auf dem LXC kann volllaufen (Cronjob eingerichtet)

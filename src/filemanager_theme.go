@@ -2,9 +2,9 @@
 //
 // Drei Farbmodi: klassisch wie der Midnight Commander (blau/türkis), im
 // Stil von ssh-easy (dunkel/lila/pink, Menü türkis) und monochrom in fünf
-// Graustufen (schwarz, dunkelgrau, grau, hellgrau, weiß). Umschalten wird
-// später über das Menü "Optionen" möglich; bis dahin gilt der klassische
-// Modus.
+// Graustufen (schwarz, dunkelgrau, grau, hellgrau, weiß). Umschalten über
+// das Menü "Optionen" -> "Aussehen" (seit Build 73, gespeichert in der
+// Konfiguration).
 //
 // Jeder Stil setzt Vorder- UND Hintergrund, damit jede Zelle des
 // Bildschirms die Farbe des Modus trägt (sonst schimmert der
@@ -93,6 +93,8 @@ type fmStyles struct {
 	mark, markFrame, cursorMark                  lipgloss.Style
 	message, keyNum, keyLabel                    lipgloss.Style
 	dialog, dialogTitle                          lipgloss.Style
+	// Gewählter Menütitel bzw. -eintrag (wie "menusel" im mc)
+	menuSel lipgloss.Style
 }
 
 // fmThemeStyles baut die Stile für einen Farbmodus. Ungültiger Index =
@@ -128,5 +130,6 @@ func fmThemeStyles(index int) fmStyles {
 		dialogTitle: pair(c.dialogTitleFg, c.dialogBg).Bold(true),
 		keyNum:      pair(c.keyNumFg, c.keyNumBg),
 		keyLabel:    pair(c.keyLabelFg, c.keyLabelBg),
+		menuSel:     pair(c.keyNumFg, c.keyNumBg),
 	}
 }

@@ -72,20 +72,20 @@ func TestBlockedOpenExtension(t *testing.T) {
 		"f.themepack", "g.deskthemepack", "h.mht", "i.mhtml", "j.terminal", "k.tool", "l.workflow", "m.fileloc",
 		"n.inetloc", "o.webloc", "p.command", "q.unbekannt", "ohne_endung", "r."}
 	for _, name := range blocked {
-		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
+		if _, ok := blockedOpenExtension(localOpenName(name), allowedOpenExtensions); !ok {
 			t.Errorf("%s nicht gesperrt", name)
 		}
 	}
 	allowed := []string{"bild.jpg", "foto.PNG", "seite.html", "doku.pdf", "text.txt", "film.mp4",
 		"lied.mp3", "archiv.zip", "grafik.svg", "notiz.md", "daten.csv"}
 	for _, name := range allowed {
-		if ext, ok := blockedOpenExtension(localOpenName(name)); ok {
+		if ext, ok := blockedOpenExtension(localOpenName(name), allowedOpenExtensions); ok {
 			t.Errorf("%s gesperrt (%s)", name, ext)
 		}
 	}
 	// Tricks: Punkte/Leerzeichen am Ende und alternative Datenströme
 	for _, name := range []string{"evil.exe.", "evil.exe ", "harmlos.txt:evil.exe", "bild.jpg.exe"} {
-		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
+		if _, ok := blockedOpenExtension(localOpenName(name), allowedOpenExtensions); !ok {
 			t.Errorf("Trick %q nicht gesperrt (lokal %q)", name, localOpenName(name))
 		}
 	}
@@ -116,7 +116,7 @@ func TestLocalOpenNameCutNeverEndsWithDotOrSpace(t *testing.T) {
 		}
 	}
 	// Der erste Fall darf nicht als .exe durchgehen
-	if _, ok := blockedOpenExtension(localOpenName(names[0])); !ok {
+	if _, ok := blockedOpenExtension(localOpenName(names[0]), allowedOpenExtensions); !ok {
 		t.Errorf("gekürzter Name %q nicht gesperrt", localOpenName(names[0]))
 	}
 }
@@ -261,7 +261,7 @@ func TestCleanupStaleOpenDirs(t *testing.T) {
 func TestOpenRefusesOffice(t *testing.T) {
 	for _, name := range []string{"a.doc", "b.xls", "c.ppt", "d.rtf", "e.odt", "f.ods", "g.odp", "h.odg", "i.docm", "j.xlsm", "k.pptm", "l.dotm",
 		"m.docx", "n.xlsx", "o.pptx", "p.dotx", "q.xltx", "r.potx"} {
-		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
+		if _, ok := blockedOpenExtension(localOpenName(name), allowedOpenExtensions); !ok {
 			t.Errorf("%s nicht gesperrt", name)
 		}
 	}

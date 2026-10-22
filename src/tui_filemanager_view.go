@@ -97,6 +97,10 @@ type fmViewer struct {
 	message string
 	// Hilfe (F1) sichtbar?
 	showHelp bool
+	// F9 bei riskanter Endung: Rückfrage offen, lokaler Name und Endung
+	confirmOpen  bool
+	confirmLocal string
+	confirmExt   string
 }
 
 // fmViewLoadedMsg überbringt die geladene Datei.
@@ -213,6 +217,17 @@ func (m AppModel) handleFMViewLoaded(msg fmViewLoadedMsg) (tea.Model, tea.Cmd) {
 // @date   2026-10-21 21:36
 func (m AppModel) handleFMViewerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	v := &m.fm.view
+	// Rückfrage "wirklich lokal öffnen?": nur j/y öffnet (Enter nicht)
+	if v.confirmOpen {
+		switch msg.String() {
+		case "j", "y":
+			v.confirmOpen = false
+			return m.fmStartOpenExternal(v.confirmLocal)
+		case "n", "esc", "q":
+			v.confirmOpen = false
+		}
+		return m, nil
+	}
 	// Hilfe: eine beliebige Taste schließt sie
 	if v.showHelp {
 		v.showHelp = false
@@ -298,7 +313,8 @@ func (m AppModel) fmOpenExternal() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	local := localOpenName(v.rawName)
-	if ext, blocked := blockedOpenExtension(local); blocked {
+	ext, blocked := blockedOpenExtension(local, m.fmOpenAllowed())
+	if blocked {
 		// Ohne Endung den Namen nennen, sonst die Endung
 		if ext == "" || ext == "." {
 			ext = v.name
@@ -306,6 +322,23 @@ func (m AppModel) fmOpenExternal() (tea.Model, tea.Cmd) {
 		v.message = fmt.Sprintf(m.tr(txtFMOpenBlocked), sanitizeFileName(ext))
 		return m, nil
 	}
+	if !allowedOpenExtensions[ext] {
+		// Selbst erlaubte, riskante Endung: vor dem Öffnen nachfragen
+		v.confirmOpen, v.confirmLocal, v.confirmExt = true, local, ext
+		return m, nil
+	}
+	return m.fmStartOpenExternal(local)
+}
+
+// fmStartOpenExternal lädt die Datei herunter und öffnet sie (nach allen
+// Prüfungen bzw. der Bestätigung der Rückfrage).
+//
+// @param local - sicherer lokaler Name
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Herunterladen + Öffnen im Hintergrund
+// @date   2026-10-22 07:50
+func (m AppModel) fmStartOpenExternal(local string) (tea.Model, tea.Cmd) {
+	v := &m.fm.view
 	v.message = fmt.Sprintf(m.tr(txtFMOpenDownloading), v.name)
 	fsys, remotePath, session, seq := v.fs, v.remotePath, m.fm.session, m.fm.viewSeq
 	return m, func() tea.Msg {
@@ -647,6 +680,14 @@ func (m AppModel) renderFMViewer(s *strings.Builder) {
 		lines = append(lines, renderKeyBar(st, width, strings.Split(m.tr(txtFMViewFKeys), "|")))
 	}
 
+	// Rückfrage vor dem Öffnen einer riskanten Endung (Warnfarbe)
+	if v.confirmOpen && len(lines) > 2 {
+		boxWidth := dialogBoxWidth(width)
+		text := fmt.Sprintf(m.tr(txtFMOpenRiskText), v.name, sanitizeFileName(v.confirmExt))
+		box := renderDialogBoxWith(st.message, st.message, boxWidth, height, m.tr(txtFMRiskTitle),
+			wrapText(text, max(boxWidth-4, 1)), m.tr(txtFMOpenRiskHelp))
+		overlayDialog(lines, box, boxWidth, width)
+	}
 	// Hilfe (F1) als Kasten über dem Inhalt
 	if v.showHelp && len(lines) > 2 {
 		boxWidth := dialogBoxWidth(width)

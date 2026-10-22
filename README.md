@@ -173,6 +173,8 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `F5` | Copy the marked entries (or the entry under the cursor) to the other panel |
 | `F6` | Move the marked entries (or the entry under the cursor) to the other panel |
 | `F7` | Create a directory in the active panel |
+| `F9` | Open the menu (Left, File, Options, Right) – `←`/`→`/`↑`/`↓`, `Enter`, `Esc` |
+| `Ctrl+R` | Rescan the active panel |
 | `F8` | Delete the marked entries (or the entry under the cursor), directories with their contents – confirm with `j`/`y` |
 | `F10` / `q` | Close both connections and return to the list |
 
@@ -222,9 +224,11 @@ The file manager needs at least one connection (the other side can be *Local PC*
 then its entry is greyed out. Files copied from a server to your PC are marked as
 downloaded (Windows SmartScreen warns before running them).
 
-*Current state (Build 65): navigation, marking, viewing, editing, copying, moving, creating
-directories and deleting. The menu (incl. switching between the classic, ssh-easy and
-monochrome colour themes) follows step by step.*
+**Options (`F9` → Options):** *Appearance* switches between the classic (mc), ssh-easy and
+monochrome colour themes. *Extensions for F9* sets which file types `F9` in the viewer opens
+locally (empty = safe default list). Types outside the safe list (programs, scripts, Office …)
+are allowed only after a strong security warning, and opening such a file asks once more.
+Both settings are saved.
 
 ### Password prompt
 

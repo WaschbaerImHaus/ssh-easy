@@ -59,7 +59,7 @@
 - [x] Fehlende Rechte: im bisherigen Verzeichnis bleiben + Meldung; Symlinks auf Verzeichnisse nicht folgen + Meldung (Build 53)
 - [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
-- [ ] Menü "Optionen": Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22); riskante Endungen (Programme, Skripte, Office) nicht hart gesperrt, aber nur nach kräftigem Risikohinweis (Nutzerentscheidung 2026-10-22); beim F9-Öffnen solcher Dateien zusätzlich Rückfrage „Wirklich lokal öffnen?“ mit Risikohinweis
+- [x] Menü "Optionen" (Build 73): Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22); riskante Endungen (Programme, Skripte, Office) nicht hart gesperrt, aber nur nach kräftigem Risikohinweis (Nutzerentscheidung 2026-10-22); beim F9-Öffnen solcher Dateien zusätzlich Rückfrage „Wirklich lokal öffnen?“ mit Risikohinweis
 - [ ] ~~Menü "Datei" → "Herunterladen" (tar.gz, nativer Ordnerdialog)~~ – vom Nutzer gestrichen (2026-10-22), ersetzt durch "Lokaler PC"
 - [x] "Lokaler PC" als weitere wählbare Verbindung im Datei-Manager (lokales Dateisystem als Fenster; Kopieren/Verschieben zwischen Server und PC) (Nutzerwunsch 2026-10-22, Build 70); Windows: ".." über C:\ zeigt die Laufwerksliste (Nutzerwunsch 2026-10-22); Datei-Manager ab einer Verbindung nutzbar
 - [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)
@@ -75,7 +75,7 @@
 - [x] Betrachter mit F-Tasten wie mcview: F1 Hilfe, F2 Umbruch, F3/F10 Beenden, F4 Hex, F5 Gehe zu, F6 Regex-Suche, F7 Suchen + n (Build 60)
 - [x] F9 im Betrachter: lokal mit dem Standardprogramm öffnen (Windows nach Endung, Linux xdg-open), ausführbare Typen gesperrt, Mark of the Web (Build 60)
 - [x] F4 Bearbeiten: interner Editor wie mcedit (Build 62) (F1 Hilfe, F2 Speichern, F3 Markieren, F4 Ersetzen, F5 Kopieren, F6 Verschieben, F7 Suchen, F8 Löschen, F10 Beenden); Binärdateien als bearbeitbare Hex-Ansicht (Bytes überschreiben, z. B. AD → AF) (Nutzerwunsch 2026-10-21); Speichern über Temp-Datei + Umbenennen
-- [ ] Menüs Links/Datei/Befehl/Optionen/Rechts (F9)
+- [x] Menüs wie im mc über F9 (Build 73): Links/Rechts (Neu einlesen, Strg+R), Datei (F3–F8, *, F10), Optionen (Aussehen, Endungen für F9); "Befehl" entfällt (nichts davon angeboten)
 
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren

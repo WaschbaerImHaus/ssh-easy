@@ -244,6 +244,8 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyF8}
 	case "f9":
 		return tea.KeyMsg{Type: tea.KeyF9}
+	case "ctrl+r":
+		return tea.KeyMsg{Type: tea.KeyCtrlR}
 	case "f2":
 		return tea.KeyMsg{Type: tea.KeyF2}
 	case "f3":
@@ -1034,7 +1036,7 @@ func TestFileManagerF10ReturnsToList(t *testing.T) {
 // sich, ändern aber nichts.
 func TestFileManagerOtherFKeysNotYet(t *testing.T) {
 	m, _ := openFileManagerFor(t)
-	m = pressRun(t, m, "f9")
+	m = pressRun(t, m, "f2")
 	if m.state != ViewFileManager {
 		t.Fatalf("state = %v", m.state)
 	}
@@ -1266,7 +1268,8 @@ func TestReadPanelDirError(t *testing.T) {
 // TestFileManagerI18nLists - Menü, Spaltenköpfe und F-Tasten haben in jeder
 // Sprache die richtige Anzahl Teile (mit "|" getrennt).
 func TestFileManagerI18nLists(t *testing.T) {
-	parts := map[textKey]int{txtFMMenuBar: 5, txtFMFKeys: 10, txtFMColumns: 3}
+	// Menüleiste seit Build 73 ohne "Befehl": Links, Datei, Optionen, Rechts
+	parts := map[textKey]int{txtFMMenuBar: 4, txtFMFKeys: 10, txtFMColumns: 3}
 	for _, opt := range AvailableLanguages {
 		for key, want := range parts {
 			text := extraText(opt.Code, key)

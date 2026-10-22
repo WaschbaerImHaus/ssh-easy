@@ -5,6 +5,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.73] – Build 73
+- **Added** menus in the file manager like in mc: `F9` opens the menu of the active panel, `←`/`→` switch menus, `↑`/`↓` choose, `Enter` runs, `Esc`/`F9`/`F10`/`q` close. Only what ssh-easy offers is listed: *Left*/*Right* – Rescan (also `Ctrl+R`); *File* – View, Edit, Copy, Move, Make directory, Delete, Invert selection, Exit; *Options* – Appearance and Extensions for F9. mc's *Command* menu is left out because ssh-easy offers none of its entries
+- **Added** *Options → Appearance* switches between the classic, ssh-easy and monochrome colour themes; the choice is saved
+- **Added** *Options → Extensions for F9* sets which file types `F9` in the viewer opens with the default program (empty = safe default list); the list is saved. Types outside the safe default list (programs, scripts, Office …) are not blocked, but only accepted after a strong security warning confirmed with `j`/`y` (`Enter` does not confirm). Opening such a file with `F9` asks once more ("Really open it locally?")
+- **Added** 13 new tests (593 total, all green)
+
 ## [v0.72] – Build 72
 - **Security** when copying from a server to the PC, symlinks whose target contains `..` are no longer created (another link in the copied tree could turn such a target into a way out of the directory; finding of the automated security review of Build 71)
 
