@@ -317,47 +317,14 @@ func TestCopyMarkFailureIsAnError(t *testing.T) {
 	assertNoTempFiles(t, dst.memFS)
 }
 
-// TestSafeLinkTarget - beim Kopieren auf den PC nur relative Links, die im
-// kopierten Verzeichnis bleiben.
-func TestSafeLinkTarget(t *testing.T) {
-	cases := []struct {
-		rel, target string
-		ok          bool
-	}{
-		{"projekt/aktuell", "main.go", true},
-		{"projekt/link", ".", true},
-		{"link", "projekt", true},
-		{"link", "projekt/lib/x.go", true},
-		// ".." wird grundsätzlich abgelehnt: über einen anderen Link im
-		// kopierten Baum (sub/l1 -> "..") führte "l1/../x" sonst hinaus
-		{"projekt/lib/x", "../main.go", false},
-		{"projekt/link", "..", false},
-		{"sub/l2", "l1/../x", false},
-		{"link", "a/./../b", false},
-		{"link", "..", false},
-		{"projekt/link", "../..", false},
-		{"projekt/link", "../../x", false},
-		{"projekt/link", "lib/../../../etc", false},
-		{"link", "/etc/passwd", false},
-		{"link", `C:\Windows`, false},
-		{"link", "C:/Windows", false},
-		{"link", `..\..\x`, false},
-		{"link", `\\server\share`, false},
-		{"link", "", false},
-		{"link", "a\x1bb", false},
-	}
-	for _, c := range cases {
-		if got := safeLinkTarget(c.rel, c.target); got != c.ok {
-			t.Errorf("safeLinkTarget(%q, %q) = %v, erwartet %v", c.rel, c.target, got, c.ok)
-		}
-	}
-}
-
-// TestCopyRefusesEscapingLinksToLocal - mit safeLinksOnly (Server -> PC)
-// werden Links nach außen nicht angelegt, innere schon.
-func TestCopyRefusesEscapingLinksToLocal(t *testing.T) {
+// TestCopyRefusesLinksToLocal - mit safeLinksOnly (Server -> PC) wird kein
+// Symlink angelegt, auch kein harmlos aussehender: Ein Ziel wie ".ssh"
+// zeigt im Zielordner ~ auf das vorhandene ~/.ssh, und über einen dort
+// schon liegenden Symlink führte auch ein Ziel ohne ".." hinaus. Die
+// Links werden gemeldet, Dateien normal kopiert.
+func TestCopyRefusesLinksToLocal(t *testing.T) {
 	src := newCopySource()
-	src.addLink("/home/a/projekt/ssh", "/home/a/.ssh")
+	src.addLink("/home/a/projekt/ssh", ".ssh")
 	src.addLink("/home/a/projekt/raus", "../../etc")
 	dst := newMemFS("/srv/b")
 	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt"}, safeLinksOnly: true}
@@ -368,21 +335,38 @@ func TestCopyRefusesEscapingLinksToLocal(t *testing.T) {
 			unsafe++
 		}
 	}
-	if unsafe != 2 {
-		t.Errorf("errUnsafeSymlink = %d, erwartet 2: %s", unsafe, failureErrors(result.failures))
+	if unsafe != 3 {
+		t.Errorf("errUnsafeSymlink = %d, erwartet 3 (aktuell, ssh, raus): %s", unsafe, failureErrors(result.failures))
 	}
-	if dst.node("/srv/b/projekt/ssh") != nil || dst.node("/srv/b/projekt/raus") != nil {
-		t.Error("Link nach außen angelegt")
+	for _, p := range []string{"/srv/b/projekt/ssh", "/srv/b/projekt/raus", "/srv/b/projekt/aktuell"} {
+		if dst.node(p) != nil {
+			t.Errorf("%s als Symlink auf dem PC angelegt", p)
+		}
 	}
-	if n := dst.node("/srv/b/projekt/aktuell"); n == nil || n.target != "main.go" {
-		t.Error("innerer Link nicht kopiert")
+	if got, _ := dst.content("/srv/b/projekt/main.go"); got != "package main" {
+		t.Error("Dateien nicht kopiert")
 	}
 	// Ohne safeLinksOnly (Server -> Server) bleiben Links unverändert
 	dst2 := newMemFS("/srv/b")
 	req.dst, req.safeLinksOnly = dst2, false
 	runCopySync(t, context.Background(), req, noConflicts(t))
-	if n := dst2.node("/srv/b/projekt/ssh"); n == nil || n.target != "/home/a/.ssh" {
+	if n := dst2.node("/srv/b/projekt/ssh"); n == nil || n.target != ".ssh" {
 		t.Error("Server -> Server: Link verändert")
+	}
+}
+
+// TestMoveKeepsLinksOnServerWhenRefused - beim Verschieben auf den PC
+// bleibt ein nicht übernommener Symlink in der Quelle.
+func TestMoveKeepsLinksOnServerWhenRefused(t *testing.T) {
+	src := newCopySource()
+	dst := newMemFS("/srv/b")
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt"}, safeLinksOnly: true, move: true}
+	runCopySync(t, context.Background(), req, noConflicts(t))
+	if n := src.node("/home/a/projekt/aktuell"); n == nil || n.target != "main.go" {
+		t.Error("nicht übernommener Symlink aus der Quelle gelöscht")
+	}
+	if src.node("/home/a/projekt/main.go") != nil {
+		t.Error("Datei nicht verschoben")
 	}
 }
 

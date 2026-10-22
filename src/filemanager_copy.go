@@ -77,10 +77,9 @@ var errUnsafeName = errors.New("unsafe file name")
 // andere lesbar und wird deshalb nicht kopiert.
 var errCannotProtect = errors.New("cannot restrict permissions on target")
 
-// errUnsafeSymlink - Symlink vom Server zeigt aus dem kopierten Verzeichnis
-// heraus (absolut, Laufwerk, ".." nach außen) und wird auf dem PC nicht
-// angelegt.
-var errUnsafeSymlink = errors.New("symlink points outside the copied directory")
+// errUnsafeSymlink - Symlinks vom Server werden auf dem PC nicht angelegt
+// (sein Ziel könnte auf vorhandene lokale Dateien zeigen).
+var errUnsafeSymlink = errors.New("symlinks from a server are not created on the PC")
 
 // errCopyLimit - zu viele Einträge oder zu tief verschachtelt (Schutz vor
 // bösartigen Servern mit endlosen Verzeichnisbäumen); nichts wird kopiert.
@@ -111,7 +110,7 @@ type copyRequest struct {
 	move bool
 	// Kopierte Dateien als heruntergeladen kennzeichnen (Server -> PC)
 	markDownloads bool
-	// Nur Symlinks anlegen, die im Zielverzeichnis bleiben (Server -> PC)
+	// Keine Symlinks anlegen, sondern melden (Server -> PC)
 	safeLinksOnly bool
 }
 
@@ -504,19 +503,24 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 	r.createdDirs = append(r.createdDirs, node)
 }
 
-// copySymlink legt den Symlink am Ziel neu an (gleiches Linkziel).
+// copySymlink legt den Symlink am Ziel neu an (gleiches Linkziel); vom
+// Server auf den PC (safeLinksOnly) wird er nur gemeldet.
 //
 // @return bool - false = Vorgang abgebrochen
-// @date   2026-10-21 21:03
+// @date   2026-10-22 08:20
 func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing os.FileInfo, exists bool) bool {
 	defer r.countDone(node, 0)
+	if r.req.safeLinksOnly {
+		// Server -> PC: Symlinks gar nicht anlegen. Ein Linkziel lässt sich
+		// als Text nicht sicher prüfen - es kann auf schon vorhandene
+		// Einträge im Zielordner zeigen (".ssh" in ~) oder über dort
+		// liegende Symlinks hinausführen
+		r.fail(node, srcPath, errUnsafeSymlink)
+		return true
+	}
 	target, err := r.req.src.ReadLink(srcPath)
 	if err != nil {
 		r.fail(node, srcPath, err)
-		return true
-	}
-	if r.req.safeLinksOnly && !safeLinkTarget(node.rel, target) {
-		r.fail(node, srcPath, errUnsafeSymlink)
 		return true
 	}
 	if exists {

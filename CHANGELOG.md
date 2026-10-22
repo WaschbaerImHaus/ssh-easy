@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.74] – Build 74
+- **Security** symlinks are no longer created at all when copying or moving from a server to the local PC; they are skipped with a message (and stay on the server when moving). Even a target without `..` could point to existing local files such as `~/.ssh` (finding of the automated security review of Build 73). Copies between servers keep symlinks as before
+
 ## [v0.73] – Build 73
 - **Added** menus in the file manager like in mc: `F9` opens the menu of the active panel, `←`/`→` switch menus, `↑`/`↓` choose, `Enter` runs, `Esc`/`F9`/`F10`/`q` close. Only what ssh-easy offers is listed: *Left*/*Right* – Rescan (also `Ctrl+R`); *File* – View, Edit, Copy, Move, Make directory, Delete, Invert selection, Exit; *Options* – Appearance and Extensions for F9. mc's *Command* menu is left out because ssh-easy offers none of its entries
 - **Added** *Options → Appearance* switches between the classic, ssh-easy and monochrome colour themes; the choice is saved

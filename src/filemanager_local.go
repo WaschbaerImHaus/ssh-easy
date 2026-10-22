@@ -406,7 +406,7 @@ func fmShouldMarkDownloads(src, dst remoteFS) bool {
 
 // fmUntrustedToLocal meldet, ob vom Server (nicht vertrauenswürdig) auf den
 // lokalen PC kopiert wird - dann gelten die strengeren Regeln für den PC
-// (Kennzeichnung, nur sichere Symlinks).
+// (Kennzeichnung, keine Symlinks).
 //
 // @param src - Quelle
 // @param dst - Ziel
@@ -414,36 +414,6 @@ func fmShouldMarkDownloads(src, dst remoteFS) bool {
 // @date   2026-10-22 07:10
 func fmUntrustedToLocal(src, dst remoteFS) bool {
 	return isLocalFS(dst) && !isLocalFS(src)
-}
-
-// safeLinkTarget prüft das Ziel eines Symlinks, der vom Server auf den PC
-// kopiert wird: nur relative Ziele ohne Laufwerk, Backslash, Steuerzeichen
-// und ohne "..". Sonst könnte ein Server z. B. einen Link auf ~/.ssh oder
-// C:\Windows unterschieben, dem spätere Aktionen auf dem PC folgen. ".."
-// wird ganz abgelehnt, weil eine reine Textprüfung andere Links im
-// kopierten Baum nicht kennt (sub/l1 -> ".." macht "l1/../x" zu einem Weg
-// hinaus).
-//
-// @param rel - Pfad des Links relativ zum Zielverzeichnis (nicht mehr
-// ausgewertet, bleibt für Meldungen und künftige Prüfungen)
-// @param target - Linkziel vom Server
-// @return bool - true wenn unbedenklich
-// @date   2026-10-22 07:45
-func safeLinkTarget(rel, target string) bool {
-	if target == "" || path.IsAbs(target) || strings.ContainsAny(target, `\:`) {
-		return false
-	}
-	for _, r := range target {
-		if unicode.IsControl(r) {
-			return false
-		}
-	}
-	for _, part := range strings.Split(target, "/") {
-		if part == ".." {
-			return false
-		}
-	}
-	return true
 }
 
 // isLocalFS meldet, ob ein Dateisystem der lokale PC ist (auch in
