@@ -52,7 +52,7 @@ type nameValidator interface {
 // downloadMarker - Dateisysteme, die heruntergeladene Dateien kennzeichnen
 type downloadMarker interface {
 	// MarkDownloaded kennzeichnet eine Datei als aus dem Netz stammend
-	MarkDownloaded(p string)
+	MarkDownloaded(p string) error
 }
 
 // localFS ist das Dateisystem dieses Rechners.
@@ -370,11 +370,14 @@ func (l *localFS) ValidName(name string) bool {
 // heruntergeladen (Windows: Zone.Identifier, macOS: Quarantäne).
 //
 // @param p - Fensterpfad
-// @date   2026-10-22 06:40
-func (l *localFS) MarkDownloaded(p string) {
-	if n, err := l.native(p); err == nil {
-		markDownloaded(n)
+// @return error - Kennzeichnung fehlgeschlagen
+// @date   2026-10-22 07:10
+func (l *localFS) MarkDownloaded(p string) error {
+	n, err := l.native(p)
+	if err != nil {
+		return err
 	}
+	return markDownloaded(n)
 }
 
 // localDirInfo beschreibt einen Eintrag der Laufwerksliste.
@@ -398,7 +401,42 @@ func (d localDirInfo) Sys() any           { return nil }
 // @date   2026-10-22 06:40
 func fmShouldMarkDownloads(src, dst remoteFS) bool {
 	_, dstMarks := dst.(downloadMarker)
-	return dstMarks && isLocalFS(dst) && !isLocalFS(src)
+	return dstMarks && fmUntrustedToLocal(src, dst)
+}
+
+// fmUntrustedToLocal meldet, ob vom Server (nicht vertrauenswürdig) auf den
+// lokalen PC kopiert wird - dann gelten die strengeren Regeln für den PC
+// (Kennzeichnung, nur sichere Symlinks).
+//
+// @param src - Quelle
+// @param dst - Ziel
+// @return bool - true bei Server -> PC
+// @date   2026-10-22 07:10
+func fmUntrustedToLocal(src, dst remoteFS) bool {
+	return isLocalFS(dst) && !isLocalFS(src)
+}
+
+// safeLinkTarget prüft das Ziel eines Symlinks, der vom Server auf den PC
+// kopiert wird: nur relative Ziele ohne Laufwerk, Backslash oder
+// Steuerzeichen, die im kopierten Zielverzeichnis bleiben. Sonst könnte
+// ein Server z. B. einen Link auf ~/.ssh oder C:\Windows unterschieben,
+// dem spätere Aktionen auf dem PC folgen.
+//
+// @param rel - Pfad des Links relativ zum Zielverzeichnis
+// @param target - Linkziel vom Server
+// @return bool - true wenn unbedenklich
+// @date   2026-10-22 07:10
+func safeLinkTarget(rel, target string) bool {
+	if target == "" || path.IsAbs(target) || strings.ContainsAny(target, `\:`) {
+		return false
+	}
+	for _, r := range target {
+		if unicode.IsControl(r) {
+			return false
+		}
+	}
+	resolved := path.Clean(path.Join(path.Dir(rel), target))
+	return resolved != ".." && !strings.HasPrefix(resolved, "../")
 }
 
 // isLocalFS meldet, ob ein Dateisystem der lokale PC ist (auch in

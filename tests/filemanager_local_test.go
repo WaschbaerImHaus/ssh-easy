@@ -248,36 +248,153 @@ func TestCopyRefusesNamesInvalidOnTarget(t *testing.T) {
 	}
 }
 
-// markerFS merkt sich, welche Dateien als heruntergeladen markiert wurden.
+// markerFS merkt sich, welche Dateien als heruntergeladen markiert wurden
+// (als Knoten - markiert wird die Temp-Datei, die danach umbenannt wird).
 type markerFS struct {
 	*memFS
-	marked []string
+	marked map[*memNode]bool
+	fail   bool
 }
 
-func (m *markerFS) MarkDownloaded(p string) { m.marked = append(m.marked, p) }
+func (m *markerFS) MarkDownloaded(p string) error {
+	if m.fail {
+		return errors.New("mark failed")
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.marked == nil {
+		m.marked = map[*memNode]bool{}
+	}
+	// Markieren muss vor dem Setzen der Originalrechte passieren (sonst
+	// scheitert es unter Windows an schreibgeschützten Dateien)
+	if n := m.nodes[p]; n != nil {
+		if n.mode.Perm() != 0o600 {
+			return errors.New("marked after chmod")
+		}
+		m.marked[n] = true
+	}
+	return nil
+}
 
 // TestCopyMarksDownloadedFiles - mit markDownloads werden kopierte Dateien
-// (nicht Verzeichnisse/Symlinks) gekennzeichnet, sonst nicht.
+// (nicht Verzeichnisse/Symlinks) gekennzeichnet, und zwar als Temp-Datei
+// vor dem Setzen der Rechte; ohne markDownloads gar nicht.
 func TestCopyMarksDownloadedFiles(t *testing.T) {
 	for _, mark := range []bool{true, false} {
 		src := newCopySource()
+		// Schreibgeschützte Quelle: Markieren nach dem chmod schlüge fehl
+		src.nodes["/home/a/projekt/main.go"].mode = 0o444
 		dst := &markerFS{memFS: newMemFS("/srv/b")}
 		req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt", "notiz.txt"}, markDownloads: mark}
-		runCopySync(t, context.Background(), req, noConflicts(t))
-		got := strings.Join(dst.marked, ",")
-		if !mark && got != "" {
-			t.Errorf("ohne markDownloads markiert: %s", got)
+		result, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+		if len(result.failures) != 0 {
+			t.Fatalf("mark=%v: Fehler %s", mark, failureErrors(result.failures))
 		}
-		if mark {
-			for _, p := range []string{"/srv/b/projekt/main.go", "/srv/b/projekt/run.sh", "/srv/b/projekt/lib/x.go", "/srv/b/notiz.txt"} {
-				if !strings.Contains(got, p) {
-					t.Errorf("%s nicht markiert (%s)", p, got)
-				}
-			}
-			if strings.Contains(got, "aktuell") || len(dst.marked) != 4 {
-				t.Errorf("falsch markiert: %s", got)
+		for _, p := range []string{"/srv/b/projekt/main.go", "/srv/b/projekt/run.sh", "/srv/b/projekt/lib/x.go", "/srv/b/notiz.txt"} {
+			if got := dst.marked[dst.node(p)]; got != mark {
+				t.Errorf("mark=%v: %s markiert = %v", mark, p, got)
 			}
 		}
+		if len(dst.marked) != map[bool]int{true: 4, false: 0}[mark] {
+			t.Errorf("mark=%v: %d markiert", mark, len(dst.marked))
+		}
+	}
+}
+
+// TestCopyMarkFailureIsAnError - lässt sich eine Datei nicht markieren,
+// wird sie nicht abgelegt (sonst läge eine unmarkierte .exe vom Server da).
+func TestCopyMarkFailureIsAnError(t *testing.T) {
+	src := newCopySource()
+	dst := &markerFS{memFS: newMemFS("/srv/b"), fail: true}
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"notiz.txt"}, markDownloads: true}
+	result, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	if len(result.failures) != 1 {
+		t.Fatalf("Fehler = %s, erwartet einen", failureErrors(result.failures))
+	}
+	if dst.node("/srv/b/notiz.txt") != nil {
+		t.Error("unmarkierte Datei abgelegt")
+	}
+	assertNoTempFiles(t, dst.memFS)
+}
+
+// TestSafeLinkTarget - beim Kopieren auf den PC nur relative Links, die im
+// kopierten Verzeichnis bleiben.
+func TestSafeLinkTarget(t *testing.T) {
+	cases := []struct {
+		rel, target string
+		ok          bool
+	}{
+		{"projekt/aktuell", "main.go", true},
+		{"projekt/lib/x", "../main.go", true},
+		{"projekt/link", ".", true},
+		{"projekt/link", "..", true},
+		{"link", "projekt", true},
+		{"link", "..", false},
+		{"projekt/link", "../..", false},
+		{"projekt/link", "../../x", false},
+		{"projekt/link", "lib/../../../etc", false},
+		{"link", "/etc/passwd", false},
+		{"link", `C:\Windows`, false},
+		{"link", "C:/Windows", false},
+		{"link", `..\..\x`, false},
+		{"link", `\\server\share`, false},
+		{"link", "", false},
+		{"link", "a\x1bb", false},
+	}
+	for _, c := range cases {
+		if got := safeLinkTarget(c.rel, c.target); got != c.ok {
+			t.Errorf("safeLinkTarget(%q, %q) = %v, erwartet %v", c.rel, c.target, got, c.ok)
+		}
+	}
+}
+
+// TestCopyRefusesEscapingLinksToLocal - mit safeLinksOnly (Server -> PC)
+// werden Links nach außen nicht angelegt, innere schon.
+func TestCopyRefusesEscapingLinksToLocal(t *testing.T) {
+	src := newCopySource()
+	src.addLink("/home/a/projekt/ssh", "/home/a/.ssh")
+	src.addLink("/home/a/projekt/raus", "../../etc")
+	dst := newMemFS("/srv/b")
+	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt"}, safeLinksOnly: true}
+	result, _ := runCopySync(t, context.Background(), req, noConflicts(t))
+	unsafe := 0
+	for _, f := range result.failures {
+		if errors.Is(f.err, errUnsafeSymlink) {
+			unsafe++
+		}
+	}
+	if unsafe != 2 {
+		t.Errorf("errUnsafeSymlink = %d, erwartet 2: %s", unsafe, failureErrors(result.failures))
+	}
+	if dst.node("/srv/b/projekt/ssh") != nil || dst.node("/srv/b/projekt/raus") != nil {
+		t.Error("Link nach außen angelegt")
+	}
+	if n := dst.node("/srv/b/projekt/aktuell"); n == nil || n.target != "main.go" {
+		t.Error("innerer Link nicht kopiert")
+	}
+	// Ohne safeLinksOnly (Server -> Server) bleiben Links unverändert
+	dst2 := newMemFS("/srv/b")
+	req.dst, req.safeLinksOnly = dst2, false
+	runCopySync(t, context.Background(), req, noConflicts(t))
+	if n := dst2.node("/srv/b/projekt/ssh"); n == nil || n.target != "/home/a/.ssh" {
+		t.Error("Server -> Server: Link verändert")
+	}
+}
+
+// TestUntrustedToLocal - Schutz greift nur vom Server auf den PC.
+func TestUntrustedToLocal(t *testing.T) {
+	local, remote := &localFS{home: "/"}, newMemFS("/srv")
+	if !fmUntrustedToLocal(remote, local) || fmUntrustedToLocal(local, remote) || fmUntrustedToLocal(remote, newMemFS("/x")) {
+		t.Error("falsche Richtung")
+	}
+}
+
+// TestErrUnsafeSymlinkMessage - übersetzte Meldung.
+func TestErrUnsafeSymlinkMessage(t *testing.T) {
+	m := openCopyManager(t, newCopySource(), newMemFS("/srv/b"))
+	got := m.fmDescribeFailure(copyFailure{path: "/home/a/x", err: errUnsafeSymlink})
+	if want := fmt.Sprintf(m.tr(txtFMErrUnsafeLink), "/home/a/x"); got != want {
+		t.Errorf("Meldung = %q, erwartet %q", got, want)
 	}
 }
 

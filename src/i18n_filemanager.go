@@ -12,7 +12,7 @@
 // (höchstens 7 Zeichen), sonst werden sie bei 80 Spalten gekürzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 06:40
+// @date   2026-10-22 07:10
 package main
 
 const (
@@ -240,6 +240,8 @@ const (
 	txtFMNeedConnection textKey = "fm_need_connection"
 	// txtFMDriveList - Dateifunktion in der Windows-Laufwerksliste
 	txtFMDriveList textKey = "fm_drive_list"
+	// txtFMErrUnsafeLink - Symlink nach außen nicht auf den PC kopiert (%s Pfad)
+	txtFMErrUnsafeLink textKey = "fm_err_unsafe_link"
 )
 
 // init mischt die Datei-Manager-Texte in die Zusatztexte ein.
@@ -371,6 +373,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Lokaler PC",
 		txtFMNeedConnection:      "Füge eine Verbindung hinzu, um den Datei-Manager zu nutzen",
 		txtFMDriveList:           "In der Laufwerksliste nicht möglich – zuerst ein Laufwerk öffnen",
+		txtFMErrUnsafeLink:       "%s ist ein Symlink aus dem kopierten Verzeichnis heraus – auf den PC nicht übernommen",
 	},
 	LangEnglish: {
 		txtFMListEntry:           "File manager (two connections)",
@@ -485,6 +488,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Local PC",
 		txtFMNeedConnection:      "Add a connection to use the file manager",
 		txtFMDriveList:           "Not possible in the drive list – open a drive first",
+		txtFMErrUnsafeLink:       "%s is a symlink pointing outside the copied directory – not created on the PC",
 	},
 	LangFrancais: {
 		txtFMListEntry:           "Gestionnaire de fichiers (deux connexions)",
@@ -599,6 +603,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC local",
 		txtFMNeedConnection:      "Ajoutez une connexion pour utiliser le gestionnaire de fichiers",
 		txtFMDriveList:           "Impossible dans la liste des lecteurs – ouvrez d'abord un lecteur",
+		txtFMErrUnsafeLink:       "%s est un lien symbolique qui sort du répertoire copié – non créé sur le PC",
 	},
 	LangEspanol: {
 		txtFMListEntry:           "Gestor de archivos (dos conexiones)",
@@ -713,6 +718,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC local",
 		txtFMNeedConnection:      "Añade una conexión para usar el gestor de archivos",
 		txtFMDriveList:           "No es posible en la lista de unidades – abre primero una unidad",
+		txtFMErrUnsafeLink:       "%s es un enlace simbólico que sale del directorio copiado – no se crea en el PC",
 	},
 	LangItaliano: {
 		txtFMListEntry:           "Gestore file (due connessioni)",
@@ -827,6 +833,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC locale",
 		txtFMNeedConnection:      "Aggiungi una connessione per usare il file manager",
 		txtFMDriveList:           "Non possibile nell'elenco delle unità – apri prima un'unità",
+		txtFMErrUnsafeLink:       "%s è un collegamento simbolico che esce dalla directory copiata – non creato sul PC",
 	},
 	LangPortugues: {
 		txtFMListEntry:           "Gestor de ficheiros (duas ligações)",
@@ -941,6 +948,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC local",
 		txtFMNeedConnection:      "Adicione uma ligação para usar o gestor de ficheiros",
 		txtFMDriveList:           "Não é possível na lista de unidades – abra primeiro uma unidade",
+		txtFMErrUnsafeLink:       "%s é uma ligação simbólica para fora do diretório copiado – não criada no PC",
 	},
 	LangDutch: {
 		txtFMListEntry:           "Bestandsbeheer (twee verbindingen)",
@@ -1055,6 +1063,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Lokale pc",
 		txtFMNeedConnection:      "Voeg een verbinding toe om de bestandsbeheerder te gebruiken",
 		txtFMDriveList:           "Niet mogelijk in de stationslijst – open eerst een station",
+		txtFMErrUnsafeLink:       "%s is een symlink die buiten de gekopieerde map wijst – niet aangemaakt op de pc",
 	},
 	LangSwedish: {
 		txtFMListEntry:           "Filhanterare (två anslutningar)",
@@ -1169,6 +1178,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Lokal dator",
 		txtFMNeedConnection:      "Lägg till en anslutning för att använda filhanteraren",
 		txtFMDriveList:           "Inte möjligt i enhetslistan – öppna först en enhet",
+		txtFMErrUnsafeLink:       "%s är en symbolisk länk som pekar utanför den kopierade katalogen – skapas inte på datorn",
 	},
 	LangPolish: {
 		txtFMListEntry:           "Menedżer plików (dwa połączenia)",
@@ -1283,6 +1293,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Lokalny komputer",
 		txtFMNeedConnection:      "Dodaj połączenie, aby korzystać z menedżera plików",
 		txtFMDriveList:           "Niemożliwe na liście dysków – najpierw otwórz dysk",
+		txtFMErrUnsafeLink:       "%s to dowiązanie wskazujące poza kopiowany katalog – nie utworzono na komputerze",
 	},
 	LangCzech: {
 		txtFMListEntry:           "Správce souborů (dvě připojení)",
@@ -1397,6 +1408,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Místní počítač",
 		txtFMNeedConnection:      "Přidejte připojení, abyste mohli používat správce souborů",
 		txtFMDriveList:           "V seznamu jednotek nelze – nejprve otevřete jednotku",
+		txtFMErrUnsafeLink:       "%s je symbolický odkaz mimo kopírovaný adresář – na PC nevytvořen",
 	},
 	LangRomanian: {
 		txtFMListEntry:           "Manager de fișiere (două conexiuni)",
@@ -1511,6 +1523,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC local",
 		txtFMNeedConnection:      "Adăugați o conexiune pentru a folosi managerul de fișiere",
 		txtFMDriveList:           "Nu este posibil în lista de unități – deschideți mai întâi o unitate",
+		txtFMErrUnsafeLink:       "%s este o legătură simbolică în afara directorului copiat – nu a fost creată pe PC",
 	},
 	LangBulgarian: {
 		txtFMListEntry:           "Файлов мениджър (две връзки)",
@@ -1625,6 +1638,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Локален компютър",
 		txtFMNeedConnection:      "Добавете връзка, за да използвате файловия мениджър",
 		txtFMDriveList:           "Не е възможно в списъка с устройства – първо отворете устройство",
+		txtFMErrUnsafeLink:       "%s е символна връзка извън копираната директория – не е създадена на компютъра",
 	},
 	LangRussian: {
 		txtFMListEntry:           "Файловый менеджер (два подключения)",
@@ -1739,6 +1753,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Локальный ПК",
 		txtFMNeedConnection:      "Добавьте подключение, чтобы использовать файловый менеджер",
 		txtFMDriveList:           "Невозможно в списке дисков – сначала откройте диск",
+		txtFMErrUnsafeLink:       "%s – символическая ссылка за пределы копируемого каталога – на ПК не создана",
 	},
 	LangUkrainian: {
 		txtFMListEntry:           "Файловий менеджер (два підключення)",
@@ -1853,6 +1868,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Локальний ПК",
 		txtFMNeedConnection:      "Додайте з'єднання, щоб користуватися файловим менеджером",
 		txtFMDriveList:           "Неможливо у списку дисків – спочатку відкрийте диск",
+		txtFMErrUnsafeLink:       "%s – символічне посилання за межі копійованого каталогу – на ПК не створено",
 	},
 	LangGreek: {
 		txtFMListEntry:           "Διαχείριση αρχείων (δύο συνδέσεις)",
@@ -1967,6 +1983,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Τοπικός υπολογιστής",
 		txtFMNeedConnection:      "Προσθέστε μια σύνδεση για να χρησιμοποιήσετε τη διαχείριση αρχείων",
 		txtFMDriveList:           "Δεν είναι δυνατό στη λίστα μονάδων – ανοίξτε πρώτα μια μονάδα",
+		txtFMErrUnsafeLink:       "Το %s είναι συμβολικός σύνδεσμος εκτός του καταλόγου που αντιγράφεται – δεν δημιουργήθηκε στον υπολογιστή",
 	},
 	LangTurkish: {
 		txtFMListEntry:           "Dosya yöneticisi (iki bağlantı)",
@@ -2081,6 +2098,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Yerel bilgisayar",
 		txtFMNeedConnection:      "Dosya yöneticisini kullanmak için bir bağlantı ekleyin",
 		txtFMDriveList:           "Sürücü listesinde mümkün değil – önce bir sürücü açın",
+		txtFMErrUnsafeLink:       "%s kopyalanan dizinin dışını gösteren bir sembolik bağlantı – bilgisayarda oluşturulmadı",
 	},
 	LangGeorgian: {
 		txtFMListEntry:           "ფაილების მენეჯერი (ორი კავშირი)",
@@ -2195,6 +2213,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "ლოკალური კომპიუტერი",
 		txtFMNeedConnection:      "დაამატეთ კავშირი ფაილების მენეჯერის გამოსაყენებლად",
 		txtFMDriveList:           "დისკების სიაში შეუძლებელია – ჯერ გახსენით დისკი",
+		txtFMErrUnsafeLink:       "%s სიმბმულია კოპირებული საქაღალდის გარეთ – კომპიუტერზე არ შეიქმნა",
 	},
 	LangArabic: {
 		txtFMListEntry:           "مدير الملفات (اتصالان)",
@@ -2309,6 +2328,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "الحاسوب المحلي",
 		txtFMNeedConnection:      "أضف اتصالاً لاستخدام مدير الملفات",
 		txtFMDriveList:           "غير ممكن في قائمة الأقراص – افتح قرصًا أولاً",
+		txtFMErrUnsafeLink:       "%s رابط رمزي يشير إلى خارج المجلد المنسوخ – لم يُنشأ على الحاسوب",
 	},
 	LangPersian: {
 		txtFMListEntry:           "مدیر فایل (دو اتصال)",
@@ -2423,6 +2443,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "رایانهٔ محلی",
 		txtFMNeedConnection:      "برای استفاده از مدیر فایل یک اتصال اضافه کنید",
 		txtFMDriveList:           "در فهرست درایوها ممکن نیست – ابتدا یک درایو را باز کنید",
+		txtFMErrUnsafeLink:       "%s پیوند نمادینی به بیرون از پوشهٔ کپی\u200cشده است – روی رایانه ساخته نشد",
 	},
 	LangUrdu: {
 		txtFMListEntry:           "فائل منیجر (دو کنکشن)",
@@ -2537,6 +2558,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "مقامی کمپیوٹر",
 		txtFMNeedConnection:      "فائل مینیجر استعمال کرنے کے لیے ایک کنکشن شامل کریں",
 		txtFMDriveList:           "ڈرائیو کی فہرست میں ممکن نہیں – پہلے ایک ڈرائیو کھولیں",
+		txtFMErrUnsafeLink:       "%s کاپی شدہ فولڈر سے باہر اشارہ کرنے والا سم لنک ہے – کمپیوٹر پر نہیں بنایا گیا",
 	},
 	LangHindi: {
 		txtFMListEntry:           "फ़ाइल मैनेजर (दो कनेक्शन)",
@@ -2651,6 +2673,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "स्थानीय पीसी",
 		txtFMNeedConnection:      "फ़ाइल प्रबंधक उपयोग करने के लिए एक कनेक्शन जोड़ें",
 		txtFMDriveList:           "ड्राइव सूची में संभव नहीं – पहले कोई ड्राइव खोलें",
+		txtFMErrUnsafeLink:       "%s कॉपी की गई निर्देशिका से बाहर इशारा करने वाला सिमलिंक है – पीसी पर नहीं बनाया गया",
 	},
 	LangBengali: {
 		txtFMListEntry:           "ফাইল ম্যানেজার (দুটি সংযোগ)",
@@ -2765,6 +2788,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "স্থানীয় পিসি",
 		txtFMNeedConnection:      "ফাইল ম্যানেজার ব্যবহার করতে একটি সংযোগ যোগ করুন",
 		txtFMDriveList:           "ড্রাইভ তালিকায় সম্ভব নয় – আগে একটি ড্রাইভ খুলুন",
+		txtFMErrUnsafeLink:       "%s কপি করা ফোল্ডারের বাইরে নির্দেশকারী সিমলিংক – পিসিতে তৈরি হয়নি",
 	},
 	LangPunjabi: {
 		txtFMListEntry:           "ਫਾਈਲ ਮੈਨੇਜਰ (ਦੋ ਕਨੈਕਸ਼ਨ)",
@@ -2879,6 +2903,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "ਸਥਾਨਕ ਪੀਸੀ",
 		txtFMNeedConnection:      "ਫਾਈਲ ਮੈਨੇਜਰ ਵਰਤਣ ਲਈ ਇੱਕ ਕਨੈਕਸ਼ਨ ਜੋੜੋ",
 		txtFMDriveList:           "ਡਰਾਈਵ ਸੂਚੀ ਵਿੱਚ ਸੰਭਵ ਨਹੀਂ – ਪਹਿਲਾਂ ਕੋਈ ਡਰਾਈਵ ਖੋਲ੍ਹੋ",
+		txtFMErrUnsafeLink:       "%s ਕਾਪੀ ਕੀਤੇ ਫੋਲਡਰ ਤੋਂ ਬਾਹਰ ਇਸ਼ਾਰਾ ਕਰਦਾ ਸਿਮਲਿੰਕ ਹੈ – ਪੀਸੀ ਉੱਤੇ ਨਹੀਂ ਬਣਾਇਆ",
 	},
 	LangGujarati: {
 		txtFMListEntry:           "ફાઇલ મેનેજર (બે કનેક્શન)",
@@ -2993,6 +3018,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "સ્થાનિક પીસી",
 		txtFMNeedConnection:      "ફાઇલ મેનેજર વાપરવા માટે એક કનેક્શન ઉમેરો",
 		txtFMDriveList:           "ડ્રાઇવ સૂચિમાં શક્ય નથી – પહેલા કોઈ ડ્રાઇવ ખોલો",
+		txtFMErrUnsafeLink:       "%s નકલ કરેલા ફોલ્ડરની બહાર દર્શાવતી સિમલિંક છે – પીસી પર બનાવાઈ નથી",
 	},
 	LangMarathi: {
 		txtFMListEntry:           "फाइल व्यवस्थापक (दोन कनेक्शन)",
@@ -3107,6 +3133,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "स्थानिक पीसी",
 		txtFMNeedConnection:      "फाइल व्यवस्थापक वापरण्यासाठी एक कनेक्शन जोडा",
 		txtFMDriveList:           "ड्राइव्ह सूचीत शक्य नाही – आधी एखादी ड्राइव्ह उघडा",
+		txtFMErrUnsafeLink:       "%s हा प्रत केलेल्या फोल्डरबाहेर निर्देश करणारा सिमलिंक आहे – पीसीवर तयार केला नाही",
 	},
 	LangTamil: {
 		txtFMListEntry:           "கோப்பு மேலாளர் (இரண்டு இணைப்புகள்)",
@@ -3221,6 +3248,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "உள்ளூர் கணினி",
 		txtFMNeedConnection:      "கோப்பு மேலாளரைப் பயன்படுத்த ஓர் இணைப்பைச் சேர்க்கவும்",
 		txtFMDriveList:           "இயக்கிப் பட்டியலில் இயலாது – முதலில் ஓர் இயக்கியைத் திறக்கவும்",
+		txtFMErrUnsafeLink:       "%s நகலெடுத்த கோப்புறைக்கு வெளியே சுட்டும் சிம்லிங்க் – கணினியில் உருவாக்கப்படவில்லை",
 	},
 	LangTelugu: {
 		txtFMListEntry:           "ఫైల్ మేనేజర్ (రెండు కనెక్షన్లు)",
@@ -3335,6 +3363,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "స్థానిక పీసీ",
 		txtFMNeedConnection:      "ఫైల్ మేనేజర్ వాడటానికి ఒక కనెక్షన్ జోడించండి",
 		txtFMDriveList:           "డ్రైవ్ జాబితాలో సాధ్యం కాదు – ముందుగా ఒక డ్రైవ్ తెరవండి",
+		txtFMErrUnsafeLink:       "%s కాపీ చేసిన ఫోల్డర్ బయటకు చూపే సిమ్\u200cలింక్ – పీసీలో సృష్టించలేదు",
 	},
 	LangKannada: {
 		txtFMListEntry:           "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ (ಎರಡು ಸಂಪರ್ಕಗಳು)",
@@ -3449,6 +3478,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "ಸ್ಥಳೀಯ ಪಿಸಿ",
 		txtFMNeedConnection:      "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ ಬಳಸಲು ಒಂದು ಸಂಪರ್ಕ ಸೇರಿಸಿ",
 		txtFMDriveList:           "ಡ್ರೈವ್ ಪಟ್ಟಿಯಲ್ಲಿ ಸಾಧ್ಯವಿಲ್ಲ – ಮೊದಲು ಒಂದು ಡ್ರೈವ್ ತೆರೆಯಿರಿ",
+		txtFMErrUnsafeLink:       "%s ನಕಲಿಸಿದ ಫೋಲ್ಡರ್\u200cನ ಹೊರಗೆ ತೋರಿಸುವ ಸಿಮ್\u200cಲಿಂಕ್ – ಪಿಸಿಯಲ್ಲಿ ರಚಿಸಲಾಗಿಲ್ಲ",
 	},
 	LangChinese: {
 		txtFMListEntry:           "文件管理器（两个连接）",
@@ -3563,6 +3593,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "本地电脑",
 		txtFMNeedConnection:      "添加一个连接即可使用文件管理器",
 		txtFMDriveList:           "在驱动器列表中无法执行 – 请先打开一个驱动器",
+		txtFMErrUnsafeLink:       "%s 是指向所复制目录之外的符号链接 – 未在电脑上创建",
 	},
 	LangJapanese: {
 		txtFMListEntry:           "ファイルマネージャー（2つの接続）",
@@ -3677,6 +3708,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "ローカル PC",
 		txtFMNeedConnection:      "ファイルマネージャーを使うには接続を 1 つ追加してください",
 		txtFMDriveList:           "ドライブ一覧では実行できません – 先にドライブを開いてください",
+		txtFMErrUnsafeLink:       "%s はコピー元ディレクトリの外を指すシンボリックリンクです – PC には作成しません",
 	},
 	LangKorean: {
 		txtFMListEntry:           "파일 관리자 (두 개의 연결)",
@@ -3791,6 +3823,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "로컬 PC",
 		txtFMNeedConnection:      "파일 관리자를 사용하려면 연결을 하나 추가하세요",
 		txtFMDriveList:           "드라이브 목록에서는 할 수 없습니다 – 먼저 드라이브를 여세요",
+		txtFMErrUnsafeLink:       "%s은(는) 복사한 디렉터리 밖을 가리키는 심볼릭 링크입니다 – PC에 만들지 않았습니다",
 	},
 	LangThai: {
 		txtFMListEntry:           "ตัวจัดการไฟล์ (สองการเชื่อมต่อ)",
@@ -3905,6 +3938,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "พีซีในเครื่อง",
 		txtFMNeedConnection:      "เพิ่มการเชื่อมต่อเพื่อใช้ตัวจัดการไฟล์",
 		txtFMDriveList:           "ทำไม่ได้ในรายการไดรฟ์ – เปิดไดรฟ์ก่อน",
+		txtFMErrUnsafeLink:       "%s เป็นลิงก์สัญลักษณ์ที่ชี้ออกนอกไดเรกทอรีที่คัดลอก – ไม่ได้สร้างบนพีซี",
 	},
 	LangVietnamese: {
 		txtFMListEntry:           "Trình quản lý tệp (hai kết nối)",
@@ -4019,6 +4053,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Máy tính cục bộ",
 		txtFMNeedConnection:      "Thêm một kết nối để dùng trình quản lý tệp",
 		txtFMDriveList:           "Không thể trong danh sách ổ đĩa – hãy mở một ổ đĩa trước",
+		txtFMErrUnsafeLink:       "%s là liên kết tượng trưng trỏ ra ngoài thư mục được sao chép – không tạo trên máy tính",
 	},
 	LangIndonesian: {
 		txtFMListEntry:           "Pengelola berkas (dua koneksi)",
@@ -4133,6 +4168,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "PC lokal",
 		txtFMNeedConnection:      "Tambahkan koneksi untuk memakai pengelola berkas",
 		txtFMDriveList:           "Tidak bisa di daftar drive – buka drive terlebih dahulu",
+		txtFMErrUnsafeLink:       "%s adalah symlink yang menunjuk ke luar direktori yang disalin – tidak dibuat di PC",
 	},
 	LangFilipino: {
 		txtFMListEntry:           "Tagapamahala ng file (dalawang koneksyon)",
@@ -4247,6 +4283,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Lokal na PC",
 		txtFMNeedConnection:      "Magdagdag ng koneksyon para magamit ang file manager",
 		txtFMDriveList:           "Hindi puwede sa listahan ng drive – magbukas muna ng drive",
+		txtFMErrUnsafeLink:       "Ang %s ay symlink na tumuturo palabas ng kinopyang direktoryo – hindi ginawa sa PC",
 	},
 	LangSwahili: {
 		txtFMListEntry:           "Kidhibiti faili (miunganisho miwili)",
@@ -4361,6 +4398,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Kompyuta ya ndani",
 		txtFMNeedConnection:      "Ongeza muunganisho ili kutumia kidhibiti faili",
 		txtFMDriveList:           "Haiwezekani kwenye orodha ya diski – fungua diski kwanza",
+		txtFMErrUnsafeLink:       "%s ni kiungo ishara kinachoelekeza nje ya saraka iliyonakiliwa – hakijaundwa kwenye kompyuta",
 	},
 	LangAmharic: {
 		txtFMListEntry:           "የፋይል አስተዳዳሪ (ሁለት ግንኙነቶች)",
@@ -4475,6 +4513,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "የአካባቢ ኮምፒዩተር",
 		txtFMNeedConnection:      "የፋይል አስተዳዳሪውን ለመጠቀም ግንኙነት ያክሉ",
 		txtFMDriveList:           "በአንጻፊዎች ዝርዝር ውስጥ አይቻልም – መጀመሪያ አንጻፊ ይክፈቱ",
+		txtFMErrUnsafeLink:       "%s ከተቀዳው ማውጫ ውጭ የሚያመለክት ተምሳሌታዊ አገናኝ ነው – በኮምፒዩተሩ ላይ አልተፈጠረም",
 	},
 	LangHausa: {
 		txtFMListEntry:           "Mai sarrafa fayiloli (haɗi biyu)",
@@ -4589,6 +4628,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Kwamfutar gida",
 		txtFMNeedConnection:      "Ƙara haɗi don amfani da manajan fayiloli",
 		txtFMDriveList:           "Ba zai yiwu ba a jerin faifai – fara buɗe faifai",
+		txtFMErrUnsafeLink:       "%s mahaɗin alama ne da ke nuna waje da babban fayil ɗin da aka kwafi – ba a ƙirƙira shi a kwamfuta ba",
 	},
 	LangIgbo: {
 		txtFMListEntry:           "Onye njikwa faịlụ (njikọ abụọ)",
@@ -4703,6 +4743,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Kọmputa mpaghara",
 		txtFMNeedConnection:      "Tinye njikọ iji jiri njikwa faịlụ",
 		txtFMDriveList:           "O kwesighi na ndepụta draịv – buru ụzọ mepee draịv",
+		txtFMErrUnsafeLink:       "%s bụ njikọ akara na-atụ n'èzí ndekọ e detuo – emepụtaghị ya na kọmputa",
 	},
 	LangYoruba: {
 		txtFMListEntry:           "Olùṣàkóso fáìlì (ìsopọ̀ méjì)",
@@ -4817,6 +4858,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Kọ̀ǹpútà àdúgbò",
 		txtFMNeedConnection:      "Ṣàfikún ìsopọ̀ kan láti lo olùṣàkóso fáìlì",
 		txtFMDriveList:           "Kò ṣeé ṣe nínú àkójọ àwọn dírááfù – kọ́kọ́ ṣí dírááfù kan",
+		txtFMErrUnsafeLink:       "%s jẹ́ ìjápọ̀ àmì tí ó tọ́ka sí ìta àpò tí a ṣàdàkọ – a kò ṣẹ̀dá rẹ̀ lórí kọ̀ǹpútà",
 	},
 	LangOromo: {
 		txtFMListEntry:           "Bulchiinsa faayilii (walqunnamtii lama)",
@@ -4931,5 +4973,6 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMLocalPC:             "Kompiitara naannoo",
 		txtFMNeedConnection:      "Bulchiinsa faayilii fayyadamuuf walqunnamtii tokko dabali",
 		txtFMDriveList:           "Tarree draayivii keessatti hin danda'amu – dura draayivii tokko bani",
+		txtFMErrUnsafeLink:       "%s hidhaa mallattoo kallattii garagalfame ala agarsiisudha – kompiitara irratti hin uumamne",
 	},
 }

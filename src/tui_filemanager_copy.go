@@ -146,8 +146,10 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 		names:    m.fm.copy.names,
 		sameHost: strings.EqualFold(src.conn.Host, dst.conn.Host) && src.conn.Port == dst.conn.Port,
 		move:     m.fm.copy.move,
-		// Vom Server auf den PC: Dateien als heruntergeladen kennzeichnen
+		// Vom Server auf den PC: Dateien als heruntergeladen kennzeichnen,
+		// nur Symlinks innerhalb des kopierten Verzeichnisses
 		markDownloads: fmShouldMarkDownloads(src.fs, dst.fs),
+		safeLinksOnly: fmUntrustedToLocal(src.fs, dst.fs),
 	}
 	go runCopy(ctx, req, m.fm.copy.events, m.fm.copy.answers)
 	m.fm.dialog = fmDialogCopying
@@ -266,6 +268,8 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrIntoItself), p)
 	case errors.Is(f.err, errDeleteRace):
 		return fmt.Sprintf(m.tr(txtFMErrDeleteRace), p)
+	case errors.Is(f.err, errUnsafeSymlink):
+		return fmt.Sprintf(m.tr(txtFMErrUnsafeLink), p)
 	}
 	return p + ": " + sanitizeFileName(f.err.Error())
 }

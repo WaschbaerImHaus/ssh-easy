@@ -77,6 +77,11 @@ var errUnsafeName = errors.New("unsafe file name")
 // andere lesbar und wird deshalb nicht kopiert.
 var errCannotProtect = errors.New("cannot restrict permissions on target")
 
+// errUnsafeSymlink - Symlink vom Server zeigt aus dem kopierten Verzeichnis
+// heraus (absolut, Laufwerk, ".." nach außen) und wird auf dem PC nicht
+// angelegt.
+var errUnsafeSymlink = errors.New("symlink points outside the copied directory")
+
 // errCopyLimit - zu viele Einträge oder zu tief verschachtelt (Schutz vor
 // bösartigen Servern mit endlosen Verzeichnisbäumen); nichts wird kopiert.
 var errCopyLimit = errors.New("too many entries or nesting too deep")
@@ -106,6 +111,8 @@ type copyRequest struct {
 	move bool
 	// Kopierte Dateien als heruntergeladen kennzeichnen (Server -> PC)
 	markDownloads bool
+	// Nur Symlinks anlegen, die im Zielverzeichnis bleiben (Server -> PC)
+	safeLinksOnly bool
 }
 
 // copyConflictAnswer ist die Antwort auf "Ziel existiert schon".
@@ -508,6 +515,10 @@ func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing o
 		r.fail(node, srcPath, err)
 		return true
 	}
+	if r.req.safeLinksOnly && !safeLinkTarget(node.rel, target) {
+		r.fail(node, srcPath, errUnsafeSymlink)
+		return true
+	}
 	if exists {
 		overwrite, ok := r.resolveConflict(node, dstPath, existing)
 		if !ok {
@@ -632,17 +643,19 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 	if err != nil {
 		return err
 	}
+	// Herkunft "Internet" kennzeichnen (Windows warnt vor dem Ausführen),
+	// solange die Temp-Datei noch 0600 ist - ein Schreibschutz aus den
+	// Originalrechten würde das verhindern. Scheitert es, wird die Datei
+	// nicht abgelegt (sonst läge z. B. eine unmarkierte .exe auf dem PC)
+	if marker, ok := r.req.dst.(downloadMarker); ok && r.req.markDownloads {
+		if err := marker.MarkDownloaded(tmp); err != nil {
+			return err
+		}
+	}
 	// Rechte und Zeit übernehmen; Fehler ignorieren (eingeschränkte Hoster)
 	_ = r.req.dst.Chmod(tmp, perm)
 	_ = r.req.dst.Chtimes(tmp, info.ModTime(), info.ModTime())
-	if err := r.req.dst.RenameOverwrite(tmp, dstPath); err != nil {
-		return err
-	}
-	if marker, ok := r.req.dst.(downloadMarker); ok && r.req.markDownloads {
-		// Herkunft "Internet": Windows warnt vor dem Ausführen (SmartScreen)
-		marker.MarkDownloaded(dstPath)
-	}
-	return nil
+	return r.req.dst.RenameOverwrite(tmp, dstPath)
 }
 
 // fsAcceptsName meldet, ob ein Dateisystem einen Namen unverändert anlegen

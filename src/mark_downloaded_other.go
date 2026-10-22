@@ -12,5 +12,6 @@ package main
 // und nur Dokument-/Medientypen werden geöffnet.
 //
 // @param p - lokaler Pfad
-// @date   2026-10-22 00:43
-func markDownloaded(p string) {}
+// @return error - immer nil
+// @date   2026-10-22 07:10
+func markDownloaded(p string) error { return nil }

@@ -192,7 +192,9 @@ func downloadForOpen(fsys remoteFS, remotePath, localName string) (local string,
 	if err != nil {
 		return "", err
 	}
-	markDownloaded(local)
+	// Nur Dokument-/Medientypen werden geöffnet; eine fehlende Kennzeichnung
+	// verhindert das Öffnen nicht
+	_ = markDownloaded(local)
 	return local, nil
 }
 

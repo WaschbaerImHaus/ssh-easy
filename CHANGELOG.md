@@ -5,6 +5,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.71] – Build 71
+- **Security** files copied from a server to the PC are now marked as downloaded before their original permissions are applied, so read-only files are marked too; if marking fails, the file is not placed (drives without alternate data streams such as FAT are exempt) (finding of the automated security review of Build 70)
+- **Security** symlinks copied from a server to the PC are only created if they are relative and stay inside the copied directory; links to absolute paths, other drives or outside the directory are refused with a message (finding of the automated security review of Build 70)
+- **Added** 6 new tests (580 total, all green)
+
 ## [v0.70] – Build 70
 - **Added** *Local PC* as a connection in the file manager: it is offered first in the connection choice (left or right, not on both sides) and shows the file system of your computer, starting in your home directory. Copying, moving, creating directories, deleting, viewing and editing work between your PC and a server just like between two servers
 - **Added** on Windows `..` above a drive root (e.g. `C:\`) leads to the drive list (`C:`, `D:`, …) to switch drives; copying, moving, creating and deleting are refused in the drive list
