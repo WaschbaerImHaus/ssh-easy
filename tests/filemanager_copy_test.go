@@ -57,6 +57,10 @@ type memFS struct {
 	onWrite func()
 	// Wird bei jedem Schreibaufruf mit Pfad und Knoten aufgerufen (unter Sperre)
 	onWriteNode func(p string, n *memNode)
+	// Pfade, die nicht gelöscht werden dürfen (Remove schlägt fehl)
+	noRemove map[string]bool
+	// Wird vor jedem Remove aufgerufen (ohne Sperre; für Abbruch-Tests)
+	onRemove func()
 	// Chmod/Chtimes verbieten (eingeschränkter Hoster)
 	noAttrs bool
 	closed  bool
@@ -65,11 +69,12 @@ type memFS struct {
 // newMemFS erzeugt ein leeres Dateisystem mit "/" und dem Home-Verzeichnis.
 func newMemFS(home string) *memFS {
 	m := &memFS{
-		home:    home,
-		nodes:   map[string]*memNode{"/": {mode: fs.ModeDir | 0o755}},
-		denied:  map[string]bool{},
-		failNth: map[string]int{},
-		created: map[string]int{},
+		home:     home,
+		nodes:    map[string]*memNode{"/": {mode: fs.ModeDir | 0o755}},
+		denied:   map[string]bool{},
+		failNth:  map[string]int{},
+		created:  map[string]int{},
+		noRemove: map[string]bool{},
 	}
 	m.mkdirAll(home)
 	return m
@@ -296,11 +301,27 @@ func (m *memFS) Mkdir(p string) error {
 	return nil
 }
 
+// Remove löscht wie ein echter Server eine Datei, einen Symlink (nicht
+// sein Ziel) oder ein LEERES Verzeichnis.
 func (m *memFS) Remove(p string) error {
+	if m.onRemove != nil {
+		m.onRemove()
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.nodes[p]; !ok {
+	n, ok := m.nodes[p]
+	if !ok {
 		return os.ErrNotExist
+	}
+	if m.noRemove[p] {
+		return os.ErrPermission
+	}
+	if n.mode.IsDir() {
+		for name := range m.nodes {
+			if name != "/" && name != p && path.Dir(name) == p {
+				return errors.New("directory not empty")
+			}
+		}
 	}
 	delete(m.nodes, p)
 	return nil

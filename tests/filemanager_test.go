@@ -212,7 +212,8 @@ func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 // isFileManagerMsg erkennt die asynchronen Nachrichten des Datei-Managers.
 func isFileManagerMsg(msg tea.Msg) bool {
 	switch msg.(type) {
-	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg, fmOpenExternalMsg, fmEditLoadedMsg, fmEditSavedMsg:
+	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg, fmOpenExternalMsg, fmEditLoadedMsg, fmEditSavedMsg,
+		fmDeleteEventMsg, fmMkdirDoneMsg:
 		return true
 	}
 	return false
@@ -234,6 +235,12 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyF5}
 	case "f6":
 		return tea.KeyMsg{Type: tea.KeyF6}
+	case "f7":
+		return tea.KeyMsg{Type: tea.KeyF7}
+	case "f8":
+		return tea.KeyMsg{Type: tea.KeyF8}
+	case "f9":
+		return tea.KeyMsg{Type: tea.KeyF9}
 	case "f2":
 		return tea.KeyMsg{Type: tea.KeyF2}
 	case "f3":
@@ -1031,7 +1038,7 @@ func TestFileManagerF10ReturnsToList(t *testing.T) {
 // sich, ändern aber nichts.
 func TestFileManagerOtherFKeysNotYet(t *testing.T) {
 	m, _ := openFileManagerFor(t)
-	m = pressRun(t, m, "f6")
+	m = pressRun(t, m, "f9")
 	if m.state != ViewFileManager {
 		t.Fatalf("state = %v", m.state)
 	}

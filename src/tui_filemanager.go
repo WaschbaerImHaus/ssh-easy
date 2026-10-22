@@ -11,13 +11,15 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Stand Build 62: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
+// Stand Build 65: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
 // alle Markierungen um), Ansehen (F3, tui_filemanager_view.go), Bearbeiten
-// (F4, tui_filemanager_edit.go) und Kopieren (F5, tui_filemanager_copy.go)
-// funktionieren; Menü und die übrigen F-Tasten sind nur optisch vorhanden.
+// (F4, tui_filemanager_edit.go), Kopieren (F5, tui_filemanager_copy.go),
+// Verschieben (F6), Verzeichnis anlegen (F7) und Löschen (F8,
+// tui_filemanager_ops.go) funktionieren; Menü, F1, F2 und F9 sind nur
+// optisch vorhanden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:24
+// @date   2026-10-22 05:17
 package main
 
 import (
@@ -80,6 +82,9 @@ type fileManager struct {
 	// Offener Dialog (Kopieren usw.) und Zustand des Kopiervorgangs
 	dialog fmDialog
 	copy   fmCopyState
+	// Namensfeld von F7 und Zustand des Löschens (F8)
+	mkdirInput textinput.Model
+	del        fmDeleteState
 	// Betrachter (F3): offen?, Zustand, laufende Nummer (veraltete Ladeergebnisse)
 	viewing bool
 	view    fmViewer
@@ -113,8 +118,11 @@ type fmDirLoadedMsg struct {
 	side    int
 	path    string
 	entries []fmEntry
-	// Name, auf den der Cursor danach soll
-	focus string
+	// Name, auf den der Cursor danach soll; fehlt er, Position fallback
+	focus    string
+	fallback int
+	// Namen, die nach dem Einlesen wieder markiert werden
+	marks map[string]bool
 	err   error
 }
 
@@ -471,8 +479,14 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "f4":
 		return m.fmOpenEditor()
 	case "f5":
-		return m.fmOpenCopyConfirm()
-	case "f1", "f2", "f6", "f7", "f8", "f9":
+		return m.fmOpenCopyConfirm(false)
+	case "f6":
+		return m.fmOpenCopyConfirm(true)
+	case "f7":
+		return m.fmOpenMkdir()
+	case "f8":
+		return m.fmOpenDeleteConfirm()
+	case "f1", "f2", "f9":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
 	}
@@ -517,7 +531,7 @@ func (m AppModel) fmEnter() (tea.Model, tea.Cmd) {
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-10-21 19:45
+// @date   2026-10-22 05:17
 func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.session != m.fm.session || m.state != ViewFileManager {
 		return m, nil
@@ -529,6 +543,17 @@ func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	panel.applyListing(msg.path, msg.entries, msg.focus)
+	if msg.focus != "" {
+		if entry, ok := panel.current(); !ok || entry.name != msg.focus {
+			// Eintrag gibt es nicht mehr (gelöscht/verschoben): Position halten
+			panel.setCursor(msg.fallback)
+		}
+	}
+	for i := range panel.entries {
+		if msg.marks[panel.entries[i].name] && !panel.entries[i].parent {
+			panel.entries[i].marked = true
+		}
+	}
 	panel.offset = scrollOffset(len(panel.entries), panel.cursor, panel.offset, m.fmVisibleRows())
 	return m, nil
 }

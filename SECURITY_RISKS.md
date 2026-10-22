@@ -14,6 +14,18 @@ Operationen für Pfadbestandteile, daher nicht vollständig vermeidbar. Abschwä
 Verzeichnisse sind während des Kopierens 0700, jede Datei wird exklusiv (`O_EXCL`) unter
 Temp-Namen angelegt. Nur relevant bei Zielverzeichnissen, in die Dritte schreiben dürfen.
 
+### Datei-Manager: Austausch eines Verzeichnisses während des Löschens (Restrisiko)
+
+**Dateien:** `src/filemanager_delete.go`
+**Schweregrad:** NIEDRIG
+
+Zwischen `Lstat` (Eintrag ist ein Verzeichnis) und `ReadDir`/`Remove` seines Inhalts könnte
+jemand mit Schreibrecht im betroffenen Verzeichnis es durch einen Symlink auf ein fremdes
+Verzeichnis ersetzen; dessen Inhalt würde dann mit den Rechten des Nutzers gelöscht.
+`rm -rf` vermeidet das mit `openat()`/`unlinkat()`, SFTP kennt dafür keine Operationen.
+Abschwächung: Symlinks selbst werden nie verfolgt, Namen mit `/`, `\` oder Steuerzeichen
+werden abgelehnt. Nur relevant beim Löschen in Verzeichnissen, in die Dritte schreiben dürfen.
+
 ### Datei-Manager: unbegrenzte Verzeichnisliste beim Anzeigen (Restrisiko)
 
 **Dateien:** `src/filemanager_panel.go` (`readPanelDir`), `github.com/pkg/sftp` `ReadDir`

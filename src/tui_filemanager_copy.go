@@ -1,8 +1,10 @@
-// Paket main - Datei-Manager (MC-Modus): Kopieren (F5) und Dialoge
+// Paket main - Datei-Manager (MC-Modus): Kopieren (F5), Verschieben (F6)
+// und Dialoge
 //
 // F5 kopiert die markierten Einträge des aktiven Fensters (ohne Markierung
 // den Eintrag unter dem Cursor) in das aktuelle Verzeichnis des anderen
-// Fensters. Ablauf in Dialogen wie im mc:
+// Fensters; F6 verschiebt sie (gleicher Ablauf, fmCopyState.move, danach
+// werden beide Fenster neu gelesen). Ablauf in Dialogen wie im mc:
 //  1. Bestätigung (Enter = kopieren, Esc/q = abbrechen)
 //  2. Fortschritt (Esc = abbrechen; F10 und alle anderen Tasten ruhen)
 //  3. Rückfrage, wenn ein Ziel schon existiert (j/n/a/k/u/g, Esc)
@@ -13,7 +15,7 @@
 // der Antwort, weil die Kopie bis dahin ruht.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:18
+// @date   2026-10-22 05:17
 package main
 
 import (
@@ -40,6 +42,12 @@ const (
 	fmDialogCopying
 	// fmDialogOverwrite - "Ziel existiert bereits"
 	fmDialogOverwrite
+	// fmDialogMkdir - Name des neuen Verzeichnisses (F7)
+	fmDialogMkdir
+	// fmDialogDeleteConfirm - "… löschen?" (F8)
+	fmDialogDeleteConfirm
+	// fmDialogDeleting - Fortschritt des Löschens
+	fmDialogDeleting
 )
 
 // Höchstbreite der Dialoge in Zeichen
@@ -56,6 +64,8 @@ type fmCopyState struct {
 	// Zu kopierende Namen und Quellseite
 	names  []string
 	source int
+	// Verschieben statt kopieren (F6)
+	move bool
 	// Letzter gemeldeter Fortschritt
 	copyProgress copyProgress
 	// Offene Rückfrage
@@ -89,12 +99,13 @@ func (m AppModel) fmSelection() []string {
 	return nil
 }
 
-// fmOpenCopyConfirm öffnet nach F5 die Bestätigung.
+// fmOpenCopyConfirm öffnet nach F5 (bzw. F6) die Bestätigung.
 //
+// @param move - true = verschieben (F6)
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-10-21 21:03
-func (m AppModel) fmOpenCopyConfirm() (tea.Model, tea.Cmd) {
+// @date   2026-10-22 05:17
+func (m AppModel) fmOpenCopyConfirm(move bool) (tea.Model, tea.Cmd) {
 	source := m.fm.active
 	target := m.fm.panels[1-source]
 	if m.fm.panels[source].loading || target.loading || target.fs == nil || m.fm.panels[source].fs == nil {
@@ -105,7 +116,7 @@ func (m AppModel) fmOpenCopyConfirm() (tea.Model, tea.Cmd) {
 		m.fm.message = m.tr(txtFMNothingSelected)
 		return m, nil
 	}
-	m.fm.copy = fmCopyState{names: names, source: source}
+	m.fm.copy = fmCopyState{names: names, source: source, move: move}
 	m.fm.dialog = fmDialogCopyConfirm
 	return m, nil
 }
@@ -128,6 +139,7 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 		srcDir: src.path, dstDir: dst.path,
 		names:    m.fm.copy.names,
 		sameHost: strings.EqualFold(src.conn.Host, dst.conn.Host) && src.conn.Port == dst.conn.Port,
+		move:     m.fm.copy.move,
 	}
 	go runCopy(ctx, req, m.fm.copy.events, m.fm.copy.answers)
 	m.fm.dialog = fmDialogCopying
@@ -172,53 +184,56 @@ func (m AppModel) handleFMCopyEvent(msg fmCopyEventMsg) (tea.Model, tea.Cmd) {
 	return m, m.waitCopyEvent()
 }
 
-// fmFinishCopy schließt den Dialog, meldet das Ergebnis, hebt die
-// Markierung vollständig kopierter Einträge auf und liest das Zielfenster
-// neu ein.
+// fmFinishCopy schließt den Dialog, meldet das Ergebnis und liest das
+// Zielfenster neu ein. Beim Kopieren wird die Markierung vollständig
+// kopierter Einträge aufgehoben; beim Verschieben wird auch die Quelle neu
+// gelesen, nicht vollständig verschobene Einträge bleiben markiert.
 //
 // @param result - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Neuladen des Zielfensters
-// @date   2026-10-21 21:03
+// @return tea.Cmd - Neuladen der Fenster
+// @date   2026-10-22 05:17
 func (m AppModel) fmFinishCopy(result copyResult) (tea.Model, tea.Cmd) {
 	if m.fm.copy.cancel != nil {
 		m.fm.copy.cancel()
 	}
 	m.fm.dialog = fmDialogNone
+	cancelled, errorsText, doneText := txtFMCopyCancelled, txtFMCopyErrors, txtFMCopyDone
+	if m.fm.copy.move {
+		cancelled, errorsText, doneText = txtFMMoveCancelled, txtFMMoveErrors, txtFMMoveDone
+	}
 	switch {
 	case result.cancelled:
-		m.fm.message = m.tr(txtFMCopyCancelled)
+		m.fm.message = m.tr(cancelled)
 	case len(result.failures) > 0:
-		m.fm.message = fmt.Sprintf(m.tr(txtFMCopyErrors), len(result.failures), m.fmDescribeFailure(result.failures[0]))
+		m.fm.message = fmt.Sprintf(m.tr(errorsText), len(result.failures), m.fmDescribeFailure(result.failures[0]))
 	default:
-		m.fm.message = fmt.Sprintf(m.tr(txtFMCopyDone), result.files, formatSizeWithUnit(result.bytes))
+		m.fm.message = fmt.Sprintf(m.tr(doneText), result.files, formatSizeWithUnit(result.bytes))
+	}
+
+	// Zielfenster neu einlesen, Cursor auf dem bisherigen Eintrag lassen
+	source := m.fm.copy.source
+	focus, cursor := m.fmPanelFocus(1 - source)
+	reloadTarget := m.fmReloadPanel(1-source, focus, cursor, m.fmRemainingMarks(1-source, nil))
+	if m.fm.copy.move {
+		// Quelle hat sich verändert: ebenfalls neu einlesen
+		focus, cursor = m.fmPanelFocus(source)
+		reloadSource := m.fmReloadPanel(source, focus, cursor, m.fmRemainingMarks(source, result.copiedNames))
+		return m, tea.Batch(reloadTarget, reloadSource)
 	}
 
 	// Markierung der vollständig kopierten Einträge aufheben
-	source := &m.fm.panels[m.fm.copy.source]
+	panel := &m.fm.panels[source]
 	copied := map[string]bool{}
 	for _, name := range result.copiedNames {
 		copied[name] = true
 	}
-	for i := range source.entries {
-		if copied[source.entries[i].name] {
-			source.entries[i].marked = false
+	for i := range panel.entries {
+		if copied[panel.entries[i].name] {
+			panel.entries[i].marked = false
 		}
 	}
-
-	// Zielfenster neu einlesen, Cursor auf dem bisherigen Eintrag lassen
-	side := 1 - m.fm.copy.source
-	target := &m.fm.panels[side]
-	focus := ""
-	if entry, ok := target.current(); ok && !entry.parent {
-		focus = entry.name
-	}
-	target.loading = true
-	fsys, dir, session := target.fs, target.path, m.fm.session
-	return m, func() tea.Msg {
-		entries, err := readPanelDir(fsys, dir)
-		return fmDirLoadedMsg{session: session, side: side, path: dir, entries: entries, focus: focus, err: err}
-	}
+	return m, reloadTarget
 }
 
 // fmDescribeFailure formuliert einen Kopierfehler für die Meldung.
@@ -239,6 +254,8 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrCannotProtect), p)
 	case errors.Is(f.err, errCopyLimit):
 		return fmt.Sprintf(m.tr(txtFMErrCopyLimit), p, copyMaxEntries, copyMaxDepth)
+	case errors.Is(f.err, errMoveIntoItself):
+		return fmt.Sprintf(m.tr(txtFMErrIntoItself), p)
 	}
 	return p + ": " + sanitizeFileName(f.err.Error())
 }
@@ -253,6 +270,10 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	switch m.fm.dialog {
+	case fmDialogMkdir:
+		return m.handleFMMkdirKeys(msg)
+	case fmDialogDeleteConfirm, fmDialogDeleting:
+		return m.handleFMDeleteKeys(key)
 	case fmDialogCopyConfirm:
 		switch key {
 		case "enter":
@@ -298,21 +319,27 @@ func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // @return string - Titel
 // @return []string - Inhalt (je Zeile höchstens inner breit)
 // @return string - Tastenhilfe (wird umbrochen)
-// @date   2026-10-21 21:03
+// @date   2026-10-22 05:17
 func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 	c := m.fm.copy
+	title, confirmOne, confirmMany, confirmHelp := txtFMCopyTitle, txtFMCopyConfirmOne, txtFMCopyConfirmMany, txtFMConfirmHelp
+	if c.move {
+		title, confirmOne, confirmMany, confirmHelp = txtFMMoveTitle, txtFMMoveConfirmOne, txtFMMoveConfirmMany, txtFMMoveConfirmHelp
+	}
 	switch m.fm.dialog {
+	case fmDialogMkdir, fmDialogDeleteConfirm, fmDialogDeleting:
+		return m.fmOpsDialogLines(inner)
 	case fmDialogCopyConfirm:
 		target := m.fm.panels[1-c.source].title()
-		text := fmt.Sprintf(m.tr(txtFMCopyConfirmMany), len(c.names), target)
+		text := fmt.Sprintf(m.tr(confirmMany), len(c.names), target)
 		if len(c.names) == 1 {
-			text = fmt.Sprintf(m.tr(txtFMCopyConfirmOne), sanitizeFileName(c.names[0]), target)
+			text = fmt.Sprintf(m.tr(confirmOne), sanitizeFileName(c.names[0]), target)
 		}
-		return m.tr(txtFMCopyTitle), wrapText(text, inner), m.tr(txtFMConfirmHelp)
+		return m.tr(title), wrapText(text, inner), m.tr(confirmHelp)
 	case fmDialogCopying:
 		p := c.copyProgress
 		if p.scanning {
-			return m.tr(txtFMCopyTitle), []string{fmt.Sprintf(m.tr(txtFMCopyScanning), p.totalFiles)}, m.tr(txtFMCancelHelp)
+			return m.tr(title), []string{fmt.Sprintf(m.tr(txtFMCopyScanning), p.totalFiles)}, m.tr(txtFMCancelHelp)
 		}
 		done, total := p.doneBytes, p.totalBytes
 		if total == 0 {
@@ -328,7 +355,7 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 			fmt.Sprintf(m.tr(txtFMCopyProgress), p.doneFiles, p.totalFiles, formatSizeWithUnit(p.doneBytes), formatSizeWithUnit(p.totalBytes)),
 			progressBar(done, total, max(inner-5, 0)) + fmt.Sprintf(" %3d%%", percent),
 		}
-		return m.tr(txtFMCopyTitle), lines, m.tr(txtFMCancelHelp)
+		return m.tr(title), lines, m.tr(txtFMCancelHelp)
 	case fmDialogOverwrite:
 		lines := wrapText(sanitizeFileName(c.conflictPath), inner)
 		if len(lines) > 2 {

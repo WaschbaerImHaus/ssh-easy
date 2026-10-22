@@ -169,6 +169,9 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `F3` | View the file under the cursor – viewer keys like in mc: `F1` help, `F2` wrap, `F4` hex/text, `F5` go to, `F6` regex search, `F7` search (`n` next), `F9` open with the default program, `F3`/`F10`/`q`/`Esc` close |
 | `F4` | Edit the file under the cursor – editor keys like mcedit: `F2` save, `F3` mark block, `F4` replace, `F5`/`F6`/`F8` copy/move/delete block, `F7` search, `F10`/`Esc` quit, `Ctrl+Y` delete line; binary files open as editable hex view |
 | `F5` | Copy the marked entries (or the entry under the cursor) to the other panel |
+| `F6` | Move the marked entries (or the entry under the cursor) to the other panel |
+| `F7` | Create a directory in the active panel |
+| `F8` | Delete the marked entries (or the entry under the cursor), directories with their contents – confirm with `j`/`y` |
 | `F10` / `q` | Close both connections and return to the list |
 
 Markers in front of names: `/` directory, `~` symlink to a directory, `@` symlink to a
@@ -188,6 +191,17 @@ under a temporary name with owner-only permissions and renamed when complete, so
 private file is never readable by others on the target and an existing file is only
 replaced once the new one is complete.
 
+**Moving (`F6`)** works like copying; each file is deleted from the source only after
+its copy has arrived completely. Whatever failed or was skipped stays in the source and
+stays marked. A target that is the source itself (e.g. two connection entries for the
+same server) is refused.
+
+**Creating a directory (`F7`)** asks for a single name (no `/` or `\`); `Esc` cancels.
+
+**Deleting (`F8`)** removes directories with all their contents. Answer the question with
+`j` or `y` – `Enter` alone does not delete. Symlinks are removed themselves, never their
+target. `Esc` stops a running deletion.
+
 **Editing (`F4`)** works like mcedit. Line endings (also Windows CRLF) are kept. Binary
 files open in a hex view where hex digits overwrite bytes (`Tab` switches to the
 character column); the size never changes. Saving goes through a temporary file that is
@@ -204,9 +218,9 @@ ssh-easy exits.
 
 The file manager needs two connections; until then its entry is greyed out.
 
-*Current state (Build 62): navigation, marking, viewing, editing and copying. Move, mkdir, delete,
-edit and the menu (incl. switching between the classic, ssh-easy and monochrome colour
-themes) follow step by step.*
+*Current state (Build 65): navigation, marking, viewing, editing, copying, moving, creating
+directories and deleting. The menu (incl. switching between the classic, ssh-easy and
+monochrome colour themes) follows step by step.*
 
 ### Password prompt
 

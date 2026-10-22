@@ -59,16 +59,18 @@
 - [x] Fehlende Rechte: im bisherigen Verzeichnis bleiben + Meldung; Symlinks auf Verzeichnisse nicht folgen + Meldung (Build 53)
 - [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
-- [ ] Menü "Optionen": Farbmodus umschalten (und merken)
+- [ ] Menü "Optionen": Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22)
+- [ ] Menü "Datei" → "Herunterladen" (ohne F-Taste): eine Datei direkt bzw. mehrere als tar.gz auf den lokalen PC; Zielordner nativ wählen je Betriebssystem (Nutzerwunsch 2026-10-22)
 - [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)
 - [x] F5 Kopieren zwischen den Verbindungen: markierte Einträge, Verzeichnisse rekursiv, Symlinks als Symlink, Rechte/Zeit; Bestätigung, Fortschritt, Rückfrage j/n/a/k + "alle, wenn neuer" (u) / "alle, wenn größer" (g) (Build 57)
 - [x] Datei-Manager-Eintrag unter zwei Verbindungen ausgegraut mit Hinweis (Build 57)
-- [ ] F6 Verschieben/Umbenennen
-- [ ] F7 Verzeichnis anlegen
-- [ ] F8 Löschen (mit Bestätigung)
+- [x] F6 Verschieben ins andere Fenster: Kopie über Temp-Datei + Umbenennen, Quelle erst danach löschen, Fehlgeschlagenes bleibt markiert; Ziel = Quelle (auch über zweiten Verbindungseintrag) und "in sich selbst" werden abgelehnt (Build 65)
+- [ ] F6 Umbenennen im selben Fenster (wie im mc: Zielname im Dialog änderbar)
+- [x] F7 Verzeichnis anlegen (Namensprüfung, Cursor auf dem neuen Verzeichnis) (Build 65)
+- [x] F8 Löschen rekursiv, Bestätigung nur mit j/y (Enter löscht nicht), Symlinks nie verfolgt, Esc bricht ab (Build 65)
 - [x] F3 Ansehen: Betrachter (max. 16 MiB), Text bereinigt, Umbruch F2, Hex F4 (automatisch bei Binärdaten) (Build 59)
 - [ ] Liegengebliebene Temp-Dateien (`.ssh-easy-copy-*.tmp`, z. B. nach Verbindungsabbruch) beim nächsten Kopieren in dasselbe Verzeichnis aufräumen (Vorschlag 2026-10-21)
-- [ ] F6 Verschieben: Ziel ebenfalls über Temp-Datei + Umbenennen, bei Fehler Temp löschen (Nutzervorgabe 2026-10-21); Quelle erst nach erfolgreichem Umbenennen löschen
+- [x] F6 Verschieben: Ziel ebenfalls über Temp-Datei + Umbenennen, bei Fehler Temp löschen (Nutzervorgabe 2026-10-21); Quelle erst nach erfolgreichem Umbenennen löschen (Build 65)
 - [x] Betrachter mit F-Tasten wie mcview: F1 Hilfe, F2 Umbruch, F3/F10 Beenden, F4 Hex, F5 Gehe zu, F6 Regex-Suche, F7 Suchen + n (Build 60)
 - [x] F9 im Betrachter: lokal mit dem Standardprogramm öffnen (Windows nach Endung, Linux xdg-open), ausführbare Typen gesperrt, Mark of the Web (Build 60)
 - [x] F4 Bearbeiten: interner Editor wie mcedit (Build 62) (F1 Hilfe, F2 Speichern, F3 Markieren, F4 Ersetzen, F5 Kopieren, F6 Verschieben, F7 Suchen, F8 Löschen, F10 Beenden); Binärdateien als bearbeitbare Hex-Ansicht (Bytes überschreiben, z. B. AD → AF) (Nutzerwunsch 2026-10-21); Speichern über Temp-Datei + Umbenennen

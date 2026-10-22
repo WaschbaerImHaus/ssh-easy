@@ -157,6 +157,9 @@ nebeneinander zu arbeiten:
 | `F3` | Datei unter dem Cursor ansehen – Tasten wie im mc-Betrachter: `F1` Hilfe, `F2` Umbruch, `F4` Hex/Text, `F5` Gehe zu, `F6` Suche mit regulärem Ausdruck, `F7` Suchen (`n` weiter), `F9` mit dem Standardprogramm öffnen, `F3`/`F10`/`q`/`Esc` schließen |
 | `F4` | Datei unter dem Cursor bearbeiten – Tasten wie im mcedit: `F2` speichern, `F3` Block markieren, `F4` ersetzen, `F5`/`F6`/`F8` Block kopieren/verschieben/löschen, `F7` suchen, `F10`/`Esc` beenden, `Strg+Y` Zeile löschen; Binärdateien als bearbeitbare Hex-Ansicht |
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
+| `F6` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster verschieben |
+| `F7` | Verzeichnis im aktiven Fenster anlegen |
+| `F8` | Markierte Einträge (bzw. den unter dem Cursor) löschen, Verzeichnisse samt Inhalt – mit `j`/`y` bestätigen |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
 Kennzeichen vor den Namen: `/` Verzeichnis, `~` Symlink auf ein Verzeichnis, `@` Symlink
@@ -177,6 +180,18 @@ Jede Datei wird erst unter einem Temp-Namen nur für dich lesbar geschrieben und
 umbenannt: Private Dateien sind auf dem Ziel nie für andere lesbar, eine vorhandene
 Datei wird erst ersetzt, wenn die neue vollständig ist.
 
+**Verschieben (`F6`)** läuft wie das Kopieren; jede Datei wird in der Quelle erst gelöscht,
+wenn ihre Kopie vollständig angekommen ist. Was fehlschlägt oder übersprungen wird, bleibt
+in der Quelle und bleibt markiert. Ein Ziel, das die Quelle selbst ist (z. B. zwei
+Verbindungseinträge für denselben Server), wird abgelehnt.
+
+**Verzeichnis anlegen (`F7`)** fragt nach einem einzelnen Namen (ohne `/` und `\`); `Esc`
+bricht ab.
+
+**Löschen (`F8`)** entfernt Verzeichnisse samt Inhalt. Die Rückfrage beantwortest du mit
+`j` oder `y` – `Enter` allein löscht nicht. Symlinks werden selbst entfernt, nie ihr Ziel.
+`Esc` stoppt ein laufendes Löschen.
+
 **Bearbeiten (`F4`)** funktioniert wie im mcedit. Zeilenenden (auch Windows-CRLF) bleiben
 erhalten. Binärdateien öffnen sich als Hex-Ansicht, in der Hex-Ziffern Bytes überschreiben
 (`Tab` wechselt in die Zeichenspalte); die Größe ändert sich nie. Gespeichert wird über eine
@@ -193,9 +208,9 @@ von ssh-easy gelöscht.
 
 Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
 
-*Stand Build 62: Navigation, Markieren, Ansehen, Bearbeiten und Kopieren. Verschieben,
-Verzeichnis anlegen, Löschen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
-klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
+*Stand Build 65: Navigation, Markieren, Ansehen, Bearbeiten, Kopieren, Verschieben,
+Verzeichnis anlegen und Löschen. Das Menü (inkl. Umschalten zwischen den Farbmodi
+klassisch, ssh-easy und monochrom) folgt Schritt für Schritt.*
 
 ### Passwortabfrage
 

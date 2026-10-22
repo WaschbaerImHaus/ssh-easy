@@ -24,11 +24,15 @@
 //     liegen, Größen werden überlaufsicher addiert, Anzahl und Tiefe der
 //     Einträge sind begrenzt.
 //
+// Verschieben (move) ist dasselbe Kopieren; danach wird jede vollständig
+// angekommene Datei in der Quelle gelöscht, am Ende auch die leer
+// gewordenen Verzeichnisse (siehe filemanager_move.go).
+//
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt, Rückfragen
 // und das Ergebnis als copyEvent und wartet bei Rückfragen auf eine Antwort.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:17
+// @date   2026-10-22 05:17
 package main
 
 import (
@@ -98,6 +102,8 @@ type copyRequest struct {
 	names []string
 	// Quelle und Ziel liegen auf demselben Server (Host + Port gleich)
 	sameHost bool
+	// Verschieben: Quelle nach erfolgreichem Kopieren löschen
+	move bool
 }
 
 // copyConflictAnswer ist die Antwort auf "Ziel existiert schon".
@@ -206,6 +212,12 @@ type copyRun struct {
 	createdDirs []copyNode
 	// Grenze beim Erfassen erreicht (copyMaxEntries/copyMaxDepth)
 	limitHit bool
+	// Verschieben: Quellverzeichnisse, die am Ende gelöscht werden, wenn
+	// sie leer sind (angelegt oder zusammengeführt, in Kopierreihenfolge)
+	movedDirs []copyNode
+	// Verschieben: Ergebnis der Prüfung "Quell- und Zielverzeichnis sind
+	// dasselbe?" pro Verzeichnispaar
+	sameDirs map[string]bool
 }
 
 // runCopy führt einen Kopierauftrag aus und meldet am Ende genau ein
@@ -224,6 +236,7 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 		answers:    answers,
 		incomplete: map[string]bool{},
 		skipDirs:   map[string]bool{},
+		sameDirs:   map[string]bool{},
 	}
 	run.progress.scanning = true
 	nodes := run.scan()
@@ -239,6 +252,9 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 	run.sendProgress(true)
 	run.copyAll(nodes)
 	run.finishDirs()
+	if req.move && !run.result.cancelled {
+		run.removeMovedDirs()
+	}
 
 	for _, name := range req.names {
 		if !run.incomplete[name] && !run.result.cancelled {
@@ -380,6 +396,10 @@ func (r *copyRun) scan() []copyNode {
 			r.fail(copyNode{top: name}, name, errUnsafeName)
 			continue
 		}
+		if r.movesIntoItself(name) {
+			r.fail(copyNode{top: name}, path.Join(r.req.srcDir, name), errMoveIntoItself)
+			continue
+		}
 		walk(name, name)
 	}
 	return nodes
@@ -420,6 +440,20 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 		}
 		existing, err := r.req.dst.Lstat(dstPath)
 		exists := err == nil
+		// Verschieben auf ein vorhandenes Ziel: ist es die Quelle selbst
+		// (zweiter Verbindungseintrag zum selben Server)? Dann würde das
+		// Löschen der Quelle die einzige Kopie vernichten
+		if r.req.move && exists {
+			if same, err := r.sameEntry(srcPath, dstPath); err != nil || same {
+				if err == nil {
+					err = errSameFile
+				}
+				r.fail(node, dstPath, err)
+				r.skipDir(node)
+				r.countSkipped(node)
+				continue
+			}
+		}
 
 		switch {
 		case node.info.IsDir():
@@ -444,7 +478,9 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 		if !existing.IsDir() {
 			r.fail(node, dstPath, errTargetTypeMismatch)
 			r.skipDir(node)
+			return
 		}
+		r.rememberMovedDir(node)
 		return
 	}
 	if err := r.req.dst.Mkdir(dstPath); err != nil {
@@ -452,6 +488,7 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 		r.skipDir(node)
 		return
 	}
+	r.rememberMovedDir(node)
 	// Während des Kopierens nur für den Besitzer zugänglich; die echten
 	// Rechte setzt finishDirs am Ende
 	_ = r.req.dst.Chmod(dstPath, 0o700)
@@ -491,6 +528,7 @@ func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing o
 		return true
 	}
 	r.result.files++
+	r.removeMovedSource(node, srcPath)
 	return true
 }
 
@@ -529,6 +567,7 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 	}
 	r.result.files++
 	r.result.bytes = satAdd(r.result.bytes, max(node.info.Size(), 0))
+	r.removeMovedSource(node, srcPath)
 	r.progress.doneFiles++
 	r.sendProgress(true)
 	return true

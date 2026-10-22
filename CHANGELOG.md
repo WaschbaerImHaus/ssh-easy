@@ -5,6 +5,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.65] – Build 65
+- **Added** `F6` moves the marked entries (or the entry under the cursor) to the other panel: same dialogs as copying (confirmation, progress, overwrite question). Each file is copied through a temporary file and renamed; only then is the source deleted. Files that failed or were skipped stay in the source (and stay marked), directories are removed only once they are empty
+- **Added** `F7` creates a directory in the active panel (`Enter` create, `Esc` cancel; `q` is a normal character there). Names with `/`, `\`, control characters, `.` or `..` are refused; afterwards the cursor stands on the new directory
+- **Added** `F8` deletes the marked entries (or the entry under the cursor), directories recursively with their contents. The confirmation must be answered with `j`/`y` – `Enter` does not delete, so an accidental `F8` `Enter` destroys nothing. Symlinks are deleted themselves, never their target; `Esc` cancels while deleting; entries that could not be deleted stay marked
+- **Security** moving refuses a target that is the source itself, also when both panels reach the same server through two different connection entries (a short probe file shows whether both directories are the same) – otherwise deleting the source would destroy the only copy. A directory cannot be moved into itself
+- **Security** deleting refuses names with `/`, `\` or control characters sent by a server (e.g. `../x`) and limits the number and depth of entries like copying
+- **Changed** the compiled binary `src/ssh-easy` is no longer tracked in the repository (now in `.gitignore`)
+- **Added** 42 new tests (550 total, all green)
+
 ## [v0.64] – Build 64
 - **Security** `F9` no longer opens any Office format, including `.docx`, `.xlsx` and `.pptx`: besides embedded macros they can load macro templates from the internet, link external OLE objects or use DDE fields – a reliable check would need a full Office parser (finding of the automated security review of Build 63). Office files can still be viewed with `F3` and copied with `F5`; the content check added in Build 63 was removed again
 - **Changed** 508 tests, all green

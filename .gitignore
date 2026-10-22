@@ -30,3 +30,4 @@ claude.sh
 # Tests in src/ (nur Kopien)
 src/*_test.go
 exports/
+src/ssh-easy

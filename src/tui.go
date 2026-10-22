@@ -460,6 +460,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fmEditSavedMsg:
 		return m.handleFMEditSaved(msg)
 
+	case fmDeleteEventMsg:
+		return m.handleFMDeleteEvent(msg)
+
+	case fmMkdirDoneMsg:
+		return m.handleFMMkdirDone(msg)
+
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
 		if msg.err != nil && errors.Is(msg.err, errAltF4Quit) {
@@ -677,6 +683,8 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fm.edit.input, cmd = m.fm.edit.input.Update(msg)
 		} else if m.fm.viewing && m.fm.view.prompt != fmPromptNone {
 			m.fm.view.input, cmd = m.fm.view.input.Update(msg)
+		} else if m.fm.dialog == fmDialogMkdir {
+			m.fm.mkdirInput, cmd = m.fm.mkdirInput.Update(msg)
 		}
 	}
 
