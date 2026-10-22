@@ -183,6 +183,41 @@ func (m *memFS) Stat(p string) (os.FileInfo, error) {
 	return m.Lstat(p)
 }
 
+// RealPath löst wie ein Server alle Symlinks im Pfad auf (höchstens 16).
+func (m *memFS) RealPath(p string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p = path.Clean(p)
+	for hops := 0; hops < 16; hops++ {
+		resolved, changed := "/", false
+		parts := strings.Split(strings.TrimPrefix(p, "/"), "/")
+		for i, part := range parts {
+			if part == "" {
+				continue
+			}
+			next := path.Join(resolved, part)
+			n, ok := m.nodes[next]
+			if !ok {
+				return "", os.ErrNotExist
+			}
+			if n.mode&fs.ModeSymlink != 0 {
+				target := n.target
+				if !path.IsAbs(target) {
+					target = path.Join(resolved, target)
+				}
+				p = path.Join(append([]string{target}, parts[i+1:]...)...)
+				changed = true
+				break
+			}
+			resolved = next
+		}
+		if !changed {
+			return resolved, nil
+		}
+	}
+	return "", errors.New("too many symlinks")
+}
+
 func (m *memFS) ReadLink(p string) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -41,6 +41,9 @@ type remoteFS interface {
 	Lstat(p string) (os.FileInfo, error)
 	// ReadLink liefert das Ziel eines Symlinks
 	ReadLink(p string) (string, error)
+	// RealPath liefert den kanonischen Pfad (alle Symlinks im Pfad vom
+	// Server aufgelöst; SFTP "realpath")
+	RealPath(p string) (string, error)
 	// OpenRead öffnet eine Datei zum Lesen
 	OpenRead(p string) (io.ReadCloser, error)
 	// CreateExclusive legt eine NEUE Datei an; existiert der Pfad schon

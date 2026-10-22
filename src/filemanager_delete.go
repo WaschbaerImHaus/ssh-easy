@@ -14,17 +14,21 @@
 // Schutz vor ausgetauschten Verzeichnissen: SFTP arbeitet nur mit Pfaden.
 // Ersetzt jemand ein Verzeichnis während des Löschens durch einen Symlink,
 // würden die folgenden Pfade in das Ziel des Links führen. Deshalb wird
-// nach dem Einlesen eines Verzeichnisses die ganze Kette vom gewählten
-// Eintrag bis zu ihm erneut geprüft, und vor jedem Löschen das direkte
-// Elternverzeichnis. Ist eines kein echtes Verzeichnis mehr, wird darin
-// nichts mehr gelöscht (errDeleteRace). Ein Restfenster zwischen Prüfung
-// und Löschen bleibt (siehe SECURITY_RISKS.md).
+// am Anfang der kanonische Pfad des Fensterverzeichnisses ermittelt
+// (RealPath, löst serverseitig alle Symlinks auf). Nach dem Einlesen jedes
+// Verzeichnisses und vor jedem Löschen muss der kanonische Pfad des
+// betroffenen Verzeichnisses genau dem erwarteten entsprechen - so fällt
+// ein Austausch an jeder Stelle der Kette auf, mit einer einzigen Anfrage.
+// Kann der Server kein RealPath, wird stattdessen die ganze Kette per
+// Lstat geprüft. Bei einer Abweichung wird darin nichts mehr gelöscht
+// (errDeleteRace). Ein Restfenster zwischen Prüfung und Löschen bleibt
+// (siehe SECURITY_RISKS.md).
 //
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt und das
 // Ergebnis als deleteEvent.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-10-22 05:55
 package main
 
 import (
@@ -32,6 +36,7 @@ import (
 	"errors"
 	"path"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -88,6 +93,8 @@ type deleteRun struct {
 	visited int
 	// Grenze erreicht: nichts weiter löschen
 	limitHit bool
+	// Kanonischer Pfad von req.dir (leer = Server kann kein RealPath)
+	base string
 }
 
 // runDelete führt einen Löschauftrag aus und meldet am Ende genau ein
@@ -99,6 +106,9 @@ type deleteRun struct {
 // @date   2026-10-22 05:17
 func runDelete(ctx context.Context, req deleteRequest, events chan<- deleteEvent) {
 	run := &deleteRun{ctx: ctx, req: req, events: events}
+	if real, err := req.fs.RealPath(req.dir); err == nil && path.IsAbs(real) {
+		run.base = path.Clean(real)
+	}
 	for _, name := range req.names {
 		if run.stopped() {
 			break
@@ -142,7 +152,7 @@ func (d *deleteRun) fail(p string, err error) {
 // @param top - Pfad des gewählten obersten Eintrags
 // @param depth - Verschachtelungstiefe unter dem obersten Eintrag
 // @return bool - true = vollständig gelöscht
-// @date   2026-10-22 05:40
+// @date   2026-10-22 05:55
 func (d *deleteRun) remove(p, top string, depth int) bool {
 	if d.stopped() {
 		return false
@@ -169,7 +179,7 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 			return false
 		}
 		// Seit dem Lstat ausgetauscht? Ganze Kette bis hierher prüfen
-		if !d.realDirectories(top, p) {
+		if !d.unchanged(top, p) {
 			d.fail(p, errDeleteRace)
 			return false
 		}
@@ -197,8 +207,8 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 			return false
 		}
 	}
-	// Elternverzeichnis unmittelbar vor dem Löschen noch echt?
-	if p != top && !d.realDirectories(path.Dir(p), path.Dir(p)) {
+	// Kette bis zum Elternverzeichnis unmittelbar vor dem Löschen unverändert?
+	if !d.unchanged(top, path.Dir(p)) {
 		d.fail(path.Dir(p), errDeleteRace)
 		return false
 	}
@@ -211,13 +221,34 @@ func (d *deleteRun) remove(p, top string, depth int) bool {
 	return true
 }
 
+// unchanged prüft, ob ein Verzeichnis noch an der erwarteten Stelle liegt:
+// sein kanonischer Pfad muss dem kanonischen Fensterverzeichnis plus dem
+// relativen Pfad entsprechen (kein Bestandteil ist inzwischen ein Symlink).
+// Ohne RealPath: Lstat-Prüfung der Kette von top bis dir.
+//
+// @param top - Pfad des gewählten obersten Eintrags
+// @param dir - zu prüfendes Verzeichnis (req.dir, top oder darunter)
+// @return bool - true = unverändert
+// @date   2026-10-22 05:55
+func (d *deleteRun) unchanged(top, dir string) bool {
+	if d.base == "" {
+		return d.realDirectories(top, dir)
+	}
+	real, err := d.req.fs.RealPath(dir)
+	if err != nil {
+		return false
+	}
+	rel := strings.TrimPrefix(path.Clean(dir), path.Clean(d.req.dir))
+	return path.Clean(real) == path.Join(d.base, rel)
+}
+
 // realDirectories prüft, ob p und alle Verzeichnisse von top bis p echte
 // Verzeichnisse sind (Lstat: kein Symlink, nicht verschwunden).
 //
 // @param top - oberstes zu prüfendes Verzeichnis
 // @param p - unterstes zu prüfendes Verzeichnis (top oder darunter)
 // @return bool - true wenn alle echte Verzeichnisse sind
-// @date   2026-10-22 05:40
+// @date   2026-10-22 05:55
 func (d *deleteRun) realDirectories(top, p string) bool {
 	for {
 		info, err := d.req.fs.Lstat(p)

@@ -1079,3 +1079,66 @@ func TestDeleteRaceMessageTranslated(t *testing.T) {
 		t.Errorf("Meldung = %q, erwartet %q", got, want)
 	}
 }
+
+// TestDeleteStopsWhenAncestorReplacedDuringDelete - wird ein weiter oben
+// liegendes Verzeichnis (nicht das direkte Elternverzeichnis) mitten im
+// Löschen ersetzt, darf darunter nichts mehr gelöscht werden.
+func TestDeleteStopsWhenAncestorReplacedDuringDelete(t *testing.T) {
+	base := newMemFS("/home/a")
+	base.addFile("/home/a/t/1/2/f1", "1", 0o644, copyTestTime)
+	base.addFile("/home/a/t/1/2/f2", "2", 0o644, copyTestTime)
+	fsys := &swapFS{memFS: base, swapOnRemove: "/home/a/t"}
+	result := runDeleteSync(t, context.Background(), fsys, "t")
+	found := false
+	for _, f := range result.failures {
+		found = found || errors.Is(f.err, errDeleteRace)
+	}
+	if !found {
+		t.Fatalf("keine errDeleteRace-Meldung: %s", failureErrors(result.failures))
+	}
+	if base.node("/home/a/t/1/2/f2") == nil {
+		t.Error("f2 nach dem Austausch eines übergeordneten Verzeichnisses gelöscht")
+	}
+}
+
+// TestDeleteWorksBelowSymlinkedPanelPath - liegt das Fensterverzeichnis
+// selbst hinter einem Symlink (z. B. /home -> /data/home), ist das kein
+// Austausch: gelöscht wird normal.
+func TestDeleteWorksBelowSymlinkedPanelPath(t *testing.T) {
+	fsys := newMemFS("/data/home/a")
+	fsys.addFile("/data/home/a/projekt/x", "x", 0o644, copyTestTime)
+	fsys.addLink("/home", "/data/home")
+	events := make(chan deleteEvent, 16)
+	go runDelete(context.Background(), deleteRequest{fs: &aliasFS{memFS: fsys, from: "/home", to: "/data/home"}, dir: "/home/a", names: []string{"projekt"}}, events)
+	var result deleteResult
+	for ev := range events {
+		if ev.result != nil {
+			result = *ev.result
+			break
+		}
+	}
+	if len(result.failures) != 0 {
+		t.Fatalf("Fehler: %s", failureErrors(result.failures))
+	}
+	if fsys.node("/data/home/a/projekt") != nil {
+		t.Error("nicht gelöscht")
+	}
+}
+
+// aliasFS bildet einen Pfad-Präfix (Symlink im Fensterpfad) auf das echte
+// Verzeichnis ab, wie es ein Server beim Auflösen tut.
+type aliasFS struct {
+	*memFS
+	from, to string
+}
+
+func (a *aliasFS) real(p string) string {
+	if p == a.from || strings.HasPrefix(p, a.from+"/") {
+		return a.to + strings.TrimPrefix(p, a.from)
+	}
+	return p
+}
+func (a *aliasFS) Lstat(p string) (os.FileInfo, error)     { return a.memFS.Lstat(a.real(p)) }
+func (a *aliasFS) ReadDir(p string) ([]os.FileInfo, error) { return a.memFS.ReadDir(a.real(p)) }
+func (a *aliasFS) Remove(p string) error                   { return a.memFS.Remove(a.real(p)) }
+func (a *aliasFS) RealPath(p string) (string, error)       { return a.memFS.RealPath(a.real(p)) }

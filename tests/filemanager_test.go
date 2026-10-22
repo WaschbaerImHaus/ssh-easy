@@ -61,6 +61,9 @@ type fakeRemoteFS struct {
 
 func (f *fakeRemoteFS) Getwd() (string, error) { return f.home, nil }
 
+// RealPath - der Fake kennt keine Symlinks im Pfad.
+func (f *fakeRemoteFS) RealPath(p string) (string, error) { return path.Clean(p), nil }
+
 func (f *fakeRemoteFS) ReadDir(p string) ([]os.FileInfo, error) {
 	f.reads = append(f.reads, p)
 	if f.denied[p] {

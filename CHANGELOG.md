@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.67] – Build 67
+- **Security** `F8` now checks the whole path chain before every removal, not only the parent directory: the canonical path (SFTP `realpath`) of the directory must match the expected one, so a directory replaced anywhere above is detected (finding of the automated security review of Build 66). Panels whose own path goes through a symlink keep working
+- **Added** 2 new tests (555 total, all green)
+
 ## [v0.66] – Build 66
 - **Security** `F8` re-checks the directory chain after reading each directory and the parent directory before every removal; if a directory was replaced by a symlink while deleting, nothing inside it is deleted any more (finding of the automated security review of Build 65)
 - **Added** 3 new tests (553 total, all green)
