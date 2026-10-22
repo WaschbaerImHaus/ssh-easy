@@ -186,7 +186,7 @@ auf dem Server geändert, wird vorher nachgefragt.
 **Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
 übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).
 Geöffnet werden nur bekannte Dokument- und Medientypen (Bilder, PDF, Text, HTML,
-Office-Dokumente ohne Makros, Audio/Video, Archive); Programme, Skripte, Verknüpfungen und
+Office-XML-Dokumente ohne Makros – am Inhalt geprüft –, Audio/Video, Archive); alte Office-Formate, RTF, OpenDocument, Programme, Skripte, Verknüpfungen und
 unbekannte Typen werden abgelehnt, weil „Öffnen“ dort „Ausführen“ heißen könnte. Unter Windows wird die Kopie als „aus dem
 Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
 von ssh-easy gelöscht.

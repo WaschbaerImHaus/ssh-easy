@@ -9,6 +9,8 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -250,6 +252,70 @@ func TestCleanupStaleOpenDirs(t *testing.T) {
 	for _, dir := range []string{fresh, foreign} {
 		if _, err := os.Stat(dir); err != nil {
 			t.Errorf("%s fälschlich entfernt", dir)
+		}
+	}
+}
+
+// zipBytes baut ein ZIP im Speicher mit den angegebenen Dateinamen.
+func zipBytes(t *testing.T, names ...string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	for _, name := range names {
+		f, err := w.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		f.Write([]byte("<x/>"))
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+
+// TestOpenRefusesMacroCapableOffice - alte Office-Formate, RTF und
+// OpenDocument sind gesperrt (Makros/OLE, Security-Review Build 62).
+func TestOpenRefusesMacroCapableOffice(t *testing.T) {
+	for _, name := range []string{"a.doc", "b.xls", "c.ppt", "d.rtf", "e.odt", "f.ods", "g.odp", "h.odg", "i.docm", "j.xlsm", "k.pptm", "l.dotm"} {
+		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
+			t.Errorf("%s nicht gesperrt", name)
+		}
+	}
+}
+
+// TestViewerF9OfficeContentCheck - .docx/.xlsx/.pptx werden nur geöffnet,
+// wenn sie wirklich ein Office-ZIP ohne Makros/ActiveX sind.
+func TestViewerF9OfficeContentCheck(t *testing.T) {
+	cases := []struct {
+		name, content string
+		open          bool
+	}{
+		{"gut.docx", zipBytes(t, "[Content_Types].xml", "word/document.xml"), true},
+		{"gut.xlsx", zipBytes(t, "[Content_Types].xml", "xl/workbook.xml"), true},
+		{"makro.docx", zipBytes(t, "[Content_Types].xml", "word/document.xml", "word/vbaProject.bin"), false},
+		{"makro.xlsx", zipBytes(t, "[Content_Types].xml", "xl/VBAPROJECT.BIN"), false},
+		{"activex.pptx", zipBytes(t, "[Content_Types].xml", "ppt/activeX/activeX1.xml"), false},
+		{"falsch.docx", "\xd0\xcf\x11\xe0 altes OLE-Format, umbenannt", false},
+	}
+	for _, c := range cases {
+		opened := stubOpener(t, nil)
+		m := openViewerOn(t, map[string]string{c.name: c.content}, c.name)
+		m = pressRun(t, m, "f9")
+		if got := len(*opened) == 1; got != c.open {
+			t.Errorf("%s: geöffnet=%v, erwartet %v (Meldung %q)", c.name, got, c.open, m.fm.view.message)
+		}
+		if !c.open {
+			if m.fm.view.message != fmt.Sprintf(m.tr(txtFMOpenMacro), c.name) {
+				t.Errorf("%s: Meldung %q", c.name, m.fm.view.message)
+			}
+			// Abgelehnte Kopie wurde wieder gelöscht
+			filepath.Walk(openTempRoot, func(p string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() {
+					t.Errorf("%s: abgelehnte Kopie liegt noch: %s", c.name, p)
+				}
+				return nil
+			})
 		}
 	}
 }

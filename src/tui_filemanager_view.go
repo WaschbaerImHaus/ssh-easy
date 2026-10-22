@@ -331,6 +331,8 @@ func (m AppModel) handleFMOpenExternal(msg fmOpenExternalMsg) (tea.Model, tea.Cm
 	switch {
 	case msg.err == errOpenTooLarge:
 		v.message = fmt.Sprintf(m.tr(txtFMOpenTooLarge), formatSizeWithUnit(fmOpenMaxBytes))
+	case msg.err == errOfficeUnsafe:
+		v.message = fmt.Sprintf(m.tr(txtFMOpenMacro), v.name)
 	case msg.err != nil:
 		v.message = fmt.Sprintf(m.tr(txtFMErrOpen), v.name, sanitizeFileName(msg.err.Error()))
 	default:

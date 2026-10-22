@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.63] – Build 63
+- **Security** `F9` no longer opens the legacy Office formats (`.doc`, `.xls`, `.ppt`), RTF and OpenDocument files (`.odt`, `.ods`, `.odp`, `.odg`) – they can carry macros or embedded OLE objects. `.docx`, `.xlsx` and `.pptx` are checked after downloading: they must be a real Office ZIP container without macros (`vbaProject.bin`) or ActiveX controls, otherwise they are not opened and the copy is deleted (Office detects files by content, so a renamed `.docm` or `.doc` would otherwise slip through; finding of the automated security review of Build 62)
+- **Added** 2 new tests (509 total, all green)
+
 ## [v0.62] – Build 62
 - **Added** editor (`F4`) in the file manager, working like mcedit with an F-key bar at the bottom: `F1` help, `F2` save, `F3` mark block (start, end; a third press unmarks), `F4` search and replace (asks per match: `j`/`y` replace, `n` skip, `a` all, `Esc` cancel), `F5` copy block, `F6` move block, `F7` search (`F7` + `Enter` again searches on), `F8` delete block, `F10`/`Esc` quit (asks to save if there are changes), `Ctrl+Y` delete line. Windows line endings (CRLF), a missing final line break and lone carriage returns are kept exactly
 - **Added** binary files and files that are not valid UTF-8 open in an editable hex view: hex digits overwrite the byte under the cursor (e.g. `AD` → `AF`), `Tab` switches to the character column, changed bytes are highlighted, the file size never changes. `F7` searches bytes (`ad ff`) or text
