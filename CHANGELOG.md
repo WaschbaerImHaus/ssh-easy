@@ -5,6 +5,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.62] – Build 62
+- **Added** editor (`F4`) in the file manager, working like mcedit with an F-key bar at the bottom: `F1` help, `F2` save, `F3` mark block (start, end; a third press unmarks), `F4` search and replace (asks per match: `j`/`y` replace, `n` skip, `a` all, `Esc` cancel), `F5` copy block, `F6` move block, `F7` search (`F7` + `Enter` again searches on), `F8` delete block, `F10`/`Esc` quit (asks to save if there are changes), `Ctrl+Y` delete line. Windows line endings (CRLF), a missing final line break and lone carriage returns are kept exactly
+- **Added** binary files and files that are not valid UTF-8 open in an editable hex view: hex digits overwrite the byte under the cursor (e.g. `AD` → `AF`), `Tab` switches to the character column, changed bytes are highlighted, the file size never changes. `F7` searches bytes (`ad ff`) or text
+- **Added** saving writes a temporary file with owner-only permissions in the same directory and renames it in one step (original permissions are kept, a failed save leaves the file untouched); if the file was changed on the server since it was opened (size or time), ssh-easy asks before overwriting. Files opened through a symlink are saved to the target, the link stays
+- **Changed** the German F10 label of viewer and editor is now "Ende" like in the panels (fits at 80 columns)
+- **Added** 39 new tests (507 total, all green)
+
 ## [v0.61] – Build 61
 - **Security** `F9` (open with the default program) now uses an allowlist instead of a blocklist: only known document and media types are opened (images, PDF, text, HTML, Office without macro variants, audio/video, archives). Everything else – programs, scripts, shortcuts and unknown types (e.g. `.py`, `.jnlp`, `.mhtml`, `.theme`, `.webloc`) – is refused (finding of the automated security review of Build 60)
 - **Security** long file names are cut first and normalized afterwards, so a shortened name can no longer end in a dot or space that Windows would strip (which could have turned it into a different extension)

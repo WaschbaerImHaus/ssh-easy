@@ -167,6 +167,7 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `Insert` | Mark / unmark the entry under the cursor and move down |
 | `*` | Invert the marking of all entries (files and directories) |
 | `F3` | View the file under the cursor – viewer keys like in mc: `F1` help, `F2` wrap, `F4` hex/text, `F5` go to, `F6` regex search, `F7` search (`n` next), `F9` open with the default program, `F3`/`F10`/`q`/`Esc` close |
+| `F4` | Edit the file under the cursor – editor keys like mcedit: `F2` save, `F3` mark block, `F4` replace, `F5`/`F6`/`F8` copy/move/delete block, `F7` search, `F10`/`Esc` quit, `Ctrl+Y` delete line; binary files open as editable hex view |
 | `F5` | Copy the marked entries (or the entry under the cursor) to the other panel |
 | `F10` / `q` | Close both connections and return to the list |
 
@@ -187,6 +188,12 @@ under a temporary name with owner-only permissions and renamed when complete, so
 private file is never readable by others on the target and an existing file is only
 replaced once the new one is complete.
 
+**Editing (`F4`)** works like mcedit. Line endings (also Windows CRLF) are kept. Binary
+files open in a hex view where hex digits overwrite bytes (`Tab` switches to the
+character column); the size never changes. Saving goes through a temporary file that is
+renamed at the end, keeps the permissions and asks first if the file was changed on the
+server in the meantime.
+
 **Opening locally (`F9` in the viewer)** downloads the file into a private temporary
 folder and hands it to the default program of your computer (image viewer, browser, PDF
 reader, …). Only known document and media types are opened (images, PDF, text, HTML,
@@ -197,7 +204,7 @@ ssh-easy exits.
 
 The file manager needs two connections; until then its entry is greyed out.
 
-*Current state (Build 59): navigation, marking, viewing and copying. Move, mkdir, delete,
+*Current state (Build 62): navigation, marking, viewing, editing and copying. Move, mkdir, delete,
 edit and the menu (incl. switching between the classic, ssh-easy and monochrome colour
 themes) follow step by step.*
 

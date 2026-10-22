@@ -29,9 +29,9 @@
 
 ## Datei-Manager (MC-Modus, ab Build 53, 2026-10-21)
 - Letzter Listeneintrag (rowFileManager, Leerzeile davor) -> linke/rechte Verbindung wählen (ab Build 55: Platzhalter "(nicht ausgewählt)" zuerst, Enter darauf wirkungslos = Zwang zur bewussten Wahl; links gewählte rechts ausgeblendet) -> eigene SSH-Verbindungen ohne Tunnel (SSHManager.ConnectStandalone) + SFTP (github.com/pkg/sftp)
-- Stand Build 60: Betrachter mit mc-F-Tasten + F9 lokal öffnen (Build 60); F3 Ansehen (Build 59), Kopieren gehärtet (Temp-Datei O_EXCL 0600 + posix-rename, Build 58). Build 57: F5 Kopieren (rekursiv, Symlinks als Link, Rechte/Zeit, Rückfrage j/n/a/k/u/g, Fortschritt), Eintrag unter 2 Verbindungen ausgegraut. Davor: Navigation, Tab, F10/q zurück, Markieren (Einfg = Eintrag + weiter, * = alles umkehren wie mc, Dateien UND Verzeichnisse); Menü + F1-F9 nur optisch; 3 Farbmodi vorbereitet (Umschalten später über Optionen)
+- Stand Build 62: F4 Editor wie mcedit + Hex-Editor (Build 62); F9 mit Erlaubnisliste (Build 61); Betrachter mit mc-F-Tasten + F9 lokal öffnen (Build 60); F3 Ansehen (Build 59), Kopieren gehärtet (Temp-Datei O_EXCL 0600 + posix-rename, Build 58). Build 57: F5 Kopieren (rekursiv, Symlinks als Link, Rechte/Zeit, Rückfrage j/n/a/k/u/g, Fortschritt), Eintrag unter 2 Verbindungen ausgegraut. Davor: Navigation, Tab, F10/q zurück, Markieren (Einfg = Eintrag + weiter, * = alles umkehren wie mc, Dateien UND Verzeichnisse); Menü + F1-F9 nur optisch; 3 Farbmodi vorbereitet (Umschalten später über Optionen)
 - Mockups: claude-generated/mc-mockup.html
-- Nächste Schritte laut Nutzer: F4 interner Editor wie mcedit mit mc-F-Tasten + bearbeitbare Hex-Ansicht für Binärdateien, Verschieben (mit Temp-Datei + Umbenennen, Nutzervorgabe), MkDir, Löschen, Optionen-Menü
+- Nächste Schritte: F6 Verschieben (Temp-Datei + Umbenennen, Nutzervorgabe), F7 MkDir, F8 Löschen, Optionen-Menü (Farbmodi), Verschieben (mit Temp-Datei + Umbenennen, Nutzervorgabe), MkDir, Löschen, Optionen-Menü
 
 ## Bekannte Probleme
 - /tmp auf dem LXC kann volllaufen (Cronjob eingerichtet)

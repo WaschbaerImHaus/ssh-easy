@@ -155,6 +155,7 @@ nebeneinander zu arbeiten:
 | `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
 | `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
 | `F3` | Datei unter dem Cursor ansehen – Tasten wie im mc-Betrachter: `F1` Hilfe, `F2` Umbruch, `F4` Hex/Text, `F5` Gehe zu, `F6` Suche mit regulärem Ausdruck, `F7` Suchen (`n` weiter), `F9` mit dem Standardprogramm öffnen, `F3`/`F10`/`q`/`Esc` schließen |
+| `F4` | Datei unter dem Cursor bearbeiten – Tasten wie im mcedit: `F2` speichern, `F3` Block markieren, `F4` ersetzen, `F5`/`F6`/`F8` Block kopieren/verschieben/löschen, `F7` suchen, `F10`/`Esc` beenden, `Strg+Y` Zeile löschen; Binärdateien als bearbeitbare Hex-Ansicht |
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
@@ -176,6 +177,12 @@ Jede Datei wird erst unter einem Temp-Namen nur für dich lesbar geschrieben und
 umbenannt: Private Dateien sind auf dem Ziel nie für andere lesbar, eine vorhandene
 Datei wird erst ersetzt, wenn die neue vollständig ist.
 
+**Bearbeiten (`F4`)** funktioniert wie im mcedit. Zeilenenden (auch Windows-CRLF) bleiben
+erhalten. Binärdateien öffnen sich als Hex-Ansicht, in der Hex-Ziffern Bytes überschreiben
+(`Tab` wechselt in die Zeichenspalte); die Größe ändert sich nie. Gespeichert wird über eine
+Temp-Datei, die am Ende umbenannt wird; die Rechte bleiben, und wurde die Datei inzwischen
+auf dem Server geändert, wird vorher nachgefragt.
+
 **Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
 übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).
 Geöffnet werden nur bekannte Dokument- und Medientypen (Bilder, PDF, Text, HTML,
@@ -186,8 +193,8 @@ von ssh-easy gelöscht.
 
 Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
 
-*Stand Build 59: Navigation, Markieren, Ansehen und Kopieren. Verschieben, Verzeichnis
-anlegen, Löschen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
+*Stand Build 62: Navigation, Markieren, Ansehen, Bearbeiten und Kopieren. Verschieben,
+Verzeichnis anlegen, Löschen, Bearbeiten und das Menü (inkl. Umschalten zwischen den Farbmodi
 klassisch, ssh-easy und monochrom) folgen Schritt für Schritt.*
 
 ### Passwortabfrage

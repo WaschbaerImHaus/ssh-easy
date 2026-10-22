@@ -11,10 +11,10 @@
 // Datei-Manager-Eintrag. Verzeichnisse werden im Hintergrund gelesen
 // (tea.Cmd), damit die Oberfläche bei langsamen Servern nicht hängt.
 //
-// Stand Build 59: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
-// alle Markierungen um), Ansehen (F3, tui_filemanager_view.go) und Kopieren
-// (F5, tui_filemanager_copy.go) funktionieren; Menü und die übrigen
-// F-Tasten sind nur optisch vorhanden.
+// Stand Build 62: Navigation, Seitenwechsel, Markieren (Einfg, * kehrt
+// alle Markierungen um), Ansehen (F3, tui_filemanager_view.go), Bearbeiten
+// (F4, tui_filemanager_edit.go) und Kopieren (F5, tui_filemanager_copy.go)
+// funktionieren; Menü und die übrigen F-Tasten sind nur optisch vorhanden.
 //
 // @author Kurt Ingwer
 // @date   2026-10-21 21:24
@@ -84,6 +84,10 @@ type fileManager struct {
 	viewing bool
 	view    fmViewer
 	viewSeq int
+	// Editor (F4): offen?, Zustand, laufende Nummer
+	editing bool
+	edit    fmEditor
+	editSeq int
 }
 
 // fmConnectedMsg meldet das Ergebnis eines Verbindungsaufbaus.
@@ -413,10 +417,13 @@ func (m AppModel) fmScreenSize() (int, int) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verzeichnis lesen)
-// @date   2026-10-21 21:24
+// @date   2026-10-22 00:52
 func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Betrachter bzw. offener Dialog bekommt alle Tasten (F10 schließt
 	// dann nur den Betrachter bzw. ruht im Dialog)
+	if m.fm.editing {
+		return m.handleFMEditorKeys(msg)
+	}
 	if m.fm.viewing {
 		return m.handleFMViewerKeys(msg)
 	}
@@ -461,9 +468,11 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		panel.invertMarks()
 	case "f3":
 		return m.fmOpenViewer()
+	case "f4":
+		return m.fmOpenEditor()
 	case "f5":
 		return m.fmOpenCopyConfirm()
-	case "f1", "f2", "f4", "f6", "f7", "f8", "f9":
+	case "f1", "f2", "f6", "f7", "f8", "f9":
 		// Menü und Dateifunktionen folgen in späteren Builds
 		m.fm.message = m.tr(txtFMNotYet)
 	}
@@ -601,8 +610,12 @@ func (m AppModel) renderFMPassword(s *strings.Builder) {
 // genau so viele Zeilen und Spalten wie das Terminal (sonst scrollt es).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 21:24
+// @date   2026-10-22 00:52
 func (m AppModel) renderFileManager(s *strings.Builder) {
+	if m.fm.editing {
+		m.renderFMEditor(s)
+		return
+	}
 	if m.fm.viewing {
 		m.renderFMViewer(s)
 		return

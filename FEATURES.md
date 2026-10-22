@@ -71,7 +71,7 @@
 - [ ] F6 Verschieben: Ziel ebenfalls über Temp-Datei + Umbenennen, bei Fehler Temp löschen (Nutzervorgabe 2026-10-21); Quelle erst nach erfolgreichem Umbenennen löschen
 - [x] Betrachter mit F-Tasten wie mcview: F1 Hilfe, F2 Umbruch, F3/F10 Beenden, F4 Hex, F5 Gehe zu, F6 Regex-Suche, F7 Suchen + n (Build 60)
 - [x] F9 im Betrachter: lokal mit dem Standardprogramm öffnen (Windows nach Endung, Linux xdg-open), ausführbare Typen gesperrt, Mark of the Web (Build 60)
-- [ ] F4 Bearbeiten: interner Editor wie mcedit (F1 Hilfe, F2 Speichern, F3 Markieren, F4 Ersetzen, F5 Kopieren, F6 Verschieben, F7 Suchen, F8 Löschen, F10 Beenden); Binärdateien als bearbeitbare Hex-Ansicht (Bytes überschreiben, z. B. AD → AF) (Nutzerwunsch 2026-10-21); Speichern über Temp-Datei + Umbenennen
+- [x] F4 Bearbeiten: interner Editor wie mcedit (Build 62) (F1 Hilfe, F2 Speichern, F3 Markieren, F4 Ersetzen, F5 Kopieren, F6 Verschieben, F7 Suchen, F8 Löschen, F10 Beenden); Binärdateien als bearbeitbare Hex-Ansicht (Bytes überschreiben, z. B. AD → AF) (Nutzerwunsch 2026-10-21); Speichern über Temp-Datei + Umbenennen
 - [ ] Menüs Links/Datei/Befehl/Optionen/Rechts (F9)
 
 ## Offen

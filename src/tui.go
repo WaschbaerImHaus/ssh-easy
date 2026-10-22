@@ -454,6 +454,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fmOpenExternalMsg:
 		return m.handleFMOpenExternal(msg)
 
+	case fmEditLoadedMsg:
+		return m.handleFMEditLoaded(msg)
+
+	case fmEditSavedMsg:
+		return m.handleFMEditSaved(msg)
+
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
 		if msg.err != nil && errors.Is(msg.err, errAltF4Quit) {
@@ -666,8 +672,10 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ViewFMPassword:
 		m.fm.passwordInput, cmd = m.fm.passwordInput.Update(msg)
 	case ViewFileManager:
-		// Eingabezeile des Betrachters (Cursor-Blinken)
-		if m.fm.viewing && m.fm.view.prompt != fmPromptNone {
+		// Eingabezeile des Betrachters bzw. Editors (Cursor-Blinken)
+		if m.fm.editing && m.fm.edit.prompt != edPromptNone {
+			m.fm.edit.input, cmd = m.fm.edit.input.Update(msg)
+		} else if m.fm.viewing && m.fm.view.prompt != fmPromptNone {
 			m.fm.view.input, cmd = m.fm.view.input.Update(msg)
 		}
 	}

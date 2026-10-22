@@ -772,3 +772,42 @@ func (r *copyRun) sendProgress(force bool) {
 	default:
 	}
 }
+
+// writeFileAtomically schreibt Daten sicher in eine entfernte Datei (für
+// den Editor): exklusive Temp-Datei im selben Verzeichnis, sofort 0600
+// (geht das bei einer privaten Datei nicht -> errCannotProtect), Inhalt
+// schreiben, Rechte perm setzen, in einem Schritt umbenennen. Bei einem
+// Fehler wird die Temp-Datei gelöscht; die Originaldatei bleibt dann
+// unverändert.
+//
+// @param fsys - entferntes Dateisystem
+// @param p - Zielpfad (bei Symlinks bereits das aufgelöste Ziel)
+// @param data - neuer Inhalt
+// @param perm - Zugriffsrechte der Datei
+// @return error - Fehler beim Schreiben/Umbenennen
+// @date   2026-10-22 00:50
+func writeFileAtomically(fsys remoteFS, p string, data []byte, perm os.FileMode) (err error) {
+	tmp := tempCopyName(p)
+	writer, err := fsys.CreateExclusive(tmp)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = fsys.Remove(tmp)
+		}
+	}()
+	if chmodErr := fsys.Chmod(tmp, 0o600); chmodErr != nil && perm&0o077 == 0 {
+		writer.Close()
+		return errCannotProtect
+	}
+	if _, err = writer.Write(data); err != nil {
+		writer.Close()
+		return err
+	}
+	if err = writer.Close(); err != nil {
+		return err
+	}
+	_ = fsys.Chmod(tmp, perm)
+	return fsys.RenameOverwrite(tmp, p)
+}
