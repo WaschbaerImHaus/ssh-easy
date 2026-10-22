@@ -11,6 +11,15 @@
 // Steuerzeichen werden abgelehnt (sonst könnte "../x" außerhalb löschen),
 // Anzahl und Tiefe der Einträge sind begrenzt (copyMaxEntries/copyMaxDepth).
 //
+// Schutz vor ausgetauschten Verzeichnissen: SFTP arbeitet nur mit Pfaden.
+// Ersetzt jemand ein Verzeichnis während des Löschens durch einen Symlink,
+// würden die folgenden Pfade in das Ziel des Links führen. Deshalb wird
+// nach dem Einlesen eines Verzeichnisses die ganze Kette vom gewählten
+// Eintrag bis zu ihm erneut geprüft, und vor jedem Löschen das direkte
+// Elternverzeichnis. Ist eines kein echtes Verzeichnis mehr, wird darin
+// nichts mehr gelöscht (errDeleteRace). Ein Restfenster zwischen Prüfung
+// und Löschen bleibt (siehe SECURITY_RISKS.md).
+//
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt und das
 // Ergebnis als deleteEvent.
 //
@@ -20,10 +29,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"path"
 	"sort"
 	"time"
 )
+
+// errDeleteRace - ein Verzeichnis wurde während des Löschens ersetzt (z. B.
+// durch einen Symlink); darin wird nichts mehr gelöscht.
+var errDeleteRace = errors.New("directory was replaced during deletion")
 
 // deleteRequest beschreibt einen Löschauftrag.
 type deleteRequest struct {
@@ -95,7 +109,7 @@ func runDelete(ctx context.Context, req deleteRequest, events chan<- deleteEvent
 			run.fail(req.dir+"/"+name, errUnsafeName)
 			continue
 		}
-		if run.remove(p, 0) {
+		if run.remove(p, p, 0) {
 			run.result.deletedNames = append(run.result.deletedNames, name)
 		}
 	}
@@ -125,10 +139,11 @@ func (d *deleteRun) fail(p string, err error) {
 // remove löscht einen Eintrag; Verzeichnisse erst ihren Inhalt.
 //
 // @param p - Pfad
+// @param top - Pfad des gewählten obersten Eintrags
 // @param depth - Verschachtelungstiefe unter dem obersten Eintrag
 // @return bool - true = vollständig gelöscht
-// @date   2026-10-22 05:17
-func (d *deleteRun) remove(p string, depth int) bool {
+// @date   2026-10-22 05:40
+func (d *deleteRun) remove(p, top string, depth int) bool {
 	if d.stopped() {
 		return false
 	}
@@ -153,6 +168,11 @@ func (d *deleteRun) remove(p string, depth int) bool {
 			d.fail(p, err)
 			return false
 		}
+		// Seit dem Lstat ausgetauscht? Ganze Kette bis hierher prüfen
+		if !d.realDirectories(top, p) {
+			d.fail(p, errDeleteRace)
+			return false
+		}
 		sort.Slice(children, func(i, j int) bool { return children[i].Name() < children[j].Name() })
 		complete := true
 		for _, child := range children {
@@ -165,7 +185,7 @@ func (d *deleteRun) remove(p string, depth int) bool {
 				complete = false
 				continue
 			}
-			if !d.remove(path.Join(p, name), depth+1) {
+			if !d.remove(path.Join(p, name), top, depth+1) {
 				complete = false
 			}
 			if d.stopped() {
@@ -177,6 +197,11 @@ func (d *deleteRun) remove(p string, depth int) bool {
 			return false
 		}
 	}
+	// Elternverzeichnis unmittelbar vor dem Löschen noch echt?
+	if p != top && !d.realDirectories(path.Dir(p), path.Dir(p)) {
+		d.fail(path.Dir(p), errDeleteRace)
+		return false
+	}
 	if err := d.req.fs.Remove(p); err != nil {
 		d.fail(p, err)
 		return false
@@ -184,6 +209,26 @@ func (d *deleteRun) remove(p string, depth int) bool {
 	d.progress.done++
 	d.sendProgress(false)
 	return true
+}
+
+// realDirectories prüft, ob p und alle Verzeichnisse von top bis p echte
+// Verzeichnisse sind (Lstat: kein Symlink, nicht verschwunden).
+//
+// @param top - oberstes zu prüfendes Verzeichnis
+// @param p - unterstes zu prüfendes Verzeichnis (top oder darunter)
+// @return bool - true wenn alle echte Verzeichnisse sind
+// @date   2026-10-22 05:40
+func (d *deleteRun) realDirectories(top, p string) bool {
+	for {
+		info, err := d.req.fs.Lstat(p)
+		if err != nil || !info.IsDir() {
+			return false
+		}
+		if p == top || !insideDir(top, p) {
+			return true
+		}
+		p = path.Dir(p)
+	}
 }
 
 // sendProgress meldet den Fortschritt höchstens alle copyProgressInterval

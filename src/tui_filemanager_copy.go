@@ -256,6 +256,8 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrCopyLimit), p, copyMaxEntries, copyMaxDepth)
 	case errors.Is(f.err, errMoveIntoItself):
 		return fmt.Sprintf(m.tr(txtFMErrIntoItself), p)
+	case errors.Is(f.err, errDeleteRace):
+		return fmt.Sprintf(m.tr(txtFMErrDeleteRace), p)
 	}
 	return p + ": " + sanitizeFileName(f.err.Error())
 }

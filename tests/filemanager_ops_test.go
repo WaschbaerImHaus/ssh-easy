@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -993,5 +994,88 @@ func TestFileManagerOpsSanitizeNames(t *testing.T) {
 	}
 	if src.node("/home/a/böse\x1b[2J") == nil {
 		t.Error("Eintrag mit Steuerzeichen gelöscht")
+	}
+}
+
+// swapFS ersetzt ein Verzeichnis durch einen Symlink, nachdem es gelesen
+// wurde (swapAfterRead) bzw. beim ersten Remove (swapOnRemove) - so wie ein
+// Angreifer mit Schreibrecht es während des Löschens austauschen könnte.
+type swapFS struct {
+	*memFS
+	swapAfterRead string
+	swapOnRemove  string
+	swapped       bool
+}
+
+func (s *swapFS) swap(p string) {
+	s.mu.Lock()
+	s.nodes[p] = &memNode{mode: os.ModeSymlink | 0o777, target: "/home/fremd"}
+	s.mu.Unlock()
+	s.swapped = true
+}
+
+func (s *swapFS) ReadDir(p string) ([]os.FileInfo, error) {
+	infos, err := s.memFS.ReadDir(p)
+	if p == s.swapAfterRead && !s.swapped {
+		s.swap(p)
+	}
+	return infos, err
+}
+
+func (s *swapFS) Remove(p string) error {
+	if s.swapOnRemove != "" && !s.swapped {
+		s.swap(s.swapOnRemove)
+	}
+	return s.memFS.Remove(p)
+}
+
+// TestDeleteStopsWhenDirectoryReplacedAfterRead - wird ein Verzeichnis nach
+// dem Einlesen durch einen Symlink ersetzt, wird darin nichts mehr gelöscht
+// (über SFTP würde der Pfad sonst ins Ziel des Links führen).
+func TestDeleteStopsWhenDirectoryReplacedAfterRead(t *testing.T) {
+	base := newCopySource()
+	fsys := &swapFS{memFS: base, swapAfterRead: "/home/a/projekt"}
+	result := runDeleteSync(t, context.Background(), fsys, "projekt")
+	found := false
+	for _, f := range result.failures {
+		found = found || errors.Is(f.err, errDeleteRace)
+	}
+	if !found {
+		t.Fatalf("keine errDeleteRace-Meldung: %s", failureErrors(result.failures))
+	}
+	for _, p := range []string{"/home/a/projekt/main.go", "/home/a/projekt/run.sh", "/home/a/projekt/lib/x.go"} {
+		if base.node(p) == nil {
+			t.Errorf("%s trotz ausgetauschtem Verzeichnis gelöscht", p)
+		}
+	}
+}
+
+// TestDeleteStopsWhenParentReplacedDuringDelete - wird ein übergeordnetes
+// Verzeichnis mitten im Löschen ersetzt, bricht das Löschen darin ab.
+func TestDeleteStopsWhenParentReplacedDuringDelete(t *testing.T) {
+	base := newCopySource()
+	fsys := &swapFS{memFS: base, swapOnRemove: "/home/a/projekt"}
+	result := runDeleteSync(t, context.Background(), fsys, "projekt")
+	found := false
+	for _, f := range result.failures {
+		found = found || errors.Is(f.err, errDeleteRace)
+	}
+	if !found {
+		t.Fatalf("keine errDeleteRace-Meldung: %s", failureErrors(result.failures))
+	}
+	// Erster Eintrag (aktuell) war schon unterwegs, danach darf nichts mehr fallen
+	for _, p := range []string{"/home/a/projekt/main.go", "/home/a/projekt/run.sh", "/home/a/projekt/lib/x.go"} {
+		if base.node(p) == nil {
+			t.Errorf("%s nach dem Austausch gelöscht", p)
+		}
+	}
+}
+
+// TestDeleteRaceMessageTranslated - Meldung in der Oberfläche übersetzt.
+func TestDeleteRaceMessageTranslated(t *testing.T) {
+	m := openCopyManager(t, newCopySource(), newMemFS("/srv/b"))
+	got := m.fmDescribeFailure(copyFailure{path: "/home/a/x", err: errDeleteRace})
+	if want := fmt.Sprintf(m.tr(txtFMErrDeleteRace), "/home/a/x"); got != want {
+		t.Errorf("Meldung = %q, erwartet %q", got, want)
 	}
 }

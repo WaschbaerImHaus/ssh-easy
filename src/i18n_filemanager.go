@@ -12,7 +12,7 @@
 // (höchstens 7 Zeichen), sonst werden sie bei 80 Spalten gekürzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-10-22 05:40
 package main
 
 const (
@@ -236,6 +236,8 @@ const (
 	txtFMDeleteErrors textKey = "fm_delete_errors"
 	// txtFMDeleteCancelled - Löschen abgebrochen
 	txtFMDeleteCancelled textKey = "fm_delete_cancelled"
+	// txtFMErrDeleteRace - Verzeichnis während des Löschens ausgetauscht (%s Pfad)
+	txtFMErrDeleteRace textKey = "fm_err_delete_race"
 )
 
 // init mischt die Datei-Manager-Texte in die Zusatztexte ein.
@@ -365,6 +367,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d Einträge gelöscht",
 		txtFMDeleteErrors:        "Löschen mit %d Fehler(n) beendet – erster: %s",
 		txtFMDeleteCancelled:     "Löschen abgebrochen",
+		txtFMErrDeleteRace:       "%s wurde während des Löschens ausgetauscht – darin wird nichts gelöscht",
 	},
 	LangEnglish: {
 		txtFMListEntry:           "File manager (two connections)",
@@ -477,6 +480,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d entries deleted",
 		txtFMDeleteErrors:        "Delete finished with %d error(s) – first: %s",
 		txtFMDeleteCancelled:     "Delete cancelled",
+		txtFMErrDeleteRace:       "%s was replaced during deletion – nothing inside it is deleted",
 	},
 	LangFrancais: {
 		txtFMListEntry:           "Gestionnaire de fichiers (deux connexions)",
@@ -589,6 +593,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d éléments supprimés",
 		txtFMDeleteErrors:        "Suppression terminée avec %d erreur(s) – première : %s",
 		txtFMDeleteCancelled:     "Suppression annulée",
+		txtFMErrDeleteRace:       "%s a été remplacé pendant la suppression – rien n'y est supprimé",
 	},
 	LangEspanol: {
 		txtFMListEntry:           "Gestor de archivos (dos conexiones)",
@@ -701,6 +706,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d elementos borrados",
 		txtFMDeleteErrors:        "Borrado terminado con %d error(es) – primero: %s",
 		txtFMDeleteCancelled:     "Borrado cancelado",
+		txtFMErrDeleteRace:       "%s fue sustituido durante el borrado – no se borra nada dentro",
 	},
 	LangItaliano: {
 		txtFMListEntry:           "Gestore file (due connessioni)",
@@ -813,6 +819,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d elementi eliminati",
 		txtFMDeleteErrors:        "Eliminazione terminata con %d errore/i – primo: %s",
 		txtFMDeleteCancelled:     "Eliminazione annullata",
+		txtFMErrDeleteRace:       "%s è stato sostituito durante l'eliminazione – al suo interno non viene eliminato nulla",
 	},
 	LangPortugues: {
 		txtFMListEntry:           "Gestor de ficheiros (duas ligações)",
@@ -925,6 +932,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d entradas apagadas",
 		txtFMDeleteErrors:        "Eliminação concluída com %d erro(s) – primeiro: %s",
 		txtFMDeleteCancelled:     "Eliminação cancelada",
+		txtFMErrDeleteRace:       "%s foi substituído durante a eliminação – nada dentro dele é apagado",
 	},
 	LangDutch: {
 		txtFMListEntry:           "Bestandsbeheer (twee verbindingen)",
@@ -1037,6 +1045,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d items verwijderd",
 		txtFMDeleteErrors:        "Verwijderen beëindigd met %d fout(en) – eerste: %s",
 		txtFMDeleteCancelled:     "Verwijderen geannuleerd",
+		txtFMErrDeleteRace:       "%s is tijdens het verwijderen vervangen – daarin wordt niets verwijderd",
 	},
 	LangSwedish: {
 		txtFMListEntry:           "Filhanterare (två anslutningar)",
@@ -1149,6 +1158,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d poster raderade",
 		txtFMDeleteErrors:        "Raderingen avslutades med %d fel – första: %s",
 		txtFMDeleteCancelled:     "Raderingen avbröts",
+		txtFMErrDeleteRace:       "%s byttes ut under raderingen – inget i den raderas",
 	},
 	LangPolish: {
 		txtFMListEntry:           "Menedżer plików (dwa połączenia)",
@@ -1261,6 +1271,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Usunięto pozycji: %d",
 		txtFMDeleteErrors:        "Usuwanie zakończone, błędów: %d – pierwszy: %s",
 		txtFMDeleteCancelled:     "Usuwanie anulowane",
+		txtFMErrDeleteRace:       "%s został podmieniony podczas usuwania – nic w nim nie zostanie usunięte",
 	},
 	LangCzech: {
 		txtFMListEntry:           "Správce souborů (dvě připojení)",
@@ -1373,6 +1384,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Smazáno položek: %d",
 		txtFMDeleteErrors:        "Mazání skončilo s %d chybami – první: %s",
 		txtFMDeleteCancelled:     "Mazání zrušeno",
+		txtFMErrDeleteRace:       "%s byl během mazání nahrazen – nic v něm se nesmaže",
 	},
 	LangRomanian: {
 		txtFMListEntry:           "Manager de fișiere (două conexiuni)",
@@ -1485,6 +1497,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d intrări șterse",
 		txtFMDeleteErrors:        "Ștergere încheiată cu %d erori – prima: %s",
 		txtFMDeleteCancelled:     "Ștergere anulată",
+		txtFMErrDeleteRace:       "%s a fost înlocuit în timpul ștergerii – nu se șterge nimic din el",
 	},
 	LangBulgarian: {
 		txtFMListEntry:           "Файлов мениджър (две връзки)",
@@ -1597,6 +1610,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Изтрити елементи: %d",
 		txtFMDeleteErrors:        "Изтриването приключи с %d грешки – първа: %s",
 		txtFMDeleteCancelled:     "Изтриването е отказано",
+		txtFMErrDeleteRace:       "%s беше заменен по време на изтриването – нищо в него не се изтрива",
 	},
 	LangRussian: {
 		txtFMListEntry:           "Файловый менеджер (два подключения)",
@@ -1709,6 +1723,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Удалено элементов: %d",
 		txtFMDeleteErrors:        "Удаление завершено, ошибок: %d – первая: %s",
 		txtFMDeleteCancelled:     "Удаление отменено",
+		txtFMErrDeleteRace:       "%s был подменён во время удаления – внутри ничего не удаляется",
 	},
 	LangUkrainian: {
 		txtFMListEntry:           "Файловий менеджер (два підключення)",
@@ -1821,6 +1836,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Видалено елементів: %d",
 		txtFMDeleteErrors:        "Видалення завершено, помилок: %d – перша: %s",
 		txtFMDeleteCancelled:     "Видалення скасовано",
+		txtFMErrDeleteRace:       "%s було підмінено під час видалення – усередині нічого не видаляється",
 	},
 	LangGreek: {
 		txtFMListEntry:           "Διαχείριση αρχείων (δύο συνδέσεις)",
@@ -1933,6 +1949,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Διαγράφηκαν %d στοιχεία",
 		txtFMDeleteErrors:        "Η διαγραφή ολοκληρώθηκε με %d σφάλματα – πρώτο: %s",
 		txtFMDeleteCancelled:     "Η διαγραφή ακυρώθηκε",
+		txtFMErrDeleteRace:       "Το %s αντικαταστάθηκε κατά τη διαγραφή – τίποτα μέσα του δεν διαγράφεται",
 	},
 	LangTurkish: {
 		txtFMListEntry:           "Dosya yöneticisi (iki bağlantı)",
@@ -2045,6 +2062,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d öğe silindi",
 		txtFMDeleteErrors:        "Silme %d hatayla bitti – ilki: %s",
 		txtFMDeleteCancelled:     "Silme iptal edildi",
+		txtFMErrDeleteRace:       "%s silme sırasında değiştirildi – içindeki hiçbir şey silinmez",
 	},
 	LangGeorgian: {
 		txtFMListEntry:           "ფაილების მენეჯერი (ორი კავშირი)",
@@ -2157,6 +2175,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "წაიშალა %d ელემენტი",
 		txtFMDeleteErrors:        "წაშლა დასრულდა %d შეცდომით – პირველი: %s",
 		txtFMDeleteCancelled:     "წაშლა გაუქმდა",
+		txtFMErrDeleteRace:       "%s წაშლისას შეიცვალა – მასში არაფერი წაიშლება",
 	},
 	LangArabic: {
 		txtFMListEntry:           "مدير الملفات (اتصالان)",
@@ -2269,6 +2288,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "تم حذف %d عناصر",
 		txtFMDeleteErrors:        "انتهى الحذف مع %d خطأ – الأول: %s",
 		txtFMDeleteCancelled:     "تم إلغاء الحذف",
+		txtFMErrDeleteRace:       "تم استبدال %s أثناء الحذف – لن يُحذف أي شيء بداخله",
 	},
 	LangPersian: {
 		txtFMListEntry:           "مدیر فایل (دو اتصال)",
@@ -2381,6 +2401,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d مورد حذف شد",
 		txtFMDeleteErrors:        "حذف با %d خطا پایان یافت – اولی: %s",
 		txtFMDeleteCancelled:     "حذف لغو شد",
+		txtFMErrDeleteRace:       "%s هنگام حذف جایگزین شد – چیزی در آن حذف نمی\u200cشود",
 	},
 	LangUrdu: {
 		txtFMListEntry:           "فائل منیجر (دو کنکشن)",
@@ -2493,6 +2514,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d اندراجات حذف ہوئے",
 		txtFMDeleteErrors:        "حذف %d خرابیوں کے ساتھ ختم – پہلی: %s",
 		txtFMDeleteCancelled:     "حذف منسوخ",
+		txtFMErrDeleteRace:       "%s حذف کے دوران بدل دیا گیا – اس کے اندر کچھ حذف نہیں ہوگا",
 	},
 	LangHindi: {
 		txtFMListEntry:           "फ़ाइल मैनेजर (दो कनेक्शन)",
@@ -2605,6 +2627,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d प्रविष्टियाँ हटाई गईं",
 		txtFMDeleteErrors:        "हटाना %d त्रुटियों के साथ समाप्त – पहली: %s",
 		txtFMDeleteCancelled:     "हटाना रद्द",
+		txtFMErrDeleteRace:       "%s हटाने के दौरान बदल दिया गया – इसके अंदर कुछ नहीं हटाया जाएगा",
 	},
 	LangBengali: {
 		txtFMListEntry:           "ফাইল ম্যানেজার (দুটি সংযোগ)",
@@ -2717,6 +2740,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d টি এন্ট্রি মোছা হয়েছে",
 		txtFMDeleteErrors:        "মোছা %d টি ত্রুটিসহ শেষ – প্রথম: %s",
 		txtFMDeleteCancelled:     "মোছা বাতিল",
+		txtFMErrDeleteRace:       "%s মোছার সময় বদলে দেওয়া হয়েছে – এর ভিতরে কিছুই মোছা হবে না",
 	},
 	LangPunjabi: {
 		txtFMListEntry:           "ਫਾਈਲ ਮੈਨੇਜਰ (ਦੋ ਕਨੈਕਸ਼ਨ)",
@@ -2829,6 +2853,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d ਇੰਦਰਾਜ ਮਿਟਾਏ ਗਏ",
 		txtFMDeleteErrors:        "ਮਿਟਾਉਣਾ %d ਗਲਤੀਆਂ ਨਾਲ ਖਤਮ – ਪਹਿਲੀ: %s",
 		txtFMDeleteCancelled:     "ਮਿਟਾਉਣਾ ਰੱਦ",
+		txtFMErrDeleteRace:       "%s ਮਿਟਾਉਣ ਦੌਰਾਨ ਬਦਲ ਦਿੱਤਾ ਗਿਆ – ਇਸਦੇ ਅੰਦਰ ਕੁਝ ਨਹੀਂ ਮਿਟਾਇਆ ਜਾਵੇਗਾ",
 	},
 	LangGujarati: {
 		txtFMListEntry:           "ફાઇલ મેનેજર (બે કનેક્શન)",
@@ -2941,6 +2966,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d એન્ટ્રીઓ કાઢી નાખી",
 		txtFMDeleteErrors:        "કાઢી નાખવું %d ભૂલો સાથે પૂરું – પ્રથમ: %s",
 		txtFMDeleteCancelled:     "કાઢી નાખવું રદ થયું",
+		txtFMErrDeleteRace:       "%s કાઢી નાખતી વખતે બદલાઈ ગયું – તેની અંદર કંઈ કાઢી નખાશે નહીં",
 	},
 	LangMarathi: {
 		txtFMListEntry:           "फाइल व्यवस्थापक (दोन कनेक्शन)",
@@ -3053,6 +3079,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d नोंदी हटवल्या",
 		txtFMDeleteErrors:        "हटवणे %d त्रुटींसह संपले – पहिली: %s",
 		txtFMDeleteCancelled:     "हटवणे रद्द केले",
+		txtFMErrDeleteRace:       "%s हटवताना बदलले गेले – त्याच्या आत काहीही हटवले जाणार नाही",
 	},
 	LangTamil: {
 		txtFMListEntry:           "கோப்பு மேலாளர் (இரண்டு இணைப்புகள்)",
@@ -3165,6 +3192,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d உள்ளீடுகள் நீக்கப்பட்டன",
 		txtFMDeleteErrors:        "நீக்கல் %d பிழைகளுடன் முடிந்தது – முதலாவது: %s",
 		txtFMDeleteCancelled:     "நீக்கல் ரத்து செய்யப்பட்டது",
+		txtFMErrDeleteRace:       "%s நீக்கும்போது மாற்றப்பட்டது – அதற்குள் எதுவும் நீக்கப்படாது",
 	},
 	LangTelugu: {
 		txtFMListEntry:           "ఫైల్ మేనేజర్ (రెండు కనెక్షన్లు)",
@@ -3277,6 +3305,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d ఎంట్రీలు తొలగించబడ్డాయి",
 		txtFMDeleteErrors:        "తొలగింపు %d లోపాలతో ముగిసింది – మొదటిది: %s",
 		txtFMDeleteCancelled:     "తొలగింపు రద్దయింది",
+		txtFMErrDeleteRace:       "%s తొలగిస్తున్నప్పుడు మార్చబడింది – దానిలో ఏదీ తొలగించబడదు",
 	},
 	LangKannada: {
 		txtFMListEntry:           "ಫೈಲ್ ಮ್ಯಾನೇಜರ್ (ಎರಡು ಸಂಪರ್ಕಗಳು)",
@@ -3389,6 +3418,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d ನಮೂದುಗಳನ್ನು ಅಳಿಸಲಾಗಿದೆ",
 		txtFMDeleteErrors:        "ಅಳಿಸುವಿಕೆ %d ದೋಷಗಳೊಂದಿಗೆ ಮುಗಿಯಿತು – ಮೊದಲನೆಯದು: %s",
 		txtFMDeleteCancelled:     "ಅಳಿಸುವಿಕೆ ರದ್ದಾಗಿದೆ",
+		txtFMErrDeleteRace:       "%s ಅಳಿಸುವಾಗ ಬದಲಾಯಿಸಲಾಗಿದೆ – ಅದರೊಳಗೆ ಏನನ್ನೂ ಅಳಿಸಲಾಗುವುದಿಲ್ಲ",
 	},
 	LangChinese: {
 		txtFMListEntry:           "文件管理器（两个连接）",
@@ -3501,6 +3531,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "已删除 %d 个条目",
 		txtFMDeleteErrors:        "删除结束，共 %d 个错误 – 第一个：%s",
 		txtFMDeleteCancelled:     "删除已取消",
+		txtFMErrDeleteRace:       "%s 在删除过程中被替换 – 其中的内容不会被删除",
 	},
 	LangJapanese: {
 		txtFMListEntry:           "ファイルマネージャー（2つの接続）",
@@ -3613,6 +3644,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d 件を削除しました",
 		txtFMDeleteErrors:        "削除は %d 件のエラーで終了 – 最初：%s",
 		txtFMDeleteCancelled:     "削除をキャンセルしました",
+		txtFMErrDeleteRace:       "%s は削除中に置き換えられました – その中は何も削除しません",
 	},
 	LangKorean: {
 		txtFMListEntry:           "파일 관리자 (두 개의 연결)",
@@ -3725,6 +3757,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "항목 %d개 삭제됨",
 		txtFMDeleteErrors:        "삭제가 오류 %d개로 끝남 – 첫 번째: %s",
 		txtFMDeleteCancelled:     "삭제 취소됨",
+		txtFMErrDeleteRace:       "삭제 중에 %s이(가) 바뀌었습니다 – 그 안의 항목은 삭제하지 않습니다",
 	},
 	LangThai: {
 		txtFMListEntry:           "ตัวจัดการไฟล์ (สองการเชื่อมต่อ)",
@@ -3837,6 +3870,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "ลบแล้ว %d รายการ",
 		txtFMDeleteErrors:        "การลบจบลงพร้อมข้อผิดพลาด %d รายการ – รายการแรก: %s",
 		txtFMDeleteCancelled:     "ยกเลิกการลบแล้ว",
+		txtFMErrDeleteRace:       "%s ถูกแทนที่ระหว่างการลบ – จะไม่ลบสิ่งใดภายใน",
 	},
 	LangVietnamese: {
 		txtFMListEntry:           "Trình quản lý tệp (hai kết nối)",
@@ -3949,6 +3983,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Đã xóa %d mục",
 		txtFMDeleteErrors:        "Xóa kết thúc với %d lỗi – lỗi đầu: %s",
 		txtFMDeleteCancelled:     "Đã hủy xóa",
+		txtFMErrDeleteRace:       "%s đã bị thay thế trong khi xóa – không xóa gì bên trong",
 	},
 	LangIndonesian: {
 		txtFMListEntry:           "Pengelola berkas (dua koneksi)",
@@ -4061,6 +4096,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d entri dihapus",
 		txtFMDeleteErrors:        "Penghapusan selesai dengan %d galat – pertama: %s",
 		txtFMDeleteCancelled:     "Penghapusan dibatalkan",
+		txtFMErrDeleteRace:       "%s diganti selama penghapusan – tidak ada isinya yang dihapus",
 	},
 	LangFilipino: {
 		txtFMListEntry:           "Tagapamahala ng file (dalawang koneksyon)",
@@ -4173,6 +4209,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d entry ang nabura",
 		txtFMDeleteErrors:        "Natapos ang pagbura na may %d error – una: %s",
 		txtFMDeleteCancelled:     "Kinansela ang pagbura",
+		txtFMErrDeleteRace:       "Napalitan ang %s habang nagbubura – walang buburahin sa loob nito",
 	},
 	LangSwahili: {
 		txtFMListEntry:           "Kidhibiti faili (miunganisho miwili)",
@@ -4285,6 +4322,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Vipengee %d vimefutwa",
 		txtFMDeleteErrors:        "Kufuta kumeisha na makosa %d – la kwanza: %s",
 		txtFMDeleteCancelled:     "Kufuta kumeghairiwa",
+		txtFMErrDeleteRace:       "%s ilibadilishwa wakati wa kufuta – hakuna kitu ndani yake kitakachofutwa",
 	},
 	LangAmharic: {
 		txtFMListEntry:           "የፋይል አስተዳዳሪ (ሁለት ግንኙነቶች)",
@@ -4397,6 +4435,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "%d ግቤቶች ጠፍተዋል",
 		txtFMDeleteErrors:        "ማጥፋቱ በ%d ስህተቶች ተጠናቀቀ – የመጀመሪያው: %s",
 		txtFMDeleteCancelled:     "ማጥፋቱ ተሰርዟል",
+		txtFMErrDeleteRace:       "%s በማጥፋት ጊዜ ተተክቷል – በውስጡ ምንም አይጠፋም",
 	},
 	LangHausa: {
 		txtFMListEntry:           "Mai sarrafa fayiloli (haɗi biyu)",
@@ -4509,6 +4548,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "An share abubuwa %d",
 		txtFMDeleteErrors:        "Sharewa ta ƙare da kurakurai %d – na farko: %s",
 		txtFMDeleteCancelled:     "An soke sharewa",
+		txtFMErrDeleteRace:       "An maye gurbin %s yayin sharewa – ba za a share komai a ciki ba",
 	},
 	LangIgbo: {
 		txtFMListEntry:           "Onye njikwa faịlụ (njikọ abụọ)",
@@ -4621,6 +4661,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Ehichapụla ndenye %d",
 		txtFMDeleteErrors:        "Nhichapụ kwụsịrị na njehie %d – nke mbụ: %s",
 		txtFMDeleteCancelled:     "Akagbuola nhichapụ",
+		txtFMErrDeleteRace:       "E dochiri %s n'oge nhichapụ – a gaghị ehichapụ ihe ọ bụla n'ime ya",
 	},
 	LangYoruba: {
 		txtFMListEntry:           "Olùṣàkóso fáìlì (ìsopọ̀ méjì)",
@@ -4733,6 +4774,7 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "A ti pa àwọn ohun %d rẹ́",
 		txtFMDeleteErrors:        "Ìparẹ́ parí pẹ̀lú àṣìṣe %d – àkọ́kọ́: %s",
 		txtFMDeleteCancelled:     "A ti fagilé ìparẹ́",
+		txtFMErrDeleteRace:       "A pààrọ̀ %s nígbà ìparẹ́ – a kò ní pa ohunkóhun rẹ́ nínú rẹ̀",
 	},
 	LangOromo: {
 		txtFMListEntry:           "Bulchiinsa faayilii (walqunnamtii lama)",
@@ -4845,5 +4887,6 @@ var fileManagerTranslations = map[Language]map[textKey]string{
 		txtFMDeleteDone:          "Galmee %d balleeffameera",
 		txtFMDeleteErrors:        "Balleessuun dogoggora %d waliin xumurame – kan jalqabaa: %s",
 		txtFMDeleteCancelled:     "Balleessuun haqameera",
+		txtFMErrDeleteRace:       "%s yeroo balleessuu jijjiirameera – wanti isa keessa jiru hin balleeffamu",
 	},
 }

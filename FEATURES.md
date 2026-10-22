@@ -60,7 +60,8 @@
 - [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
 - [ ] Menü "Optionen": Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22)
-- [ ] Menü "Datei" → "Herunterladen" (ohne F-Taste): eine Datei direkt bzw. mehrere als tar.gz auf den lokalen PC; Zielordner nativ wählen je Betriebssystem (Nutzerwunsch 2026-10-22)
+- [ ] ~~Menü "Datei" → "Herunterladen" (tar.gz, nativer Ordnerdialog)~~ – vom Nutzer gestrichen (2026-10-22), ersetzt durch "Lokaler PC"
+- [ ] "Lokaler PC" als weitere wählbare Verbindung im Datei-Manager (lokales Dateisystem als Fenster; Kopieren/Verschieben zwischen Server und PC) (Nutzerwunsch 2026-10-22)
 - [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)
 - [x] F5 Kopieren zwischen den Verbindungen: markierte Einträge, Verzeichnisse rekursiv, Symlinks als Symlink, Rechte/Zeit; Bestätigung, Fortschritt, Rückfrage j/n/a/k + "alle, wenn neuer" (u) / "alle, wenn größer" (g) (Build 57)
 - [x] Datei-Manager-Eintrag unter zwei Verbindungen ausgegraut mit Hinweis (Build 57)

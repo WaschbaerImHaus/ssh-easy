@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.66] – Build 66
+- **Security** `F8` re-checks the directory chain after reading each directory and the parent directory before every removal; if a directory was replaced by a symlink while deleting, nothing inside it is deleted any more (finding of the automated security review of Build 65)
+- **Added** 3 new tests (553 total, all green)
+
 ## [v0.65] – Build 65
 - **Added** `F6` moves the marked entries (or the entry under the cursor) to the other panel: same dialogs as copying (confirmation, progress, overwrite question). Each file is copied through a temporary file and renamed; only then is the source deleted. Files that failed or were skipped stay in the source (and stay marked), directories are removed only once they are empty
 - **Added** `F7` creates a directory in the active panel (`Enter` create, `Esc` cancel; `q` is a normal character there). Names with `/`, `\`, control characters, `.` or `..` are refused; afterwards the cursor stands on the new directory
