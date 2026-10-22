@@ -59,7 +59,7 @@
 - [x] Fehlende Rechte: im bisherigen Verzeichnis bleiben + Meldung; Symlinks auf Verzeichnisse nicht folgen + Meldung (Build 53)
 - [x] Tab wechselt die Seite, F10/q zurück zur Liste mit Cursor auf dem Datei-Manager-Eintrag (Build 53)
 - [x] Drei Farbmodi vorbereitet: klassisch (mc), ssh-easy, monochrom (schwarz/dunkelgrau/grau/hellgrau/weiß) (Build 53)
-- [ ] Menü "Optionen": Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22)
+- [ ] Menü "Optionen": Farbmodus umschalten (und merken) und erlaubte Dateiendungen für F9 im Betrachter festlegen (Nutzerwunsch 2026-10-22); riskante Endungen (Programme, Skripte, Office) nicht hart gesperrt, aber nur nach kräftigem Risikohinweis (Nutzerentscheidung 2026-10-22); beim F9-Öffnen solcher Dateien zusätzlich Rückfrage „Wirklich lokal öffnen?“ mit Risikohinweis
 - [ ] ~~Menü "Datei" → "Herunterladen" (tar.gz, nativer Ordnerdialog)~~ – vom Nutzer gestrichen (2026-10-22), ersetzt durch "Lokaler PC"
 - [ ] "Lokaler PC" als weitere wählbare Verbindung im Datei-Manager (lokales Dateisystem als Fenster; Kopieren/Verschieben zwischen Server und PC) (Nutzerwunsch 2026-10-22)
 - [x] Datei/Dateien/Verzeichnisse markieren: Einfg (Eintrag + eine Zeile weiter), * kehrt alle Markierungen um wie im mc; Infozeile mit Anzahl/Größe (Build 56)

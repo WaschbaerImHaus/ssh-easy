@@ -1210,3 +1210,27 @@ func (l *literalAlias) Lstat(p string) (os.FileInfo, error) {
 	return l.aliasFS.Lstat(p)
 }
 func (l *literalAlias) RealPath(p string) (string, error) { return l.literal.RealPath(p) }
+
+// noRealPathFS ist ein Server ohne realpath.
+type noRealPathFS struct{ *swapFS }
+
+func (n *noRealPathFS) RealPath(p string) (string, error) { return "", errors.New("unsupported") }
+
+// TestDeleteDetectsPanelDirSwapWithoutRealPath - kann der Server kein
+// realpath und wird das Fensterverzeichnis selbst ausgetauscht, wird nichts
+// mehr gelöscht.
+func TestDeleteDetectsPanelDirSwapWithoutRealPath(t *testing.T) {
+	base := newCopySource()
+	fsys := &noRealPathFS{&swapFS{memFS: base, swapOnRemove: "/home/a"}}
+	result := runDeleteSync(t, context.Background(), fsys, "notiz.txt", "projekt")
+	found := false
+	for _, f := range result.failures {
+		found = found || errors.Is(f.err, errDeleteRace)
+	}
+	if !found {
+		t.Fatalf("keine errDeleteRace-Meldung: %s", failureErrors(result.failures))
+	}
+	if base.node("/home/a/projekt/main.go") == nil {
+		t.Error("nach dem Austausch des Fensterverzeichnisses gelöscht")
+	}
+}

@@ -28,12 +28,13 @@
 // Ergebnis als deleteEvent.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 06:05
+// @date   2026-10-22 06:20
 package main
 
 import (
 	"context"
 	"errors"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -95,6 +96,11 @@ type deleteRun struct {
 	limitHit bool
 	// Kanonischer Pfad von req.dir (leer = Server kann kein RealPath)
 	base string
+	// Zustand von req.dir beim Start (Art, ggf. Linkziel) - Vergleich,
+	// wenn der Server kein RealPath kann
+	dirKnown bool
+	dirType  os.FileMode
+	dirLink  string
 }
 
 // runDelete führt einen Löschauftrag aus und meldet am Ende genau ein
@@ -109,6 +115,7 @@ func runDelete(ctx context.Context, req deleteRequest, events chan<- deleteEvent
 	if real, err := req.fs.RealPath(req.dir); err == nil && path.IsAbs(real) {
 		run.base = path.Clean(real)
 	}
+	run.dirType, run.dirLink, run.dirKnown = run.panelDirState()
 	for _, name := range req.names {
 		if run.stopped() {
 			break
@@ -239,12 +246,13 @@ func (d *deleteRun) unchanged(top, dir string, wholeChain bool) bool {
 		from = top
 	}
 	// Das Fensterverzeichnis selbst darf ein Symlink sein (z. B. verlinktes
-	// Home); dafür gilt nur der RealPath-Vergleich
+	// Home); es wird mit dem Zustand beim Start verglichen (ohne RealPath)
+	// bzw. über den RealPath-Vergleich geprüft
 	if path.Clean(dir) != path.Clean(d.req.dir) && !d.realDirectories(from, dir) {
 		return false
 	}
 	if d.base == "" {
-		return true
+		return d.panelDirUnchanged()
 	}
 	real, err := d.req.fs.RealPath(dir)
 	if err != nil {
@@ -252,6 +260,42 @@ func (d *deleteRun) unchanged(top, dir string, wholeChain bool) bool {
 	}
 	rel := strings.TrimPrefix(path.Clean(dir), path.Clean(d.req.dir))
 	return path.Clean(real) == path.Join(d.base, rel)
+}
+
+// panelDirState liest Art und ggf. Linkziel des Fensterverzeichnisses.
+//
+// @return os.FileMode - Art (Verzeichnis, Symlink …)
+// @return string - Linkziel (nur bei Symlinks)
+// @return bool - false wenn nicht lesbar
+// @date   2026-10-22 06:20
+func (d *deleteRun) panelDirState() (os.FileMode, string, bool) {
+	info, err := d.req.fs.Lstat(d.req.dir)
+	if err != nil {
+		return 0, "", false
+	}
+	kind := info.Mode().Type()
+	if kind&os.ModeSymlink == 0 {
+		return kind, "", true
+	}
+	target, err := d.req.fs.ReadLink(d.req.dir)
+	if err != nil {
+		return 0, "", false
+	}
+	return kind, target, true
+}
+
+// panelDirUnchanged prüft (Server ohne RealPath), ob das Fensterverzeichnis
+// noch genauso aussieht wie beim Start: gleiche Art, bei Symlinks gleiches
+// Ziel.
+//
+// @return bool - true = unverändert
+// @date   2026-10-22 06:20
+func (d *deleteRun) panelDirUnchanged() bool {
+	if !d.dirKnown {
+		return false
+	}
+	kind, target, ok := d.panelDirState()
+	return ok && kind == d.dirType && target == d.dirLink
 }
 
 // realDirectories prüft, ob p und alle Verzeichnisse von top bis p echte

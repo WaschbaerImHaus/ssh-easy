@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.69] – Build 69
+- **Security** `F8` on servers without `realpath`: the panel directory itself is now compared with its state at the start (type and symlink target) before every removal (finding of the automated security review of Build 68)
+- **Added** 1 new test (558 total, all green)
+
 ## [v0.68] – Build 68
 - **Security** `F8` always checks the directories with `Lstat` again and compares the canonical path (`realpath`) only in addition – a server whose `realpath` does not resolve symlinks can no longer make the check pass by itself (finding of the automated security review of Build 67). The panel directory itself may still be a symlink (e.g. a linked home)
 - **Added** 2 new tests (557 total, all green)
