@@ -154,7 +154,7 @@ nebeneinander zu arbeiten:
 | `Tab` | Zwischen linkem und rechtem Fenster wechseln |
 | `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
 | `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
-| `F3` | Datei unter dem Cursor ansehen (`F2` Umbruch, `F4` Hex/Text, `q`/`Esc` schließen) |
+| `F3` | Datei unter dem Cursor ansehen – Tasten wie im mc-Betrachter: `F1` Hilfe, `F2` Umbruch, `F4` Hex/Text, `F5` Gehe zu, `F6` Suche mit regulärem Ausdruck, `F7` Suchen (`n` weiter), `F9` mit dem Standardprogramm öffnen, `F3`/`F10`/`q`/`Esc` schließen |
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F10` / `q` | Beide Verbindungen schließen, zurück zur Liste |
 
@@ -175,6 +175,13 @@ Daten laufen über deinen Rechner, die Server müssen sich nicht gegenseitig err
 Jede Datei wird erst unter einem Temp-Namen nur für dich lesbar geschrieben und am Ende
 umbenannt: Private Dateien sind auf dem Ziel nie für andere lesbar, eine vorhandene
 Datei wird erst ersetzt, wenn die neue vollständig ist.
+
+**Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
+übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).
+Ausführbare und Skript-Typen (`.exe`, `.bat`, `.ps1`, `.lnk`, `.sh`, `.desktop` …) werden
+abgelehnt, weil „Öffnen“ dort „Ausführen“ hieße. Unter Windows wird die Kopie als „aus dem
+Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
+von ssh-easy gelöscht.
 
 Der Datei-Manager braucht zwei Verbindungen; bis dahin ist sein Eintrag ausgegraut.
 

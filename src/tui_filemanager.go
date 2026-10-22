@@ -657,7 +657,22 @@ func (m AppModel) renderFMMenuBar(st fmStyles, width int) string {
 // @return string - Zeile
 // @date   2026-10-21 19:45
 func (m AppModel) renderFMKeyBar(st fmStyles, width int) string {
-	labels := strings.Split(m.tr(txtFMFKeys), "|")
+	return renderKeyBar(st, width, strings.Split(m.tr(txtFMFKeys), "|"))
+}
+
+// renderKeyBar rendert eine F-Tasten-Leiste wie im mc (Datei-Manager,
+// Betrachter, Editor): gleich breite Felder mit Nummer und Beschriftung,
+// das letzte Feld nimmt den Rest. Leere Beschriftung = Taste ohne Funktion.
+//
+// @param st - Stile des Farbmodus
+// @param width - Bildschirmbreite
+// @param labels - Beschriftungen F1, F2, …
+// @return string - Zeile
+// @date   2026-10-21 21:35
+func renderKeyBar(st fmStyles, width int, labels []string) string {
+	if len(labels) == 0 {
+		return st.keyLabel.Render(fitWidth("", width))
+	}
 	slot := width / len(labels)
 	var bar strings.Builder
 	for i, label := range labels {

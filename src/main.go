@@ -14,6 +14,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -67,6 +68,9 @@ func main() {
 	updater := NewUpdater(buildNumber)
 	cleanupUpdateLeftovers(updater.exePath, updater.downloadDir)
 
+	// Datei-Manager: lokale Kopien früherer Sitzungen (F9 "Öffnen") entfernen
+	cleanupStaleOpenDirs("", 24*time.Hour)
+
 	// SSH-Manager erstellen
 	sshManager := NewSSHManager(logger)
 
@@ -84,6 +88,9 @@ func main() {
 
 	// Alle Verbindungen sauber trennen
 	sshManager.DisconnectAll()
+
+	// Lokale Kopien dieser Sitzung (F9 "Öffnen") löschen
+	cleanupExternalOpen()
 
 	// Aktuelle Schriftgröße persistieren (nur Windows liefert > 0).
 	// Deckt auch den nativen conhost-Zoom per Strg+Mausrad ab, der an der

@@ -380,3 +380,205 @@ func TestLooksBinary(t *testing.T) {
 		t.Error("leere Datei als binär erkannt")
 	}
 }
+
+// --- mc-Tasten im Betrachter (Build 60) ---
+
+// typeText tippt einen Text Zeichen für Zeichen (ohne die Blink-Kommandos
+// der Eingabezeile auszuführen - die warten jeweils eine halbe Sekunde).
+func typeText(t *testing.T, m AppModel, text string) AppModel {
+	t.Helper()
+	for _, r := range text {
+		m = press(t, m, string(r))
+	}
+	return m
+}
+
+// openLongView öffnet eine Datei mit 100 Zeilen "Zeile NNN".
+func openLongView(t *testing.T) AppModel {
+	t.Helper()
+	var b strings.Builder
+	for i := 1; i <= 100; i++ {
+		fmt.Fprintf(&b, "Zeile %03d\n", i)
+	}
+	m, _ := openViewManager(t, map[string]string{"lang.txt": b.String()})
+	m.termWidth, m.termHeight = 80, 24
+	m = cursorTo(t, m, "lang.txt")
+	return pressRun(t, m, "f3")
+}
+
+// firstRow liefert die erste Inhaltszeile.
+func firstRow(m AppModel) string {
+	return strings.TrimSpace(strings.Split(viewText(m), "\n")[1])
+}
+
+// TestViewerKeyBarLikeMC - unten die F-Tasten-Leiste wie im mc.
+func TestViewerKeyBarLikeMC(t *testing.T) {
+	m := openLongView(t)
+	m.termWidth = 100 // bei 80 Spalten werden lange Beschriftungen gekürzt
+	lines := strings.Split(viewText(m), "\n")
+	bar := lines[len(lines)-1]
+	labels := strings.Split(m.tr(txtFMViewFKeys), "|")
+	if len(labels) != 10 {
+		t.Fatalf("%d Beschriftungen, erwartet 10", len(labels))
+	}
+	for i, label := range labels {
+		if want := fmt.Sprintf("%d%s", i+1, label); !strings.Contains(bar, want) {
+			t.Errorf("Leiste ohne %q: %q", want, bar)
+		}
+	}
+	assertScreenSize(t, m)
+}
+
+// TestViewerF1Help - F1 zeigt die Hilfe, eine beliebige Taste schließt sie.
+func TestViewerF1Help(t *testing.T) {
+	m := openLongView(t)
+	m = pressRun(t, m, "f1")
+	text := viewText(m)
+	if !strings.Contains(text, m.tr(txtFMHelpTitle)) || !strings.Contains(text, "F7") {
+		t.Errorf("Hilfe fehlt:\n%s", text)
+	}
+	assertScreenSize(t, m)
+	m = pressRun(t, m, "q") // schließt nur die Hilfe
+	if !m.fm.viewing || m.fm.view.showHelp {
+		t.Errorf("viewing=%v Hilfe=%v", m.fm.viewing, m.fm.view.showHelp)
+	}
+}
+
+// TestViewerF5Goto - F5 springt zu einer Zeile; ungültige Eingabe meldet sich.
+func TestViewerF5Goto(t *testing.T) {
+	m := openLongView(t)
+	m = pressRun(t, m, "f5")
+	if !strings.Contains(viewText(m), m.tr(txtFMGotoLine)) {
+		t.Error("Eingabezeile fehlt")
+	}
+	assertScreenSize(t, m)
+	m = typeText(t, m, "50")
+	m = pressRun(t, m, "enter")
+	if firstRow(m) != "Zeile 050" {
+		t.Errorf("nach Gehe zu 50: %q", firstRow(m))
+	}
+	m = pressRun(t, m, "f5")
+	m = typeText(t, m, "abc")
+	m = pressRun(t, m, "enter")
+	if !strings.Contains(viewText(m), fmt.Sprintf(m.tr(txtFMBadNumber), "abc")) || firstRow(m) != "Zeile 050" {
+		t.Errorf("ungültige Eingabe:\n%s", viewText(m))
+	}
+	// Esc bricht die Eingabe ab, ohne den Betrachter zu schließen; q wird getippt
+	m = pressRun(t, m, "f5")
+	m = pressRun(t, m, "q")
+	if !m.fm.viewing || m.fm.view.prompt == fmPromptNone {
+		t.Fatal("q in der Eingabe schließt")
+	}
+	m = pressRun(t, m, "esc")
+	if !m.fm.viewing || m.fm.view.prompt != fmPromptNone {
+		t.Errorf("Esc: viewing=%v prompt=%v", m.fm.viewing, m.fm.view.prompt)
+	}
+}
+
+// TestViewerF7SearchAndNext - F7 sucht (ohne Groß-/Kleinschreibung), n
+// sucht weiter; nicht gefunden meldet sich.
+func TestViewerF7SearchAndNext(t *testing.T) {
+	m := openLongView(t)
+	m = pressRun(t, m, "f7")
+	if !strings.Contains(viewText(m), m.tr(txtFMSearchPrompt)) {
+		t.Error("Suchzeile fehlt")
+	}
+	m = typeText(t, m, "ZEILE 07")
+	m = pressRun(t, m, "enter")
+	if firstRow(m) != "Zeile 070" {
+		t.Errorf("Treffer: %q", firstRow(m))
+	}
+	m = pressRun(t, m, "n")
+	if firstRow(m) != "Zeile 071" {
+		t.Errorf("weitersuchen: %q", firstRow(m))
+	}
+	// Vorbelegt mit dem letzten Begriff; das erste Zeichen ersetzt ihn (wie im mc)
+	m = pressRun(t, m, "f7")
+	if m.fm.view.input.Value() != "ZEILE 07" {
+		t.Errorf("Suchfeld nicht vorbelegt: %q", m.fm.view.input.Value())
+	}
+	m = typeText(t, m, "gibtsnicht")
+	m = pressRun(t, m, "enter")
+	if !strings.Contains(viewText(m), fmt.Sprintf(m.tr(txtFMNotFound), "gibtsnicht")) {
+		t.Errorf("Meldung fehlt:\n%s", viewText(m))
+	}
+	if firstRow(m) != "Zeile 071" {
+		t.Errorf("Position nach erfolgloser Suche verändert: %q", firstRow(m))
+	}
+	assertScreenSize(t, m)
+}
+
+// TestViewerF6RegexSearch - F6 sucht mit regulärem Ausdruck.
+func TestViewerF6RegexSearch(t *testing.T) {
+	m := openLongView(t)
+	m = pressRun(t, m, "f6")
+	if !strings.Contains(viewText(m), m.tr(txtFMRegexPrompt)) {
+		t.Error("Eingabezeile fehlt")
+	}
+	m = typeText(t, m, "zeile 0[89]9")
+	m = pressRun(t, m, "enter")
+	if firstRow(m) != "Zeile 089" {
+		t.Errorf("Treffer: %q", firstRow(m))
+	}
+	m = pressRun(t, m, "n")
+	if firstRow(m) != "Zeile 099" {
+		t.Errorf("weiter: %q", firstRow(m))
+	}
+	m = pressRun(t, m, "f6")
+	m = typeText(t, m, "(")
+	m = pressRun(t, m, "enter")
+	prefix := strings.SplitN(m.tr(txtFMBadRegex), "%", 2)[0]
+	if !strings.Contains(viewText(m), strings.TrimSpace(prefix)) {
+		t.Errorf("ungültiger Ausdruck ohne Meldung:\n%s", viewText(m))
+	}
+}
+
+// TestViewerSearchHighlightsMatch - die Trefferzeile ist hervorgehoben.
+func TestViewerSearchHighlightsMatch(t *testing.T) {
+	withColorProfile(t)
+	m := openLongView(t)
+	m = pressRun(t, m, "f7")
+	m = typeText(t, m, "zeile 042")
+	m = pressRun(t, m, "enter")
+	st := fmThemeStyles(m.fm.theme)
+	cursor := st.cursor.Render("X")
+	cursor = cursor[:strings.Index(cursor, "X")]
+	row := strings.Split(m.View(), "\n")[1]
+	if !strings.HasPrefix(row, cursor) {
+		t.Errorf("Trefferzeile nicht hervorgehoben: %q", row)
+	}
+}
+
+// TestViewerHexGotoAndSearch - in der Hex-Ansicht: Offset und Byte-Suche.
+func TestViewerHexGotoAndSearch(t *testing.T) {
+	data := strings.Repeat("\x00", 16*50) + "MARKE" + strings.Repeat("\x00", 16*50)
+	m, _ := openViewManager(t, map[string]string{"bin.dat": data})
+	m.termWidth, m.termHeight = 100, 24
+	m = cursorTo(t, m, "bin.dat")
+	m = pressRun(t, m, "f3")
+	m = pressRun(t, m, "f5")
+	if !strings.Contains(viewText(m), m.tr(txtFMGotoOffset)) {
+		t.Error("Offset-Eingabe fehlt")
+	}
+	m = typeText(t, m, "0x100")
+	m = pressRun(t, m, "enter")
+	if !strings.HasPrefix(firstRow(m), "00000100") {
+		t.Errorf("Gehe zu 0x100: %q", firstRow(m))
+	}
+	m = pressRun(t, m, "home")
+	m = pressRun(t, m, "f7")
+	m = typeText(t, m, "marke")
+	m = pressRun(t, m, "enter")
+	if !strings.HasPrefix(firstRow(m), "00000320") {
+		t.Errorf("Byte-Suche: %q", firstRow(m))
+	}
+}
+
+// TestViewerI18nKeyBar - zehn Teile in jeder Sprache.
+func TestViewerI18nKeyBar(t *testing.T) {
+	for _, opt := range AvailableLanguages {
+		if n := len(strings.Split(extraText(opt.Code, txtFMViewFKeys), "|")); n != 10 {
+			t.Errorf("%s: %d Teile, erwartet 10", opt.Code, n)
+		}
+	}
+}

@@ -6,12 +6,17 @@
 // Steuerzeichen und unsichtbare Formatzeichen werden zu "?", Tabs zu
 // Leerzeichen - so kann eine Datei das Terminal nicht steuern.
 //
-// Tasten: ↑/↓, Bild↑/Bild↓, Pos1/Ende blättern; F2 Zeilenumbruch an/aus
-// (ohne Umbruch ←/→ waagerecht); F4 Hex/Text; q, Esc, F3, F10 schließen.
-// Binärdaten (NUL-Bytes) erscheinen automatisch als Hex-Ansicht.
+// Tasten wie im mc-Betrachter (unten als F-Tasten-Leiste): F1 Hilfe,
+// F2 Zeilenumbruch an/aus (ohne Umbruch ←/→ waagerecht), F3/F10 Beenden,
+// F4 Hex/Text, F5 Gehe zu (Zeile bzw. Offset), F6 Suchen mit regulärem
+// Ausdruck, F7 Suchen, n weitersuchen, F9 lokal mit dem Standardprogramm
+// öffnen (filemanager_open.go); dazu ↑/↓, Bild↑/Bild↓, Pos1/Ende,
+// q und Esc. Binärdaten (NUL-Bytes) erscheinen automatisch als Hex-Ansicht.
+// Reguläre Ausdrücke nutzen Gos RE2 (lineare Laufzeit, kein Hängen durch
+// bösartige Muster).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:24
+// @date   2026-10-21 21:36
 package main
 
 import (
@@ -19,8 +24,11 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/mattn/go-runewidth"
@@ -35,10 +43,27 @@ const fmViewTabWidth = 8
 // fmViewScrollStep - so viele Zeichen springen ←/→ ohne Umbruch
 const fmViewScrollStep = 8
 
+// fmPrompt ist die gerade offene Eingabezeile des Betrachters.
+type fmPrompt int
+
+const (
+	// fmPromptNone - keine Eingabe offen
+	fmPromptNone fmPrompt = iota
+	// fmPromptGoto - Gehe zu Zeile/Offset (F5)
+	fmPromptGoto
+	// fmPromptSearch - Suchen (F7)
+	fmPromptSearch
+	// fmPromptRegex - Suchen mit regulärem Ausdruck (F6)
+	fmPromptRegex
+)
+
 // fmViewer ist der Zustand des Betrachters.
 type fmViewer struct {
-	// Anzeigename (user@host:/pfad) und Dateiname
+	// Anzeigename (user@host:/pfad) und Dateiname (bereinigt)
 	title, name string
+	// Originalname, Pfad und Dateisystem (für F9 "mit Standardprogramm öffnen")
+	rawName, remotePath string
+	fs                  remoteFS
 	// Geladene Bytes und ob die Datei länger war
 	data      []byte
 	truncated bool
@@ -57,6 +82,21 @@ type fmViewer struct {
 	left int
 	// Hex-Ansicht: erste sichtbare Zeile
 	hexTop int
+	// Offene Eingabezeile und ihr Feld; inputFresh = Vorbelegung noch
+	// unberührt (das erste getippte Zeichen ersetzt sie, wie im mc)
+	prompt     fmPrompt
+	input      textinput.Model
+	inputFresh bool
+	// Letzte Suche (Text bzw. regulärer Ausdruck) und letzter Treffer
+	// (Zeile in der Textansicht, Byte in der Hex-Ansicht; -1 = keiner)
+	query       string
+	regex       bool
+	matchLine   int
+	matchOffset int
+	// Meldung in der unteren Zeile (bis zum nächsten Tastendruck)
+	message string
+	// Hilfe (F1) sichtbar?
+	showHelp bool
 }
 
 // fmViewLoadedMsg überbringt die geladene Datei.
@@ -73,7 +113,7 @@ type fmViewLoadedMsg struct {
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Laden im Hintergrund
-// @date   2026-10-21 21:24
+// @date   2026-10-21 21:36
 func (m AppModel) fmOpenViewer() (tea.Model, tea.Cmd) {
 	panel := m.fm.panels[m.fm.active]
 	entry, ok := panel.current()
@@ -87,10 +127,15 @@ func (m AppModel) fmOpenViewer() (tea.Model, tea.Cmd) {
 	m.fm.viewSeq++
 	m.fm.viewing = true
 	m.fm.view = fmViewer{
-		title:   sanitizeFileName(panel.conn.User + "@" + panel.conn.Host + ":" + filePath),
-		name:    sanitizeFileName(entry.name),
-		loading: true,
-		wrap:    true,
+		title:       sanitizeFileName(panel.conn.User + "@" + panel.conn.Host + ":" + filePath),
+		name:        sanitizeFileName(entry.name),
+		rawName:     entry.name,
+		remotePath:  filePath,
+		fs:          panel.fs,
+		loading:     true,
+		wrap:        true,
+		matchLine:   -1,
+		matchOffset: -1,
 	}
 	fsys, session, seq := panel.fs, m.fm.session, m.fm.viewSeq
 	return m, func() tea.Msg {
@@ -164,27 +209,50 @@ func (m AppModel) handleFMViewLoaded(msg fmViewLoadedMsg) (tea.Model, tea.Cmd) {
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - kein Folgekommando
-// @date   2026-10-21 21:24
+// @return tea.Cmd - Folgekommando (Cursor-Blinken der Eingabezeile)
+// @date   2026-10-21 21:36
 func (m AppModel) handleFMViewerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	v := &m.fm.view
+	// Hilfe: eine beliebige Taste schließt sie
+	if v.showHelp {
+		v.showHelp = false
+		return m, nil
+	}
+	if v.prompt != fmPromptNone {
+		return m.handleFMViewerPrompt(msg)
+	}
+	v.message = ""
 	switch msg.String() {
 	case "q", "esc", "f3", "f10":
 		m.fm.viewing = false
 		m.fm.view = fmViewer{}
 		return m, nil
 	}
-	v := &m.fm.view
 	if v.loading {
 		return m, nil
 	}
 	width, height := m.fmScreenSize()
 	rows := max(height-2, 1)
 	switch msg.String() {
+	case "f1":
+		v.showHelp = true
 	case "f2":
 		v.wrap = !v.wrap
 		v.topSub, v.left = 0, 0
 	case "f4":
 		v.hex = !v.hex
+	case "f5":
+		return m, v.openPrompt(fmPromptGoto)
+	case "f6":
+		return m, v.openPrompt(fmPromptRegex)
+	case "f7":
+		return m, v.openPrompt(fmPromptSearch)
+	case "f9":
+		return m.fmOpenExternal()
+	case "n":
+		if v.query != "" {
+			v.search(width, true, m.tr)
+		}
 	case "up", "k":
 		v.scroll(-1, width, rows)
 	case "down", "j":
@@ -205,6 +273,230 @@ func (m AppModel) handleFMViewerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// fmOpenExternalMsg meldet das Ergebnis von F9 (herunterladen + öffnen).
+type fmOpenExternalMsg struct {
+	session, seq int
+	err          error
+}
+
+// fmOpenExternal lädt die angezeigte Datei herunter und öffnet sie mit dem
+// Standardprogramm des Rechners (siehe filemanager_open.go). Ausführbare
+// Typen und zu große Dateien werden abgelehnt.
+//
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Herunterladen + Öffnen im Hintergrund
+// @date   2026-10-22 00:37
+func (m AppModel) fmOpenExternal() (tea.Model, tea.Cmd) {
+	v := &m.fm.view
+	if v.fs == nil {
+		return m, nil
+	}
+	if v.size > fmOpenMaxBytes {
+		v.message = fmt.Sprintf(m.tr(txtFMOpenTooLarge), formatSizeWithUnit(fmOpenMaxBytes))
+		return m, nil
+	}
+	local := localOpenName(v.rawName)
+	if ext, blocked := blockedOpenExtension(local); blocked {
+		v.message = fmt.Sprintf(m.tr(txtFMOpenBlocked), sanitizeFileName(ext))
+		return m, nil
+	}
+	v.message = fmt.Sprintf(m.tr(txtFMOpenDownloading), v.name)
+	fsys, remotePath, session, seq := v.fs, v.remotePath, m.fm.session, m.fm.viewSeq
+	return m, func() tea.Msg {
+		path, err := downloadForOpen(fsys, remotePath, local)
+		if err == nil {
+			err = externalOpener(path)
+		}
+		return fmOpenExternalMsg{session: session, seq: seq, err: err}
+	}
+}
+
+// handleFMOpenExternal zeigt das Ergebnis von F9 an.
+//
+// @param msg - Ergebnis
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-22 00:37
+func (m AppModel) handleFMOpenExternal(msg fmOpenExternalMsg) (tea.Model, tea.Cmd) {
+	if msg.session != m.fm.session || msg.seq != m.fm.viewSeq || !m.fm.viewing {
+		return m, nil
+	}
+	v := &m.fm.view
+	switch {
+	case msg.err == errOpenTooLarge:
+		v.message = fmt.Sprintf(m.tr(txtFMOpenTooLarge), formatSizeWithUnit(fmOpenMaxBytes))
+	case msg.err != nil:
+		v.message = fmt.Sprintf(m.tr(txtFMErrOpen), v.name, sanitizeFileName(msg.err.Error()))
+	default:
+		v.message = fmt.Sprintf(m.tr(txtFMOpenDone), v.name)
+	}
+	return m, nil
+}
+
+// openPrompt öffnet eine Eingabezeile (Suchen ist mit dem letzten Begriff
+// vorbelegt, wie im mc).
+//
+// @param kind - Art der Eingabe
+// @return tea.Cmd - Cursor-Blinken
+// @date   2026-10-21 21:36
+func (v *fmViewer) openPrompt(kind fmPrompt) tea.Cmd {
+	v.prompt = kind
+	v.input = textinput.New()
+	v.input.Prompt = ""
+	v.input.CharLimit = 256
+	v.inputFresh = false
+	if kind != fmPromptGoto && v.query != "" && v.regex == (kind == fmPromptRegex) {
+		v.input.SetValue(v.query)
+		v.inputFresh = true
+	}
+	v.input.Focus()
+	return textinput.Blink
+}
+
+// handleFMViewerPrompt verarbeitet Tasten in der Eingabezeile: Enter führt
+// aus, Esc bricht ab (q ist hier ein normales Zeichen).
+//
+// @param msg - Tastendruck
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Folgekommando der Eingabezeile
+// @date   2026-10-21 21:36
+func (m AppModel) handleFMViewerPrompt(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	v := &m.fm.view
+	switch msg.String() {
+	case "esc":
+		v.prompt = fmPromptNone
+		return m, nil
+	case "enter":
+		kind, value := v.prompt, strings.TrimSpace(v.input.Value())
+		v.prompt = fmPromptNone
+		if value == "" {
+			return m, nil
+		}
+		width, _ := m.fmScreenSize()
+		if kind == fmPromptGoto {
+			v.gotoPosition(value, width, m.tr)
+			return m, nil
+		}
+		v.query, v.regex = value, kind == fmPromptRegex
+		v.matchLine, v.matchOffset = -1, -1
+		v.search(width, false, m.tr)
+		return m, nil
+	}
+	// Erstes getipptes Zeichen bzw. Rücktaste ersetzt die Vorbelegung
+	if v.inputFresh && (msg.Type == tea.KeyRunes || msg.Type == tea.KeyBackspace) {
+		v.input.SetValue("")
+		if msg.Type == tea.KeyBackspace {
+			v.inputFresh = false
+			return m, nil
+		}
+	}
+	v.inputFresh = false
+	var cmd tea.Cmd
+	v.input, cmd = v.input.Update(msg)
+	return m, cmd
+}
+
+// gotoPosition springt zu einer Zeile (Text) bzw. einem Offset (Hex,
+// dezimal oder mit 0x).
+//
+// @param value - Eingabe
+// @param width - Bildschirmbreite
+// @param tr - Übersetzungsfunktion
+// @date   2026-10-21 21:36
+func (v *fmViewer) gotoPosition(value string, width int, tr func(textKey) string) {
+	if v.hex {
+		offset, err := strconv.ParseInt(value, 0, 64)
+		if err != nil || offset < 0 {
+			v.message = fmt.Sprintf(tr(txtFMBadNumber), sanitizeFileName(value))
+			return
+		}
+		v.hexTop = int(min(offset, int64(len(v.data)))) / hexBytesPerRow(width)
+		return
+	}
+	line, err := strconv.Atoi(value)
+	if err != nil || line < 1 {
+		v.message = fmt.Sprintf(tr(txtFMBadNumber), sanitizeFileName(value))
+		return
+	}
+	v.top, v.topSub = min(line-1, max(len(v.lines)-1, 0)), 0
+}
+
+// search sucht den letzten Suchbegriff (ohne Groß-/Kleinschreibung) ab der
+// aktuellen Position bzw. hinter dem letzten Treffer (next) und zeigt den
+// Treffer oben an. In der Hex-Ansicht wird in den Rohdaten gesucht.
+//
+// @param width - Bildschirmbreite
+// @param next - hinter dem letzten Treffer weitersuchen
+// @param tr - Übersetzungsfunktion
+// @date   2026-10-21 21:36
+func (v *fmViewer) search(width int, next bool, tr func(textKey) string) {
+	var re *regexp.Regexp
+	if v.regex {
+		var err error
+		if re, err = regexp.Compile("(?i)" + v.query); err != nil {
+			v.message = fmt.Sprintf(tr(txtFMBadRegex), sanitizeFileName(err.Error()))
+			return
+		}
+	}
+	notFound := fmt.Sprintf(tr(txtFMNotFound), sanitizeFileName(v.query))
+
+	if v.hex {
+		start := v.hexTop * hexBytesPerRow(width)
+		if next && v.matchOffset >= 0 {
+			start = v.matchOffset + 1
+		}
+		if start >= len(v.data) {
+			v.message = notFound
+			return
+		}
+		var index int
+		if re != nil {
+			loc := re.FindIndex(v.data[start:])
+			index = -1
+			if loc != nil {
+				index = loc[0]
+			}
+		} else {
+			index = bytes.Index(bytes.ToLower(v.data[start:]), bytes.ToLower([]byte(v.query)))
+		}
+		if index < 0 {
+			v.message = notFound
+			return
+		}
+		v.matchOffset = start + index
+		v.hexTop = v.matchOffset / hexBytesPerRow(width)
+		return
+	}
+
+	start := v.top
+	if next && v.matchLine >= 0 {
+		start = v.matchLine + 1
+	}
+	lowerQuery := strings.ToLower(v.query)
+	for i := start; i < len(v.lines); i++ {
+		column := -1
+		if re != nil {
+			if loc := re.FindStringIndex(v.lines[i]); loc != nil {
+				column = loc[0]
+			}
+		} else {
+			column = strings.Index(strings.ToLower(v.lines[i]), lowerQuery)
+		}
+		if column < 0 {
+			continue
+		}
+		v.matchLine = i
+		v.top, v.topSub = i, 0
+		if !v.wrap {
+			// Treffer waagerecht sichtbar machen
+			visual := ansi.StringWidth(v.lines[i][:min(column, len(v.lines[i]))])
+			v.left = max(0, min(visual-width/3, max(v.maxWidth-width, 0)))
+		}
+		return
+	}
+	v.message = notFound
 }
 
 // scroll bewegt die Ansicht um delta Bildschirmzeilen; am Ende bleibt die
@@ -285,7 +577,7 @@ func (v *fmViewer) atEnd(width, rows int) bool {
 // renderFMViewer rendert den Betrachter bildschirmfüllend.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 21:24
+// @date   2026-10-21 21:36
 func (m AppModel) renderFMViewer(s *strings.Builder) {
 	width, height := m.fmScreenSize()
 	st := fmThemeStyles(m.fm.theme)
@@ -306,27 +598,58 @@ func (m AppModel) renderFMViewer(s *strings.Builder) {
 	}
 	lines := []string{st.menu.Render(fitWidth(header, width))}
 
+	// Inhalt; hit[i] = Zeile i gehört zum Suchtreffer (hervorheben)
 	var content []string
+	var hit []bool
 	switch {
 	case v.loading:
 		content = []string{m.tr(txtFMViewLoading)}
 	case v.hex:
-		content = v.hexRows(width, rows)
+		content, hit = v.hexRows(width, rows)
 	case v.wrap:
-		content = v.wrappedRows(width, rows)
+		content, hit = v.wrappedRows(width, rows)
 	default:
 		for i := v.top; i < len(v.lines) && len(content) < rows; i++ {
 			content = append(content, ansi.TruncateLeft(v.lines[i], v.left, ""))
+			hit = append(hit, i == v.matchLine)
 		}
 	}
 	for i := 0; i < rows; i++ {
-		text := ""
+		text, style := "", st.panel
 		if i < len(content) {
 			text = content[i]
 		}
-		lines = append(lines, st.panel.Render(fitWidth(text, width)))
+		if i < len(hit) && hit[i] {
+			style = st.cursor
+		}
+		lines = append(lines, style.Render(fitWidth(text, width)))
 	}
-	lines = append(lines, st.keyLabel.Render(fitWidth(" "+m.tr(txtFMViewHelp), width)))
+
+	// Untere Zeile: Eingabe, Meldung oder F-Tasten-Leiste wie im mc
+	switch {
+	case v.prompt != fmPromptNone:
+		label := map[fmPrompt]string{
+			fmPromptGoto:   m.tr(txtFMGotoLine),
+			fmPromptSearch: m.tr(txtFMSearchPrompt),
+			fmPromptRegex:  m.tr(txtFMRegexPrompt),
+		}[v.prompt]
+		if v.prompt == fmPromptGoto && v.hex {
+			label = m.tr(txtFMGotoOffset)
+		}
+		lines = append(lines, st.keyLabel.Render(fitWidth(" "+label+v.input.View(), width)))
+	case v.message != "":
+		lines = append(lines, st.message.Render(fitWidth(" "+v.message, width)))
+	default:
+		lines = append(lines, renderKeyBar(st, width, strings.Split(m.tr(txtFMViewFKeys), "|")))
+	}
+
+	// Hilfe (F1) als Kasten über dem Inhalt
+	if v.showHelp && len(lines) > 2 {
+		boxWidth := dialogBoxWidth(width)
+		help := strings.Split(m.tr(txtFMViewHelpText), "\n")
+		box := renderDialogBox(st, boxWidth, height, m.tr(txtFMHelpTitle), help, m.tr(txtFMHelpClose))
+		overlayDialog(lines, box, boxWidth, width)
+	}
 	if len(lines) > height {
 		lines = lines[:height]
 	}
@@ -335,9 +658,10 @@ func (m AppModel) renderFMViewer(s *strings.Builder) {
 
 // wrappedRows liefert die sichtbaren Bildschirmzeilen im Umbruch-Modus.
 //
-// @date   2026-10-21 21:24
-func (v fmViewer) wrappedRows(width, rows int) []string {
+// @date   2026-10-21 21:36
+func (v fmViewer) wrappedRows(width, rows int) ([]string, []bool) {
 	var out []string
+	var hit []bool
 	for i := v.top; i < len(v.lines) && len(out) < rows; i++ {
 		segments := segmentLine(v.lines[i], width)
 		start := 0
@@ -349,24 +673,27 @@ func (v fmViewer) wrappedRows(width, rows int) []string {
 				break
 			}
 			out = append(out, segment)
+			hit = append(hit, i == v.matchLine)
 		}
 	}
-	return out
+	return out, hit
 }
 
 // hexRows liefert die sichtbaren Zeilen der Hex-Ansicht.
 //
-// @date   2026-10-21 21:24
-func (v fmViewer) hexRows(width, rows int) []string {
+// @date   2026-10-21 21:36
+func (v fmViewer) hexRows(width, rows int) ([]string, []bool) {
 	perRow := hexBytesPerRow(width)
 	total := hexRowCount(len(v.data), perRow)
 	top := min(v.hexTop, max(total-rows, 0))
 	var out []string
+	var hit []bool
 	for row := top; row < total && len(out) < rows; row++ {
 		start := row * perRow
 		out = append(out, hexLine(v.data[start:min(start+perRow, len(v.data))], start, perRow))
+		hit = append(hit, v.matchOffset >= start && v.matchOffset < start+perRow)
 	}
-	return out
+	return out, hit
 }
 
 // hexBytesPerRow wählt die Bytes pro Hex-Zeile passend zur Breite:

@@ -166,7 +166,7 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 | `Tab` | Switch between left and right panel |
 | `Insert` | Mark / unmark the entry under the cursor and move down |
 | `*` | Invert the marking of all entries (files and directories) |
-| `F3` | View the file under the cursor (`F2` wrap, `F4` hex/text, `q`/`Esc` close) |
+| `F3` | View the file under the cursor – viewer keys like in mc: `F1` help, `F2` wrap, `F4` hex/text, `F5` go to, `F6` regex search, `F7` search (`n` next), `F9` open with the default program, `F3`/`F10`/`q`/`Esc` close |
 | `F5` | Copy the marked entries (or the entry under the cursor) to the other panel |
 | `F10` / `q` | Close both connections and return to the list |
 
@@ -186,6 +186,13 @@ computer, so the two servers do not need to reach each other. Every file is writ
 under a temporary name with owner-only permissions and renamed when complete, so a
 private file is never readable by others on the target and an existing file is only
 replaced once the new one is complete.
+
+**Opening locally (`F9` in the viewer)** downloads the file into a private temporary
+folder and hands it to the default program of your computer (image viewer, browser, PDF
+reader, …). Executable and script types (`.exe`, `.bat`, `.ps1`, `.lnk`, `.sh`, `.desktop`, …)
+are refused because opening them would run them. On Windows the copy is marked as
+downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
+ssh-easy exits.
 
 The file manager needs two connections; until then its entry is greyed out.
 

@@ -359,13 +359,38 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 // @return int - Breite des Kastens
 // @date   2026-10-21 21:03
 func (m AppModel) renderFMDialogBox(st fmStyles, width, height int) ([]string, int) {
+	boxWidth := dialogBoxWidth(width)
+	inner := max(boxWidth-4, 1)
+	title, content, help := m.fmDialogLines(inner)
+	return renderDialogBox(st, boxWidth, height, title, content, help), boxWidth
+}
+
+// dialogBoxWidth liefert die Breite eines Dialogkastens für die Bildschirmbreite.
+//
+// @param width - Bildschirmbreite
+// @return int - Kastenbreite
+// @date   2026-10-21 21:35
+func dialogBoxWidth(width int) int {
 	boxWidth := min(width-4, fmDialogMaxWidth)
 	if boxWidth < 12 {
 		boxWidth = min(width, 12)
 	}
-	inner := max(boxWidth-4, 1)
-	title, content, help := m.fmDialogLines(inner)
+	return boxWidth
+}
 
+// renderDialogBox zeichnet einen Dialogkasten (Rahmen mit Titel, Inhalt,
+// Leerzeile, umbrochene Tastenhilfe). Zu hohe Kästen werden gekürzt.
+//
+// @param st - Stile des Farbmodus
+// @param boxWidth - Breite des Kastens
+// @param height - Bildschirmhöhe
+// @param title - Titel
+// @param content - Inhaltszeilen (höchstens boxWidth-4 breit)
+// @param help - Tastenhilfe
+// @return []string - Zeilen des Kastens
+// @date   2026-10-21 21:35
+func renderDialogBox(st fmStyles, boxWidth, height int, title string, content []string, help string) []string {
+	inner := max(boxWidth-4, 1)
 	row := func(text string) string {
 		return st.dialog.Render("│ " + fitWidth(text, inner) + " │")
 	}
@@ -386,7 +411,7 @@ func (m AppModel) renderFMDialogBox(st fmStyles, width, height int) ([]string, i
 	if len(lines) > height && height >= 2 {
 		lines = append(lines[:height-1], lines[len(lines)-1])
 	}
-	return lines, boxWidth
+	return lines
 }
 
 // overlayDialog legt den Dialog mittig über die Bildschirmzeilen.

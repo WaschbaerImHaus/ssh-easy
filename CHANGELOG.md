@@ -5,6 +5,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.60] – Build 60
+- **Changed** the file manager viewer now works like the mc viewer with an F-key bar at the bottom: `F1` help, `F2` wrap, `F3`/`F10` quit, `F4` hex/text, `F5` go to line (hex: offset, decimal or `0x…`), `F6` search with a regular expression, `F7` search (case-insensitive, `n` searches on, the field is pre-filled with the last term and the first typed character replaces it), `F9` open. The match line is highlighted; in hex view the raw bytes are searched
+- **Added** `F9` in the viewer opens the file locally with the default program of this computer (Windows: by file extension, Linux: `xdg-open`, macOS: `open`) – e.g. a `.jpg` in the image viewer, an `.html` in the browser. The file is downloaded into a private temporary folder (`0700`/`0600`) and deleted when ssh-easy exits (leftovers are removed at the next start)
+- **Security** `F9` refuses executable and script types (`.exe`, `.bat`, `.cmd`, `.ps1`, `.vbs`, `.js`, `.hta`, `.msi`, `.lnk`, `.url`, `.reg`, `.jar`, `.iso`, `.desktop`, `.sh`, …) – opening them would run them. The local name is made Windows-safe (no `:`/`\`/`<>|?*`, no reserved device names, no trailing dots/spaces – `evil.exe.` would otherwise become `evil.exe`). On Windows the file gets the Mark of the Web, so Office opens it in Protected View and SmartScreen warns
+- **Added** 16 new tests (467 total, all green)
+
 ## [v0.59] – Build 59
 - **Added** viewer (`F3`) in the file manager: shows the file under the cursor full-screen (loaded via SFTP, at most 16 MiB – larger files are cut with a hint). Content from the server is displayed safely: control and invisible format characters become `?`, tabs become spaces, CRLF works. Long lines are wrapped (`F2` toggles wrapping; without wrapping `←`/`→` scroll sideways), binary files (NUL bytes) open as hex view automatically (`F4` toggles hex/text). `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End` scroll; `q`, `Esc`, `F3` or `F10` close the viewer. `F3` on a directory enters it like `Enter`, symlinks to files show the target file
 - **Added** 16 new tests (451 total, all green)

@@ -212,7 +212,7 @@ func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 // isFileManagerMsg erkennt die asynchronen Nachrichten des Datei-Managers.
 func isFileManagerMsg(msg tea.Msg) bool {
 	switch msg.(type) {
-	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg:
+	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg, fmOpenExternalMsg:
 		return true
 	}
 	return false
