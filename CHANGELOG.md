@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.64] – Build 64
+- **Security** `F9` no longer opens any Office format, including `.docx`, `.xlsx` and `.pptx`: besides embedded macros they can load macro templates from the internet, link external OLE objects or use DDE fields – a reliable check would need a full Office parser (finding of the automated security review of Build 63). Office files can still be viewed with `F3` and copied with `F5`; the content check added in Build 63 was removed again
+- **Changed** 508 tests, all green
+
 ## [v0.63] – Build 63
 - **Security** `F9` no longer opens the legacy Office formats (`.doc`, `.xls`, `.ppt`), RTF and OpenDocument files (`.odt`, `.ods`, `.odp`, `.odg`) – they can carry macros or embedded OLE objects. `.docx`, `.xlsx` and `.pptx` are checked after downloading: they must be a real Office ZIP container without macros (`vbaProject.bin`) or ActiveX controls, otherwise they are not opened and the copy is deleted (Office detects files by content, so a renamed `.docm` or `.doc` would otherwise slip through; finding of the automated security review of Build 62)
 - **Added** 2 new tests (509 total, all green)

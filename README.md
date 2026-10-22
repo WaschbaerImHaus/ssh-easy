@@ -197,7 +197,7 @@ server in the meantime.
 **Opening locally (`F9` in the viewer)** downloads the file into a private temporary
 folder and hands it to the default program of your computer (image viewer, browser, PDF
 reader, …). Only known document and media types are opened (images, PDF, text, HTML,
-Office XML documents without macros – checked by content –, audio/video, archives); legacy Office, RTF and OpenDocument files, programs, scripts, shortcuts and
+audio/video, archives); Office documents of any kind, programs, scripts, shortcuts and
 unknown types are refused because opening them could run them. On Windows the copy is marked as
 downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
 ssh-easy exits.

@@ -7,8 +7,7 @@
 //
 // Sicherheit (die Datei stammt vom Server und ist nicht vertrauenswürdig):
 //   - Nur bekannte Dokument- und Medientypen werden geöffnet (Erlaubnisliste:
-//     Bilder, PDF, Text, HTML, Office ohne Makro-Varianten, Audio/Video,
-//     Archive). Alles andere - insbesondere Programme, Skripte und
+//     Bilder, PDF, Text, HTML, Audio/Video, Archive - keine Office-Formate). Alles andere - insbesondere Programme, Skripte und
 //     Verknüpfungen (.exe, .bat, .ps1, .lnk, .py, .jnlp, .desktop …) - wird
 //     abgelehnt: "Öffnen" hieße dort "Ausführen". Eine Sperrliste wäre nie
 //     vollständig (Security-Review Build 60).
@@ -24,11 +23,10 @@
 //     ein Programm die Datei noch offen hatte) räumt der nächste Start auf.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 01:00
+// @date   2026-10-22 01:03
 package main
 
 import (
-	"archive/zip"
 	"io"
 	"os"
 	"path/filepath"
@@ -60,11 +58,12 @@ var openSession struct {
 
 // allowedOpenExtensions - Typen, die mit dem Standardprogramm geöffnet
 // werden dürfen: reine Dokumente und Medien. Bewusst NICHT enthalten:
-// makrofähige Office-Varianten (.docm, .xlsm …), die alten Office-Formate
-// (.doc, .xls, .ppt - OLE mit Makros), RTF (eingebettete OLE-Objekte),
-// OpenDocument (.odt … - Basic-Makros), MHT-Archive und alle ausführbaren
-// Typen (Security-Review Build 62). .docx/.xlsx/.pptx werden zusätzlich am
-// Inhalt geprüft (checkOfficeContent).
+// sämtliche Office-Formate - alte Formate (.doc …, OLE/Makros), RTF
+// (eingebettete OLE-Objekte), OpenDocument (Basic-Makros) und auch die
+// XML-Formate (.docx …: nachgeladene Vorlagen mit Makros, externe
+// OLE-Verknüpfungen, DDE-Felder - per Namens- oder Inhaltsprüfung nicht
+// verlässlich zu erkennen; Security-Reviews Build 62/63) -, MHT-Archive und
+// alle ausführbaren Typen.
 var allowedOpenExtensions = map[string]bool{
 	// Bilder
 	".jpg": true, ".jpeg": true, ".jpe": true, ".png": true, ".gif": true, ".bmp": true,
@@ -73,8 +72,8 @@ var allowedOpenExtensions = map[string]bool{
 	// Text und Web
 	".txt": true, ".log": true, ".md": true, ".csv": true, ".tsv": true, ".json": true,
 	".xml": true, ".yaml": true, ".yml": true, ".html": true, ".htm": true, ".css": true,
-	// Dokumente: PDF und makrofreie Office-XML-Formate
-	".pdf": true, ".docx": true, ".xlsx": true, ".pptx": true,
+	// Dokumente
+	".pdf": true,
 	// Audio und Video
 	".mp3": true, ".wav": true, ".ogg": true, ".oga": true, ".flac": true, ".m4a": true,
 	".aac": true, ".opus": true, ".mp4": true, ".m4v": true, ".mkv": true, ".avi": true,
@@ -82,36 +81,6 @@ var allowedOpenExtensions = map[string]bool{
 	// Archive (werden nur angezeigt, nicht entpackt-und-ausgeführt)
 	".zip": true, ".7z": true, ".rar": true, ".tar": true, ".gz": true, ".tgz": true,
 	".bz2": true, ".xz": true,
-}
-
-// officeXMLExtensions - Office-Formate, deren Inhalt vor dem Öffnen geprüft
-// wird (Office erkennt Dateien am Inhalt: eine umbenannte .docm oder .doc
-// würde sonst als .docx durchgehen)
-var officeXMLExtensions = map[string]bool{".docx": true, ".xlsx": true, ".pptx": true}
-
-// errOfficeUnsafe - Office-Datei mit Makros/ActiveX oder kein echtes Office-ZIP
-var errOfficeUnsafe = &openError{"office file contains macros or is not a plain office document"}
-
-// checkOfficeContent prüft eine heruntergeladene .docx/.xlsx/.pptx: Sie
-// muss ein ZIP-Container sein und darf keinen Makro-Teil (vbaProject.bin)
-// und keine ActiveX-Steuerelemente enthalten.
-//
-// @param local - lokaler Pfad
-// @return error - errOfficeUnsafe bei Verdacht
-// @date   2026-10-22 01:00
-func checkOfficeContent(local string) error {
-	reader, err := zip.OpenReader(local)
-	if err != nil {
-		return errOfficeUnsafe
-	}
-	defer reader.Close()
-	for _, file := range reader.File {
-		name := strings.ToLower(file.Name)
-		if strings.HasSuffix(name, "vbaproject.bin") || strings.Contains(name, "activex") || strings.HasSuffix(name, "vbadata.xml") {
-			return errOfficeUnsafe
-		}
-	}
-	return nil
 }
 
 // windowsReservedNames - Gerätenamen, die unter Windows keine Datei sein dürfen
@@ -222,12 +191,6 @@ func downloadForOpen(fsys remoteFS, remotePath, localName string) (local string,
 	}
 	if err != nil {
 		return "", err
-	}
-	// Office-Dateien am Inhalt prüfen (Makros, falscher Typ)
-	if officeXMLExtensions[strings.ToLower(filepath.Ext(local))] {
-		if err = checkOfficeContent(local); err != nil {
-			return "", err
-		}
 	}
 	markDownloaded(local)
 	return local, nil
