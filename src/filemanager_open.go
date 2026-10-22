@@ -6,20 +6,25 @@
 // macOS: open). Ein .jpg landet so im Bildbetrachter, ein .html im Browser.
 //
 // Sicherheit (die Datei stammt vom Server und ist nicht vertrauenswürdig):
-//   - Ausführbare und Skript-Typen (.exe, .bat, .ps1, .lnk, .hta, .desktop …)
-//     werden NICHT geöffnet - "Öffnen" hieße dort "Ausführen".
+//   - Nur bekannte Dokument- und Medientypen werden geöffnet (Erlaubnisliste:
+//     Bilder, PDF, Text, HTML, Office ohne Makro-Varianten, Audio/Video,
+//     Archive). Alles andere - insbesondere Programme, Skripte und
+//     Verknüpfungen (.exe, .bat, .ps1, .lnk, .py, .jnlp, .desktop …) - wird
+//     abgelehnt: "Öffnen" hieße dort "Ausführen". Eine Sperrliste wäre nie
+//     vollständig (Security-Review Build 60).
 //   - Der lokale Name wird Windows-sicher gemacht (keine : \ < > | ? *,
 //     keine reservierten Namen wie CON/NUL, keine Punkte/Leerzeichen am Ende,
 //     die Windows sonst stillschweigend entfernt: "x.exe." wäre x.exe).
 //   - Jede Datei liegt in einem eigenen, nur für den Nutzer zugänglichen
 //     Ordner (0700, Datei 0600, exklusiv angelegt).
 //   - Windows: Kennzeichnung "aus dem Internet" (Mark of the Web), damit
-//     Office & Co. die geschützte Ansicht nutzen und SmartScreen warnt.
+//     Office & Co. die geschützte Ansicht nutzen und SmartScreen warnt;
+//     macOS: Quarantäne-Kennzeichnung (Gatekeeper).
 //   - Beim Programmende wird der Temp-Ordner gelöscht; Reste (z. B. weil
 //     ein Programm die Datei noch offen hatte) räumt der nächste Start auf.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 00:35
+// @date   2026-10-22 00:43
 package main
 
 import (
@@ -52,21 +57,27 @@ var openSession struct {
 	dir string
 }
 
-// blockedOpenExtensions - Typen, bei denen "Öffnen" = "Ausführen" wäre
-// (Windows-Programme, Skripte, Verknüpfungen, Installer, Datenträgerabbilder,
-// Linux-Starter und Shell-Skripte).
-var blockedOpenExtensions = map[string]bool{
-	".exe": true, ".com": true, ".bat": true, ".cmd": true, ".scr": true, ".pif": true,
-	".cpl": true, ".msi": true, ".msp": true, ".mst": true, ".msc": true, ".dll": true,
-	".sys": true, ".drv": true, ".ocx": true, ".ps1": true, ".psm1": true, ".psd1": true,
-	".ps1xml": true, ".psc1": true, ".vbs": true, ".vbe": true, ".js": true, ".jse": true,
-	".wsf": true, ".wsh": true, ".wsc": true, ".hta": true, ".lnk": true, ".url": true,
-	".reg": true, ".inf": true, ".scf": true, ".jar": true, ".chm": true, ".gadget": true,
-	".application": true, ".appref-ms": true, ".library-ms": true, ".settingcontent-ms": true,
-	".search-ms": true, ".diagcab": true, ".cab": true, ".appx": true, ".appxbundle": true,
-	".msix": true, ".msixbundle": true, ".iso": true, ".img": true, ".vhd": true, ".vhdx": true,
-	".xll": true, ".desktop": true, ".sh": true, ".bash": true, ".zsh": true, ".csh": true,
-	".run": true, ".bin": true, ".appimage": true, ".command": true, ".app": true,
+// allowedOpenExtensions - Typen, die mit dem Standardprogramm geöffnet
+// werden dürfen: reine Dokumente und Medien. Makro-fähige Office-Varianten
+// (.docm, .xlsm …), MHT-Archive und alle ausführbaren Typen fehlen bewusst.
+var allowedOpenExtensions = map[string]bool{
+	// Bilder
+	".jpg": true, ".jpeg": true, ".jpe": true, ".png": true, ".gif": true, ".bmp": true,
+	".webp": true, ".tif": true, ".tiff": true, ".svg": true, ".ico": true, ".heic": true,
+	".heif": true, ".avif": true,
+	// Text und Web
+	".txt": true, ".log": true, ".md": true, ".csv": true, ".tsv": true, ".json": true,
+	".xml": true, ".yaml": true, ".yml": true, ".html": true, ".htm": true, ".css": true,
+	// Dokumente
+	".pdf": true, ".rtf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true,
+	".ppt": true, ".pptx": true, ".odt": true, ".ods": true, ".odp": true, ".odg": true,
+	// Audio und Video
+	".mp3": true, ".wav": true, ".ogg": true, ".oga": true, ".flac": true, ".m4a": true,
+	".aac": true, ".opus": true, ".mp4": true, ".m4v": true, ".mkv": true, ".avi": true,
+	".mov": true, ".webm": true, ".wmv": true, ".mpg": true, ".mpeg": true,
+	// Archive (werden nur angezeigt, nicht entpackt-und-ausgeführt)
+	".zip": true, ".7z": true, ".rar": true, ".tar": true, ".gz": true, ".tgz": true,
+	".bz2": true, ".xz": true,
 }
 
 // windowsReservedNames - Gerätenamen, die unter Windows keine Datei sein dürfen
@@ -81,7 +92,7 @@ var windowsReservedNames = map[string]bool{
 //
 // @param name - Name vom Server
 // @return string - lokaler Name (nie leer)
-// @date   2026-10-22 00:35
+// @date   2026-10-22 00:43
 func localOpenName(name string) string {
 	var out strings.Builder
 	for i := 0; i < len(name); {
@@ -96,16 +107,9 @@ func localOpenName(name string) string {
 			out.WriteRune(r)
 		}
 	}
-	// Windows entfernt Punkte und Leerzeichen am Ende stillschweigend
-	local := strings.TrimRight(out.String(), ". ")
-	if local == "" {
-		local = "datei"
-	}
-	base := strings.ToLower(strings.TrimSuffix(local, filepath.Ext(local)))
-	if windowsReservedNames[base] {
-		local = "_" + local
-	}
-	// Länge begrenzen, Endung behalten
+	local := out.String()
+	// Erst kürzen (Endung behalten), DANACH alle Bereinigungen - sonst
+	// könnte der gekürzte Name wieder mit Punkt/Leerzeichen enden
 	if len(local) > 150 {
 		ext := filepath.Ext(local)
 		if len(ext) > 20 {
@@ -117,18 +121,29 @@ func localOpenName(name string) string {
 		}
 		local = local[:cut] + ext
 	}
+	// Windows entfernt Punkte und Leerzeichen am Ende stillschweigend
+	// ("x.exe." wäre x.exe) - deshalb hier selbst entfernen
+	local = strings.TrimRight(local, ". ")
+	if local == "" {
+		local = "datei"
+	}
+	base := strings.ToLower(strings.TrimSuffix(local, filepath.Ext(local)))
+	if windowsReservedNames[base] {
+		local = "_" + local
+	}
 	return local
 }
 
-// blockedOpenExtension prüft, ob ein (lokaler) Name einen gesperrten Typ hat.
+// blockedOpenExtension prüft, ob ein (lokaler) Name NICHT auf der
+// Erlaubnisliste steht (auch: keine Endung).
 //
 // @param localName - Ergebnis von localOpenName
-// @return string - Endung in Kleinbuchstaben (mit Punkt)
+// @return string - Endung in Kleinbuchstaben (mit Punkt; "" ohne Endung)
 // @return bool - true wenn gesperrt
-// @date   2026-10-22 00:35
+// @date   2026-10-22 00:43
 func blockedOpenExtension(localName string) (string, bool) {
-	ext := strings.ToLower(filepath.Ext(localName))
-	return ext, blockedOpenExtensions[ext]
+	ext := strings.ToLower(filepath.Ext(strings.TrimRight(localName, ". ")))
+	return ext, !allowedOpenExtensions[ext]
 }
 
 // downloadForOpen lädt eine Datei in einen eigenen privaten Ordner.

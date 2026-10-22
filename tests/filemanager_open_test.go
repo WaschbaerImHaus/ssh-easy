@@ -62,27 +62,68 @@ func TestLocalOpenName(t *testing.T) {
 	}
 }
 
-// TestBlockedOpenExtension - ausführbare und Skript-Typen werden gesperrt.
+// TestBlockedOpenExtension - nur bekannte Dokument-/Medientypen werden
+// geöffnet (Erlaubnisliste); alles andere ist gesperrt.
 func TestBlockedOpenExtension(t *testing.T) {
 	blocked := []string{"setup.exe", "x.pdf.exe", "a.BAT", "b.cmd", "c.ps1", "d.vbs", "e.js", "f.hta",
-		"g.msi", "h.scr", "i.lnk", "j.url", "k.reg", "l.jar", "m.desktop", "n.sh", "o.cpl", "p.iso", "q.appimage", "r.wsf", "s.chm"}
+		"g.msi", "h.scr", "i.lnk", "j.url", "k.reg", "l.jar", "m.desktop", "n.sh", "o.cpl", "p.iso", "q.appimage", "r.wsf", "s.chm",
+		// Funde des Security-Reviews (Sperrliste war unvollständig)
+		"t.py", "u.pyw", "v.pyz", "w.pyc", "x.ws", "y.vb", "z.shb", "a.sct", "b.jnlp", "c.wsb", "d.xbap", "e.theme",
+		"f.themepack", "g.deskthemepack", "h.mht", "i.mhtml", "j.terminal", "k.tool", "l.workflow", "m.fileloc",
+		"n.inetloc", "o.webloc", "p.command", "q.unbekannt", "ohne_endung", "r."}
 	for _, name := range blocked {
 		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
 			t.Errorf("%s nicht gesperrt", name)
 		}
 	}
-	allowed := []string{"bild.jpg", "foto.PNG", "seite.html", "doku.pdf", "text.txt", "tabelle.xlsx", "film.mp4", "ohne_endung"}
+	allowed := []string{"bild.jpg", "foto.PNG", "seite.html", "doku.pdf", "text.txt", "tabelle.xlsx", "film.mp4",
+		"brief.docx", "folien.pptx", "lied.mp3", "archiv.zip", "grafik.svg", "notiz.md", "daten.csv"}
 	for _, name := range allowed {
 		if ext, ok := blockedOpenExtension(localOpenName(name)); ok {
 			t.Errorf("%s gesperrt (%s)", name, ext)
 		}
 	}
 	// Tricks: Punkte/Leerzeichen am Ende und alternative Datenströme
-	for _, name := range []string{"evil.exe.", "evil.exe ", "harmlos.txt:evil.exe"} {
+	for _, name := range []string{"evil.exe.", "evil.exe ", "harmlos.txt:evil.exe", "bild.jpg.exe"} {
 		if _, ok := blockedOpenExtension(localOpenName(name)); !ok {
 			t.Errorf("Trick %q nicht gesperrt (lokal %q)", name, localOpenName(name))
 		}
 	}
+}
+
+// TestLocalOpenNameCutNeverEndsWithDotOrSpace - beim Kürzen langer Namen
+// darf am Ende kein Punkt/Leerzeichen stehen bleiben (Windows würde ihn
+// entfernen und so eine andere Endung erzeugen, Security-Review Build 60).
+func TestLocalOpenNameCutNeverEndsWithDotOrSpace(t *testing.T) {
+	longExt := "." + strings.Repeat("e", 25) // zu lange Endung -> wird verworfen
+	names := []string{
+		strings.Repeat("a", 145) + ".exe." + longExt,
+		strings.Repeat("a", 146) + " . . " + longExt,
+		strings.Repeat("b", 149) + "." + longExt,
+		strings.Repeat("c", 140) + "........" + ".jpg",
+		strings.Repeat("ä", 80) + ".txt",
+	}
+	for _, name := range names {
+		got := localOpenName(name)
+		if strings.HasSuffix(got, ".") || strings.HasSuffix(got, " ") || got == "" {
+			t.Errorf("gekürzter Name endet mit Punkt/Leerzeichen: %q", got)
+		}
+		if len(got) > 150 {
+			t.Errorf("Name zu lang: %d", len(got))
+		}
+		if !utf8ValidString(got) {
+			t.Errorf("ungültiges UTF-8 nach dem Kürzen: %q", got)
+		}
+	}
+	// Der erste Fall darf nicht als .exe durchgehen
+	if _, ok := blockedOpenExtension(localOpenName(names[0])); !ok {
+		t.Errorf("gekürzter Name %q nicht gesperrt", localOpenName(names[0]))
+	}
+}
+
+// utf8ValidString ist ein kleiner Helfer für die Tests.
+func utf8ValidString(s string) bool {
+	return strings.ToValidUTF8(s, "\uFFFD") == s
 }
 
 // openViewerOn öffnet den Betrachter für eine Datei der Quelle.

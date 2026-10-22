@@ -299,6 +299,10 @@ func (m AppModel) fmOpenExternal() (tea.Model, tea.Cmd) {
 	}
 	local := localOpenName(v.rawName)
 	if ext, blocked := blockedOpenExtension(local); blocked {
+		// Ohne Endung den Namen nennen, sonst die Endung
+		if ext == "" || ext == "." {
+			ext = v.name
+		}
 		v.message = fmt.Sprintf(m.tr(txtFMOpenBlocked), sanitizeFileName(ext))
 		return m, nil
 	}

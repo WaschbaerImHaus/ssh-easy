@@ -1,7 +1,7 @@
 // Plattform-spezifisches Öffnen mit dem Standardprogramm (Linux/macOS).
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 00:35
+// @date   2026-10-22 00:43
 
 //go:build !windows
 
@@ -32,10 +32,3 @@ func platformOpenFile(p string) error {
 	go func() { _ = cmd.Wait() }()
 	return nil
 }
-
-// markDownloaded ist unter Linux/macOS ohne Wirkung (keine Zonen-Kennzeichnung;
-// die Datei ist ohnehin nicht ausführbar, Rechte 0600).
-//
-// @param p - lokaler Pfad
-// @date   2026-10-22 00:35
-func markDownloaded(p string) {}

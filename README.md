@@ -189,8 +189,9 @@ replaced once the new one is complete.
 
 **Opening locally (`F9` in the viewer)** downloads the file into a private temporary
 folder and hands it to the default program of your computer (image viewer, browser, PDF
-reader, …). Executable and script types (`.exe`, `.bat`, `.ps1`, `.lnk`, `.sh`, `.desktop`, …)
-are refused because opening them would run them. On Windows the copy is marked as
+reader, …). Only known document and media types are opened (images, PDF, text, HTML,
+Office documents without macros, audio/video, archives); programs, scripts, shortcuts and
+unknown types are refused because opening them could run them. On Windows the copy is marked as
 downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
 ssh-easy exits.
 

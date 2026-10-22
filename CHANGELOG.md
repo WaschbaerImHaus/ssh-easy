@@ -5,6 +5,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.61] – Build 61
+- **Security** `F9` (open with the default program) now uses an allowlist instead of a blocklist: only known document and media types are opened (images, PDF, text, HTML, Office without macro variants, audio/video, archives). Everything else – programs, scripts, shortcuts and unknown types (e.g. `.py`, `.jnlp`, `.mhtml`, `.theme`, `.webloc`) – is refused (finding of the automated security review of Build 60)
+- **Security** long file names are cut first and normalized afterwards, so a shortened name can no longer end in a dot or space that Windows would strip (which could have turned it into a different extension)
+- **Security** on macOS the local copy gets the quarantine attribute (Gatekeeper)
+- **Added** 1 new test, extended checks (468 total, all green)
+
 ## [v0.60] – Build 60
 - **Changed** the file manager viewer now works like the mc viewer with an F-key bar at the bottom: `F1` help, `F2` wrap, `F3`/`F10` quit, `F4` hex/text, `F5` go to line (hex: offset, decimal or `0x…`), `F6` search with a regular expression, `F7` search (case-insensitive, `n` searches on, the field is pre-filled with the last term and the first typed character replaces it), `F9` open. The match line is highlighted; in hex view the raw bytes are searched
 - **Added** `F9` in the viewer opens the file locally with the default program of this computer (Windows: by file extension, Linux: `xdg-open`, macOS: `open`) – e.g. a `.jpg` in the image viewer, an `.html` in the browser. The file is downloaded into a private temporary folder (`0700`/`0600`) and deleted when ssh-easy exits (leftovers are removed at the next start)

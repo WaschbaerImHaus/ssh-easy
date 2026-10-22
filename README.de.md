@@ -178,8 +178,9 @@ Datei wird erst ersetzt, wenn die neue vollständig ist.
 
 **Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
 übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).
-Ausführbare und Skript-Typen (`.exe`, `.bat`, `.ps1`, `.lnk`, `.sh`, `.desktop` …) werden
-abgelehnt, weil „Öffnen“ dort „Ausführen“ hieße. Unter Windows wird die Kopie als „aus dem
+Geöffnet werden nur bekannte Dokument- und Medientypen (Bilder, PDF, Text, HTML,
+Office-Dokumente ohne Makros, Audio/Video, Archive); Programme, Skripte, Verknüpfungen und
+unbekannte Typen werden abgelehnt, weil „Öffnen“ dort „Ausführen“ heißen könnte. Unter Windows wird die Kopie als „aus dem
 Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
 von ssh-easy gelöscht.
 
