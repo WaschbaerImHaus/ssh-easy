@@ -78,8 +78,8 @@
 - [x] Menüs wie im mc über F9 (Build 73): Links/Rechts (Neu einlesen, Strg+R), Datei (F3–F8, *, F10), Optionen (Aussehen, Endungen für F9); "Befehl" entfällt (nichts davon angeboten)
 
 - [x] Letzter Pfad pro Verbindung (Nutzerwunsch 2026-10-23, Build 77): Der Datei-Manager startet je Verbindung (auch Lokaler PC) im zuletzt geöffneten Verzeichnis; fehlt es oder ist es nicht lesbar, im Home. Gespeichert in der Konfiguration, nicht im Export
+- [x] Schnelleres Kopieren/Verschieben vieler kleiner Dateien (Nutzerwunsch 2026-10-23, Build 78): 8 Dateien gleichzeitig, Angaben aus der Verzeichnisliste statt einzelner Abfragen (Quelle und Ziel), Lesen und Schreiben gleichzeitig mit 64 MB Lesevorlauf insgesamt, höchstens 16 MB pro Datei (1 GB erlaubt, bringt aber kein Tempo); Namen, die sich nur in Groß-/Kleinschreibung unterscheiden, und ungewöhnliche Namen werden am Ziel einzeln geprüft (keine stille Überschreibung). Beim Verschieben wird jede Quelldatei erst gelöscht, wenn sie am Ziel vollständig geschrieben und umbenannt ist
 ## Offen
-- [ ] Datei-Manager: viele kleine Dateien schneller kopieren (Nutzerwunsch 2026-10-23: 700 Dateien/18 MB dauerten lange). Mehrere Dateien gleichzeitig übertragen, weniger Server-Rundreisen je Datei; Lese-/Schreibpuffer zum gleichzeitigen Lesen und Schreiben bis 1 GB erlaubt
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)

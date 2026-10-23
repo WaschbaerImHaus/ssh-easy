@@ -114,7 +114,7 @@ func (r *copyRun) removeMovedDirs() {
 		if err := r.req.src.Remove(srcPath); err != nil {
 			if children, readErr := r.req.src.ReadDir(srcPath); readErr == nil && len(children) > 0 {
 				// Absichtlich nicht leer: oberster Eintrag ist unvollständig
-				r.incomplete[node.top] = true
+				r.markIncomplete(node.top)
 				continue
 			}
 			r.fail(node, srcPath, err)

@@ -47,6 +47,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -226,6 +227,18 @@ type copyRun struct {
 	// Verschieben: Ergebnis der Prüfung "Quell- und Zielverzeichnis sind
 	// dasselbe?" pro Verzeichnispaar
 	sameDirs map[string]bool
+	// Vorgehaltene Listen der Zielverzeichnisse (targetInfo; nil = einzeln
+	// fragen); nur der Ablauf greift darauf zu, nie die Arbeiter
+	dstDirs map[string]*targetListing
+	// Zielpfade dieses Laufs (klein geschrieben, looseTargetKey); nur dispatch
+	assigned map[string]bool
+	// Laufende Übertragungen der Arbeiter (targetInfo wartet bei Kollisionen)
+	inflight sync.WaitGroup
+	// Schützt progress, lastSent, result und incomplete: Arbeiter
+	// übertragen gleichzeitig (filemanager_transfer.go)
+	mu sync.Mutex
+	// Hält alle Arbeiter an (Abbruch per Rückfrage oder Fehler des Kontexts)
+	cancel context.CancelFunc
 }
 
 // runCopy führt einen Kopierauftrag aus und meldet am Ende genau ein
@@ -237,8 +250,13 @@ type copyRun struct {
 // @param answers - Kanal für Antworten auf Rückfragen
 // @date   2026-10-21 21:03
 func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answers <-chan copyConflictAnswer) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	run := &copyRun{
 		ctx:        ctx,
+		cancel:     cancel,
+		dstDirs:    map[string]*targetListing{},
+		assigned:   map[string]bool{},
 		req:        req,
 		events:     events,
 		answers:    answers,
@@ -343,8 +361,20 @@ func satAdd(a, b int64) int64 {
 // @param err - Fehler
 // @date   2026-10-21 21:03
 func (r *copyRun) fail(node copyNode, p string, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.result.failures = append(r.result.failures, copyFailure{path: p, err: err})
 	r.incomplete[node.top] = true
+}
+
+// markIncomplete merkt einen obersten Eintrag als unvollständig.
+//
+// @param top - Name des obersten Eintrags
+// @date   2026-10-23 19:44
+func (r *copyRun) markIncomplete(top string) {
+	r.mu.Lock()
+	r.incomplete[top] = true
+	r.mu.Unlock()
 }
 
 // scan erfasst alle Einträge (Verzeichnisse vor ihrem Inhalt).
@@ -353,8 +383,10 @@ func (r *copyRun) fail(node copyNode, p string, err error) {
 // @date   2026-10-21 21:03
 func (r *copyRun) scan() []copyNode {
 	var nodes []copyNode
-	var walk func(rel, top string)
-	walk = func(rel, top string) {
+	// info: Angaben aus ReadDir des Elternverzeichnisses (nil = per Lstat
+	// fragen) - spart eine Server-Rundreise pro Eintrag
+	var walk func(rel, top string, info os.FileInfo)
+	walk = func(rel, top string, info os.FileInfo) {
 		if r.ctx.Err() != nil || r.limitHit {
 			return
 		}
@@ -365,10 +397,12 @@ func (r *copyRun) scan() []copyNode {
 			return
 		}
 		srcPath := path.Join(r.req.srcDir, rel)
-		info, err := r.req.src.Lstat(srcPath)
-		if err != nil {
-			r.fail(copyNode{top: top}, srcPath, err)
-			return
+		if info == nil {
+			var err error
+			if info, err = r.req.src.Lstat(srcPath); err != nil {
+				r.fail(copyNode{top: top}, srcPath, err)
+				return
+			}
 		}
 		node := copyNode{rel: rel, top: top, info: info}
 		nodes = append(nodes, node)
@@ -389,16 +423,25 @@ func (r *copyRun) scan() []copyNode {
 					r.fail(node, srcPath+"/"+child.Name(), errUnsafeName)
 					continue
 				}
-				walk(path.Join(rel, child.Name()), top)
+				// Ohne Rechte-Angaben in der Liste (Mode 0) einzeln fragen -
+				// sonst gälte ein Verzeichnis als Datei
+				var known os.FileInfo
+				if child.Mode() != 0 {
+					known = child
+				}
+				walk(path.Join(rel, child.Name()), top, known)
 			}
 			return
 		}
+		r.mu.Lock()
 		r.progress.totalFiles++
 		if info.Mode().IsRegular() {
 			r.progress.totalBytes = satAdd(r.progress.totalBytes, max(info.Size(), 0))
 		}
+		r.mu.Unlock()
 		r.sendProgress(false)
 	}
+	known := r.sourceInfos()
 	for _, name := range r.req.names {
 		if !safeCopyName(name) || !fsAcceptsName(r.req.dst, name) {
 			r.fail(copyNode{top: name}, name, errUnsafeName)
@@ -408,20 +451,40 @@ func (r *copyRun) scan() []copyNode {
 			r.fail(copyNode{top: name}, path.Join(r.req.srcDir, name), errMoveIntoItself)
 			continue
 		}
-		walk(name, name)
+		walk(name, name, known[name])
 	}
 	return nodes
 }
 
-// copyAll kopiert die erfassten Einträge der Reihe nach.
+// copyAll kopiert die erfassten Einträge: dispatch geht sie der Reihe nach
+// durch, copyParallel Arbeiter übertragen die Dateien gleichzeitig. Kehrt
+// erst zurück, wenn alle Arbeiter fertig sind.
 //
 // @param nodes - Erfasste Einträge
-// @date   2026-10-21 21:03
+// @date   2026-10-23 19:44
 func (r *copyRun) copyAll(nodes []copyNode) {
+	jobs, wait := r.startWorkers()
+	if !r.dispatch(nodes, jobs) {
+		// Abbruch: laufende Übertragungen anhalten (Temp-Dateien werden
+		// dabei gelöscht)
+		r.setCancelled()
+	}
+	close(jobs)
+	wait()
+}
+
+// dispatch geht die erfassten Einträge der Reihe nach durch: Verzeichnisse,
+// Symlinks und Rückfragen erledigt er selbst, Dateien übergibt er den
+// Arbeitern.
+//
+// @param nodes - Erfasste Einträge
+// @param jobs - Aufträge an die Arbeiter
+// @return bool - false = Vorgang abgebrochen
+// @date   2026-10-23 19:44
+func (r *copyRun) dispatch(nodes []copyNode, jobs chan<- copyJob) bool {
 	for _, node := range nodes {
 		if r.ctx.Err() != nil {
-			r.result.cancelled = true
-			return
+			return false
 		}
 		if r.underSkippedDir(node.rel) {
 			r.countSkipped(node)
@@ -429,7 +492,9 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 		}
 		srcPath := path.Join(r.req.srcDir, node.rel)
 		dstPath := path.Join(r.req.dstDir, node.rel)
+		r.mu.Lock()
 		r.progress.current = srcPath
+		r.mu.Unlock()
 		r.sendProgress(false)
 
 		// Zweite Sicherung: Ziel muss im Zielverzeichnis liegen
@@ -446,8 +511,7 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 			r.countSkipped(node)
 			continue
 		}
-		existing, err := r.req.dst.Lstat(dstPath)
-		exists := err == nil
+		existing, exists := r.targetInfo(node.rel, dstPath)
 		// Verschieben auf ein vorhandenes Ziel: ist es die Quelle selbst
 		// (zweiter Verbindungseintrag zum selben Server)? Dann würde das
 		// Löschen der Quelle die einzige Kopie vernichten
@@ -468,14 +532,15 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 			r.copyDir(node, dstPath, existing, exists)
 		case node.info.Mode()&os.ModeSymlink != 0:
 			if !r.copySymlink(node, srcPath, dstPath, existing, exists) {
-				return
+				return false
 			}
 		default:
-			if !r.copyRegular(node, srcPath, dstPath, existing, exists) {
-				return
+			if !r.copyRegular(node, srcPath, dstPath, existing, exists, jobs) {
+				return false
 			}
 		}
 	}
+	return true
 }
 
 // copyDir legt ein Verzeichnis an bzw. führt es mit einem vorhandenen zusammen.
@@ -497,6 +562,8 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 		return
 	}
 	r.rememberMovedDir(node)
+	// Neu angelegt = leer: Einträge darin muss niemand mehr abfragen
+	r.dstDirs[dstPath] = newTargetListing(nil)
 	// Während des Kopierens nur für den Besitzer zugänglich; die echten
 	// Rechte setzt finishDirs am Ende
 	_ = r.req.dst.Chmod(dstPath, 0o700)
@@ -544,16 +611,20 @@ func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing o
 		r.fail(node, dstPath, err)
 		return true
 	}
+	r.mu.Lock()
 	r.result.files++
+	r.mu.Unlock()
 	r.removeMovedSource(node, srcPath)
 	return true
 }
 
-// copyRegular kopiert eine Datei samt Rechten und Änderungszeit.
+// copyRegular prüft eine Datei (Typ, vorhandenes Ziel, Rückfrage) und
+// übergibt sie einem Arbeiter, der sie samt Rechten und Änderungszeit
+// überträgt.
 //
 // @return bool - false = Vorgang abgebrochen
-// @date   2026-10-21 21:03
-func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing os.FileInfo, exists bool) bool {
+// @date   2026-10-23 19:44
+func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing os.FileInfo, exists bool, jobs chan<- copyJob) bool {
 	if !node.info.Mode().IsRegular() {
 		// Gerätedateien, Pipes, Sockets: nicht kopierbar
 		r.fail(node, srcPath, errTargetTypeMismatch)
@@ -570,24 +641,16 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 			return true
 		}
 	}
-	before := r.progress.doneBytes
-	err := r.copyData(srcPath, dstPath, node.info)
-	if err != nil {
-		if r.ctx.Err() != nil {
-			r.result.cancelled = true
-			return false
-		}
-		r.fail(node, dstPath, err)
-		r.progress.doneBytes = before
-		r.countDone(node, node.info.Size())
+	// Übertragen (und beim Verschieben danach die Quelle löschen) macht
+	// ein Arbeiter - siehe transfer
+	r.inflight.Add(1)
+	select {
+	case jobs <- copyJob{node: node, srcPath: srcPath, dstPath: dstPath}:
 		return true
+	case <-r.ctx.Done():
+		r.inflight.Done()
+		return false
 	}
-	r.result.files++
-	r.result.bytes = satAdd(r.result.bytes, max(node.info.Size(), 0))
-	r.removeMovedSource(node, srcPath)
-	r.progress.doneFiles++
-	r.sendProgress(true)
-	return true
 }
 
 // copyData überträgt den Inhalt einer Datei sicher:
@@ -634,7 +697,17 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 
 	buffered := bufio.NewWriterSize(writer, copyBufferSize)
 	counter := &copyCountingWriter{run: r, w: buffered}
-	_, err = io.Copy(counter, reader)
+	defer func() {
+		if err != nil {
+			// Fortschritt dieser Datei zurücknehmen; der Aufrufer zählt sie
+			// danach als erledigt (Balken erreicht trotzdem 100 %)
+			r.mu.Lock()
+			r.progress.doneBytes -= counter.n
+			r.mu.Unlock()
+		}
+	}()
+	// Lesen und Schreiben gleichzeitig (Lesevorlauf im gemeinsamen Budget)
+	_, err = pipeCopy(r.ctx, counter, reader, copyReadAhead)
 	if err == nil {
 		err = buffered.Flush()
 	}
@@ -690,6 +763,8 @@ func tempCopyName(dstPath string) string {
 type copyCountingWriter struct {
 	run *copyRun
 	w   io.Writer
+	// In diese Datei geschriebene Bytes
+	n int64
 }
 
 // Write leitet weiter, zählt und prüft auf Abbruch.
@@ -700,8 +775,11 @@ func (c *copyCountingWriter) Write(b []byte) (int, error) {
 		return 0, err
 	}
 	n, err := c.w.Write(b)
+	c.n += int64(n)
+	c.run.mu.Lock()
 	c.run.progress.doneBytes = satAdd(c.run.progress.doneBytes, int64(n))
-	c.run.sendProgress(false)
+	c.run.sendProgressLocked(false)
+	c.run.mu.Unlock()
 	return n, err
 }
 
@@ -719,14 +797,14 @@ func (r *copyRun) resolveConflict(node copyNode, dstPath string, existing os.Fil
 	if r.policy == policyAsk {
 		answer, ok := r.ask(dstPath, node.info, existing)
 		if !ok {
-			r.result.cancelled = true
+			r.setCancelled()
 			return false, false
 		}
 		switch answer {
 		case copyAnswerOverwrite:
 			return true, true
 		case copyAnswerSkip:
-			r.incomplete[node.top] = true
+			r.markIncomplete(node.top)
 			return false, true
 		case copyAnswerOverwriteAll:
 			r.policy = policyAll
@@ -749,7 +827,7 @@ func (r *copyRun) resolveConflict(node copyNode, dstPath string, existing os.Fil
 		overwrite = node.info.Size() > existing.Size()
 	}
 	if !overwrite {
-		r.incomplete[node.top] = true
+		r.markIncomplete(node.top)
 	}
 	return overwrite, true
 }
@@ -825,11 +903,13 @@ func (r *copyRun) countSkipped(node copyNode) {
 //
 // @date   2026-10-21 21:03
 func (r *copyRun) countDone(node copyNode, size int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.progress.doneFiles++
 	if node.info.Mode().IsRegular() {
 		r.progress.doneBytes = satAdd(r.progress.doneBytes, max(size, 0))
 	}
-	r.sendProgress(true)
+	r.sendProgressLocked(true)
 }
 
 // sendProgress meldet den Fortschritt höchstens alle copyProgressInterval
@@ -839,6 +919,18 @@ func (r *copyRun) countDone(node copyNode, size int64) {
 // @param force - ohne Zeitsperre melden
 // @date   2026-10-21 21:03
 func (r *copyRun) sendProgress(force bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sendProgressLocked(force)
+}
+
+// sendProgressLocked wie sendProgress, r.mu ist bereits gesperrt. Sendet
+// nie blockierend (voller Kanal = Meldung verwerfen), hält die Sperre also
+// nicht lange.
+//
+// @param force - ohne Zeitsperre melden
+// @date   2026-10-23 19:44
+func (r *copyRun) sendProgressLocked(force bool) {
 	if !force && time.Since(r.lastSent) < copyProgressInterval {
 		return
 	}

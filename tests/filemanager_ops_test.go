@@ -84,8 +84,8 @@ func TestMoveRemovesSourceAfterCopy(t *testing.T) {
 // Das übrig bleibende Verzeichnis ist KEIN zusätzlicher Fehler.
 func TestMoveKeepsSourceOfFailedFile(t *testing.T) {
 	src, dst := newCopySource(), newMemFS("/srv/b")
-	// Erste neue Datei in /srv/b/projekt (main.go) scheitert sofort
-	dst.failNth["/srv/b/projekt"] = 1
+	// main.go scheitert sofort (am Inhalt erkannt, nicht an der Reihenfolge)
+	dst.failContent = "package main"
 	dst.failAfter = 0
 	result, _ := runCopySync(t, context.Background(), moveRequest(src, dst, "projekt"), noConflicts(t))
 	if len(result.failures) != 1 {

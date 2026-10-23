@@ -31,8 +31,8 @@ type sftpFS struct {
 }
 
 // OpenRead öffnet eine Datei zum Lesen. Die *sftp.File liest beim Kopieren
-// über WriteTo mit mehreren gleichzeitigen Anfragen (schnell auch bei
-// hoher Latenz).
+// (pipeCopy) Blöcke von copyChunkSize; pkg/sftp teilt jeden Block in viele
+// gleichzeitige Anfragen auf (schnell auch bei hoher Latenz).
 //
 // @param p - Pfad
 // @return io.ReadCloser - Datei

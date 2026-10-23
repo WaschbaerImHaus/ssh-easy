@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.78] – Build 78
+- **Changed** file manager: copying and moving many small files is much faster. Up to 8 files are transferred at the same time, directory listings replace one server round trip per file (on both sides), and each file is read while it is being written (read-ahead limited to 64 MB in total and 16 MB per file). When moving, a source file is still only deleted after it has been completely written and renamed on the target. Every file still goes through an exclusive temporary file and an atomic rename. Names that differ only in upper/lower case (e.g. README and readme copied to Windows) and names a server may reinterpret (trailing dot or space, "~", non-ASCII) are still checked one by one, so nothing is overwritten without asking
+
 ## [v0.77] – Build 77
 - **Added** file manager: each connection (including *Local PC*) opens in the directory you were in last time. If that directory no longer exists or cannot be read, it starts in the home directory. The paths are stored in the configuration, not in exported connection lists
 

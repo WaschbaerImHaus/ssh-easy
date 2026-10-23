@@ -53,6 +53,9 @@ type memFS struct {
 	failNth   map[string]int
 	created   map[string]int
 	failAfter int
+	// Schreiben einer Datei, deren Inhalt so beginnt, scheitert nach
+	// failAfter Bytes - unabhängig von der Reihenfolge paralleler Arbeiter
+	failContent string
 	// Wird bei jedem Schreibaufruf aufgerufen (für Abbruch-Tests)
 	onWrite func()
 	// Wird bei jedem Schreibaufruf mit Pfad und Knoten aufgerufen (unter Sperre)
@@ -257,6 +260,14 @@ type memWriter struct {
 	fail    bool
 }
 
+// checkFailContent prüft beim ersten Schreiben, ob der Inhalt mit
+// failContent beginnt (Aufrufer hält die Sperre).
+func (w *memWriter) checkFailContent(b []byte) {
+	if w.written == 0 && w.fs.failContent != "" && bytes.HasPrefix(b, []byte(w.fs.failContent)) {
+		w.fail = true
+	}
+}
+
 func (w *memWriter) Write(b []byte) (int, error) {
 	if w.fs.onWrite != nil {
 		w.fs.onWrite()
@@ -266,6 +277,7 @@ func (w *memWriter) Write(b []byte) (int, error) {
 	if w.fs.onWriteNode != nil {
 		w.fs.onWriteNode(w.p, w.fs.nodes[w.p])
 	}
+	w.checkFailContent(b)
 	if w.fail && w.written+len(b) > w.fs.failAfter {
 		ok := w.fs.failAfter - w.written
 		if ok > 0 {
@@ -730,7 +742,9 @@ func TestCopyTypeMismatch(t *testing.T) {
 func TestCopyContinuesAfterErrors(t *testing.T) {
 	src, dst := newCopySource(), newMemFS("/srv/b")
 	src.denied["/home/a/projekt/lib"] = true
-	dst.failNth["/srv/b/projekt"] = 1 // erste neue Datei dort ist main.go
+	// main.go scheitert nach 3 Bytes (am Inhalt erkannt: die Arbeiter
+	// legen die Dateien in beliebiger Reihenfolge an)
+	dst.failContent = "package main"
 	dst.failAfter = 3
 	req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{"projekt", "notiz.txt"}}
 	res, _ := runCopySync(t, context.Background(), req, noConflicts(t))
