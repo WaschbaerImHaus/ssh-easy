@@ -26,9 +26,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -259,13 +261,14 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // startFMConnect baut die Verbindung einer Seite im Hintergrund auf und
-// liest danach gleich das Startverzeichnis (Home des Users).
+// liest danach gleich das Startverzeichnis: das zuletzt geöffnete
+// Verzeichnis dieser Verbindung, sonst das Home des Users.
 //
 // @param side - Seite (0 links, 1 rechts)
 // @param password - Passwort oder leer für Auto-Auth
 // @return tea.Model - Modell in ViewFMConnecting
 // @return tea.Cmd - Hintergrundkommando
-// @date   2026-10-21 19:45
+// @date   2026-10-23 19:37
 func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd) {
 	m.state = ViewFMConnecting
 	m.fm.connectSide = side
@@ -276,6 +279,7 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 		local := m.fmLocalConnect
 		connect = func(Connection, string) (remoteFS, error) { return local() }
 	}
+	remembered := m.fmRememberedPath(conn.ID)
 	session := m.fm.session
 	return m, func() tea.Msg {
 		result := fmConnectedMsg{session: session, side: side, withPassword: password != ""}
@@ -285,6 +289,15 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 			return result
 		}
 		result.fs = fsys
+		// Zuletzt geöffnetes Verzeichnis dieser Verbindung; gibt es das
+		// nicht mehr (oder ist es nicht lesbar), geht es im Home los
+		if validRememberedPath(remembered) {
+			if entries, err := readPanelDir(fsys, remembered); err == nil {
+				result.home = remembered
+				result.entries = entries
+				return result
+			}
+		}
 		result.home = "/"
 		if home, err := fsys.Getwd(); err == nil && home != "" {
 			result.home = home
@@ -294,7 +307,8 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 	}
 }
 
-// handleFMConnected übernimmt das Ergebnis eines Verbindungsaufbaus.
+// handleFMConnected übernimmt das Ergebnis eines Verbindungsaufbaus und
+// merkt sich das Startverzeichnis.
 // Auth-Fehler führen zur Passwortabfrage; Netzwerk-, Host-Key- und
 // SFTP-Fehler beenden den Datei-Manager mit Meldung in der Liste.
 // Fehlertexte können Text vom Server enthalten und werden deshalb von
@@ -303,7 +317,7 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken)
-// @date   2026-10-21 19:53
+// @date   2026-10-23 19:37
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -359,12 +373,93 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	panel.applyListing(msg.home, entries, "")
+	if msg.listErr == nil {
+		m.rememberFMPath(msg.side)
+	}
 	if msg.side == 0 {
 		return m.startFMConnect(1, "")
 	}
 	m.state = ViewFileManager
 	m.fm.active = 0
 	return m, nil
+}
+
+// fmLastPathKey liefert den Schlüssel einer Verbindung für die gemerkten
+// Pfade. Der Lokale PC hat intern eine ID mit NUL-Zeichen; in der
+// Konfiguration steht er lesbar als "local-pc".
+//
+// @param connID - Verbindungs-ID
+// @return string - Schlüssel in AppConfig.FileManagerLastPaths
+// @date   2026-10-23 19:37
+func fmLastPathKey(connID string) string {
+	if connID == fmLocalConnID {
+		return "local-pc"
+	}
+	return connID
+}
+
+// validRememberedPath prüft einen gemerkten Pfad aus der Konfiguration:
+// absolut, bereinigt und ohne Steuerzeichen. Alles andere wird ignoriert
+// (dann startet das Fenster im Home).
+//
+// @param p - gemerkter Pfad
+// @return bool - true wenn er versucht werden darf
+// @date   2026-10-23 19:37
+func validRememberedPath(p string) bool {
+	if !strings.HasPrefix(p, "/") || path.Clean(p) != p {
+		return false
+	}
+	return strings.IndexFunc(p, unicode.IsControl) < 0
+}
+
+// fmRememberedPath liefert das zuletzt geöffnete Verzeichnis einer
+// Verbindung ("" wenn keins gemerkt ist).
+//
+// @param connID - Verbindungs-ID
+// @return string - gemerkter Pfad
+// @date   2026-10-23 19:37
+func (m AppModel) fmRememberedPath(connID string) string {
+	cfg, err := LoadConfig(m.configPath)
+	if err != nil {
+		return ""
+	}
+	return cfg.FileManagerLastPaths[fmLastPathKey(connID)]
+}
+
+// rememberFMPath merkt sich das aktuelle Verzeichnis eines Fensters für
+// dessen Verbindung (nur wenn es sich geändert hat). Einträge gelöschter
+// Verbindungen werden dabei entfernt.
+//
+// @param side - Seite (0 links, 1 rechts)
+// @date   2026-10-23 19:37
+func (m AppModel) rememberFMPath(side int) {
+	panel := m.fm.panels[side]
+	if panel.path == "" || panel.conn.ID == "" {
+		return
+	}
+	cfg, err := LoadConfig(m.configPath)
+	if err != nil {
+		return
+	}
+	key := fmLastPathKey(panel.conn.ID)
+	if cfg.FileManagerLastPaths[key] == panel.path {
+		return
+	}
+	known := map[string]bool{fmLastPathKey(fmLocalConnID): true}
+	for _, conn := range cfg.Connections {
+		known[conn.ID] = true
+	}
+	paths := map[string]string{}
+	for k, v := range cfg.FileManagerLastPaths {
+		if known[k] {
+			paths[k] = v
+		}
+	}
+	paths[key] = panel.path
+	cfg.FileManagerLastPaths = paths
+	if SaveConfig(m.configPath, cfg) == nil {
+		m.configCache.Invalidate()
+	}
 }
 
 // fmDirError liefert die Meldung zu einem Lesefehler.
@@ -562,13 +657,14 @@ func (m AppModel) fmEnter() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleFMDirLoaded übernimmt ein gelesenes Verzeichnis. Bei einem Fehler
-// (z. B. fehlende Rechte) bleibt das Fenster im bisherigen Verzeichnis.
+// handleFMDirLoaded übernimmt ein gelesenes Verzeichnis und merkt es sich
+// für die Verbindung. Bei einem Fehler (z. B. fehlende Rechte) bleibt das
+// Fenster im bisherigen Verzeichnis.
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-10-22 05:17
+// @date   2026-10-23 19:37
 func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.session != m.fm.session || m.state != ViewFileManager {
 		return m, nil
@@ -580,6 +676,7 @@ func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	panel.applyListing(msg.path, msg.entries, msg.focus)
+	m.rememberFMPath(msg.side)
 	if msg.focus != "" {
 		if entry, ok := panel.current(); !ok || entry.name != msg.focus {
 			// Eintrag gibt es nicht mehr (gelöscht/verschoben): Position halten

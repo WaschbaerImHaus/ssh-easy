@@ -88,6 +88,10 @@ type AppConfig struct {
 	// Datei-Manager: erlaubte Endungen für F9 "lokal öffnen" (leer = sichere
 	// Standardliste allowedOpenExtensions)
 	FileManagerOpenExtensions []string `json:"file_manager_open_extensions,omitempty"`
+	// Datei-Manager: zuletzt geöffnetes Verzeichnis pro Verbindung
+	// (Schlüssel = Verbindungs-ID, Lokaler PC = "local-pc"). Gehört bewusst
+	// nicht zur Verbindung, damit es nicht im Export landet.
+	FileManagerLastPaths map[string]string `json:"file_manager_last_paths,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

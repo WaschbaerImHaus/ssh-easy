@@ -77,9 +77,9 @@
 - [x] F4 Bearbeiten: interner Editor wie mcedit (Build 62) (F1 Hilfe, F2 Speichern, F3 Markieren, F4 Ersetzen, F5 Kopieren, F6 Verschieben, F7 Suchen, F8 Löschen, F10 Beenden); Binärdateien als bearbeitbare Hex-Ansicht (Bytes überschreiben, z. B. AD → AF) (Nutzerwunsch 2026-10-21); Speichern über Temp-Datei + Umbenennen
 - [x] Menüs wie im mc über F9 (Build 73): Links/Rechts (Neu einlesen, Strg+R), Datei (F3–F8, *, F10), Optionen (Aussehen, Endungen für F9); "Befehl" entfällt (nichts davon angeboten)
 
+- [x] Letzter Pfad pro Verbindung (Nutzerwunsch 2026-10-23, Build 77): Der Datei-Manager startet je Verbindung (auch Lokaler PC) im zuletzt geöffneten Verzeichnis; fehlt es oder ist es nicht lesbar, im Home. Gespeichert in der Konfiguration, nicht im Export
 ## Offen
 - [ ] Datei-Manager: viele kleine Dateien schneller kopieren (Nutzerwunsch 2026-10-23: 700 Dateien/18 MB dauerten lange). Mehrere Dateien gleichzeitig übertragen, weniger Server-Rundreisen je Datei; Lese-/Schreibpuffer zum gleichzeitigen Lesen und Schreiben bis 1 GB erlaubt
-- [ ] Datei-Manager: letzten Pfad pro Verbindung merken; existiert er nicht mehr, im Home starten (Nutzerwunsch 2026-10-23)
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)
