@@ -85,9 +85,10 @@ type AppConfig struct {
 	AutoUpdate bool `json:"auto_update,omitempty"`
 	// Datei-Manager: Farbmodus ("classic", "ssh-easy", "mono"; leer = classic)
 	FileManagerTheme string `json:"file_manager_theme,omitempty"`
-	// Datei-Manager: erlaubte Endungen für F9 "lokal öffnen" (leer = sichere
-	// Standardliste allowedOpenExtensions)
-	FileManagerOpenExtensions []string `json:"file_manager_open_extensions,omitempty"`
+	// Datei-Manager: erlaubte Endungen für F9 "lokal öffnen". null = sichere
+	// Standardliste allowedOpenExtensions, [] = bewusst keine (der Nutzer
+	// hat alle gelöscht) - deshalb ohne omitempty
+	FileManagerOpenExtensions []string `json:"file_manager_open_extensions"`
 	// Datei-Manager: zuletzt geöffnetes Verzeichnis pro Verbindung
 	// (Schlüssel = Verbindungs-ID, Lokaler PC = "local-pc"). Gehört bewusst
 	// nicht zur Verbindung, damit es nicht im Export landet.

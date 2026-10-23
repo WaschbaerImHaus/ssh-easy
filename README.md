@@ -225,10 +225,13 @@ then its entry is greyed out. Files copied from a server to your PC are marked a
 downloaded (Windows SmartScreen warns before running them).
 
 **Options (`F9` → Options):** *Appearance* switches between the classic (mc), ssh-easy and
-monochrome colour themes. *Extensions for F9* sets which file types `F9` in the viewer opens
-locally (empty = safe default list). Types outside the safe list (programs, scripts, Office …)
-are allowed only after a strong security warning, and opening such a file asks once more.
-Both settings are saved.
+monochrome colour themes. *Extensions for F9* shows a sorted list of the file types `F9` in the
+viewer opens locally (initially the safe default list). `↑`/`↓`, `PgUp`/`PgDn`, `Home`/`End`
+move through it, `Del` removes an extension after confirmation (`j`/`y`), `Tab` or `Ins` jump
+to the *New extension* field – only `a`–`z` and `0`–`9` are allowed, `Enter` adds it. Types
+outside the safe list (programs, scripts, Office …) are allowed only after a strong security
+warning, and opening such a file asks once more. An empty list means `F9` opens nothing. All
+changes are saved immediately.
 
 ### Password prompt
 

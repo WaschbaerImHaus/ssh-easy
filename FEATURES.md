@@ -79,6 +79,7 @@
 
 - [x] Letzter Pfad pro Verbindung (Nutzerwunsch 2026-10-23, Build 77): Der Datei-Manager startet je Verbindung (auch Lokaler PC) im zuletzt geöffneten Verzeichnis; fehlt es oder ist es nicht lesbar, im Home. Gespeichert in der Konfiguration, nicht im Export
 - [x] Schnelleres Kopieren/Verschieben vieler kleiner Dateien (Nutzerwunsch 2026-10-23, Build 78): 8 Dateien gleichzeitig, Angaben aus der Verzeichnisliste statt einzelner Abfragen (Quelle und Ziel), Lesen und Schreiben gleichzeitig mit 64 MB Lesevorlauf insgesamt, höchstens 16 MB pro Datei (1 GB erlaubt, bringt aber kein Tempo); Namen, die sich nur in Groß-/Kleinschreibung unterscheiden, und ungewöhnliche Namen werden am Ziel einzeln geprüft (keine stille Überschreibung). Beim Verschieben wird jede Quelldatei erst gelöscht, wenn sie am Ziel vollständig geschrieben und umbenannt ist
+- [x] Endungen für F9 als Liste (Nutzerwunsch 2026-10-23, Build 80): senkrecht scrollbar mit Cursor, alphanumerisch sortiert; Entf löscht nach Ja/Nein-Rückfrage (j/y), Tab/Einfg ins Hinzufügen-Feld, nur a–z und 0–9; riskante Endungen weiter mit kräftigem Hinweis; leere Liste = F9 öffnet nichts
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste

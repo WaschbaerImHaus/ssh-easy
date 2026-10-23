@@ -223,15 +223,20 @@ func (m *AppModel) fmRescan(side int) tea.Cmd {
 // --- Einstellungen ---
 
 // applyFMSettings übernimmt die Datei-Manager-Einstellungen aus der
-// Konfiguration; ungültige Endungen führen zur Standardliste.
+// Konfiguration; ungültige Endungen führen zur Standardliste, eine leere
+// Liste bleibt leer (der Nutzer hat alle Endungen gelöscht).
 //
 // @param cfg - Konfiguration
-// @date   2026-10-22 07:50
+// @date   2026-10-23 20:04
 func (m *AppModel) applyFMSettings(cfg *AppConfig) {
 	m.fm.theme = fmThemeIndex(cfg.FileManagerTheme)
 	m.fmOpenExtensions = nil
-	if len(cfg.FileManagerOpenExtensions) > 0 {
+	if cfg.FileManagerOpenExtensions != nil {
 		if list, bad := parseOpenExtensions(strings.Join(cfg.FileManagerOpenExtensions, " ")); bad == "" {
+			if list == nil {
+				// Bewusst leer: F9 öffnet nichts
+				list = []string{}
+			}
 			m.fmOpenExtensions = list
 		}
 	}
@@ -366,26 +371,52 @@ func riskyOpenExtensions(list []string) []string {
 
 // --- Dialoge der Optionen ---
 
-// fmOpenExtDialog öffnet die Eingabe der Endungen (vorbelegt mit der
-// aktuellen Liste).
+// fmExtVisibleRows - so viele Endungen zeigt die Liste höchstens auf einmal
+const fmExtVisibleRows = 12
+
+// fmOpenExtDialog öffnet die Liste der erlaubten Endungen (Nutzerwunsch
+// 2026-10-23: senkrechte, scrollbare Liste mit Cursor statt eines langen
+// Eingabefelds). Entf löscht (mit Rückfrage), Tab/Einfg springen ins
+// Hinzufügen-Feld.
 //
 // @return tea.Model - Modell mit Dialog
-// @return tea.Cmd - Cursor-Blinken
-// @date   2026-10-22 07:50
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-23 20:04
 func (m AppModel) fmOpenExtDialog() (tea.Model, tea.Cmd) {
-	current := make([]string, 0, len(m.fmOpenAllowed()))
+	list := make([]string, 0, len(m.fmOpenAllowed()))
 	for ext := range m.fmOpenAllowed() {
-		current = append(current, ext)
+		list = append(list, ext)
 	}
-	sort.Strings(current)
+	sort.Strings(list)
+	m.fm.extList = list
+	m.fm.extCursor, m.fm.extOffset = 0, 0
+	m.fm.extAdding = false
+	m.fm.extInput = newExtInput()
+	m.fm.extPending = nil
+	m.fm.dialog = fmDialogExtensions
+	return m, nil
+}
+
+// newExtInput legt das Hinzufügen-Feld an (ohne Punkt, höchstens
+// fmExtMaxLength Zeichen).
+//
+// @return textinput.Model - leeres Feld ohne Fokus
+// @date   2026-10-23 20:04
+func newExtInput() textinput.Model {
 	input := textinput.New()
 	input.Prompt = ""
-	input.CharLimit = 4096
-	input.SetValue(strings.Join(current, " "))
-	input.Focus()
-	m.fm.extInput = input
-	m.fm.dialog = fmDialogExtensions
-	return m, textinput.Blink
+	input.CharLimit = fmExtMaxLength
+	return input
+}
+
+// fmExtRows liefert die Zahl der Listenzeilen für die Bildschirmhöhe
+// (Rest des Kastens: Rahmen, ▲/▼, Feld, Hinweis, Leerzeile, Hilfe).
+//
+// @return int - sichtbare Zeilen (mindestens 1)
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtRows() int {
+	_, height := m.fmScreenSize()
+	return min(max(height-12, 1), fmExtVisibleRows)
 }
 
 // handleFMOptionKeys verarbeitet Tasten in den Dialogen der Optionen.
@@ -393,7 +424,7 @@ func (m AppModel) fmOpenExtDialog() (tea.Model, tea.Cmd) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-22 07:50
+// @date   2026-10-23 20:04
 func (m AppModel) handleFMOptionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	switch m.fm.dialog {
@@ -415,55 +446,206 @@ func (m AppModel) handleFMOptionKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case fmDialogExtensions:
-		switch msg.Type {
-		case tea.KeyEsc:
-			m.fm.dialog = fmDialogNone
-			m.fm.message = ""
-			return m, nil
-		case tea.KeyEnter:
-			list, bad := parseOpenExtensions(m.fm.extInput.Value())
-			if bad != "" {
-				m.fm.message = fmt.Sprintf(m.tr(txtFMExtBad), sanitizeFileName(bad))
-				return m, nil
-			}
-			m.fm.extPending = list
-			if len(riskyOpenExtensions(list)) > 0 {
-				// Kräftiger Hinweis, bewusste Bestätigung nötig
-				m.fm.dialog = fmDialogExtRisk
-				return m, nil
-			}
-			return m.fmSaveExtensions()
+		if m.fm.extAdding {
+			return m.handleExtAddKeys(msg)
 		}
-		m.fm.message = ""
-		var cmd tea.Cmd
-		m.fm.extInput, cmd = m.fm.extInput.Update(msg)
-		return m, cmd
+		return m.handleExtListKeys(msg)
 	case fmDialogExtRisk:
 		switch key {
 		case "j", "y":
-			return m.fmSaveExtensions()
+			// Bewusst bestätigt (Nutzerentscheidung: Warnung statt Sperre)
+			ext := m.fm.extPending[0]
+			m.fm.extPending = nil
+			m.fm.dialog = fmDialogExtensions
+			return m.fmExtAdd(ext)
 		case "n", "esc", "q":
-			// Zurück zur Eingabe, nichts übernommen
+			// Zurück ins Feld, nichts übernommen
+			m.fm.extPending = nil
+			m.fm.dialog = fmDialogExtensions
+		}
+	case fmDialogExtDelete:
+		switch key {
+		case "j", "y":
+			m.fm.dialog = fmDialogExtensions
+			return m.fmExtRemove()
+		case "n", "esc", "q":
 			m.fm.dialog = fmDialogExtensions
 		}
 	}
 	return m, nil
 }
 
-// fmSaveExtensions übernimmt und speichert die geprüfte Liste (leer =
-// Standardliste).
+// handleExtListKeys bedient die Endungen-Liste: Pfeile/Bild/Pos1/Ende
+// bewegen den Cursor, Entf fragt nach dem Löschen, Tab/Einfg springen ins
+// Hinzufügen-Feld, Esc/q schließt.
 //
-// @return tea.Model - Modell ohne Dialog
-// @return tea.Cmd - kein Folgekommando
-// @date   2026-10-22 07:50
-func (m AppModel) fmSaveExtensions() (tea.Model, tea.Cmd) {
-	m.fmOpenExtensions = m.fm.extPending
-	m.fm.extPending = nil
-	m.fm.dialog = fmDialogNone
-	m.fm.message = m.tr(txtFMExtReset)
-	if m.fmOpenExtensions != nil {
-		m.fm.message = fmt.Sprintf(m.tr(txtFMExtSaved), len(m.fmOpenExtensions))
+// @param msg - Tastendruck
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Cursor-Blinken beim Wechsel ins Feld
+// @date   2026-10-23 20:04
+func (m AppModel) handleExtListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.fm.message = ""
+	if isInsertKey(msg) || msg.Type == tea.KeyTab {
+		m.fm.extAdding = true
+		m.fm.extInput.Focus()
+		return m, textinput.Blink
 	}
+	rows := m.fmExtRows()
+	last := len(m.fm.extList) - 1
+	switch msg.String() {
+	case "up":
+		m.fm.extCursor--
+	case "down":
+		m.fm.extCursor++
+	case "pgup":
+		m.fm.extCursor -= rows
+	case "pgdown":
+		m.fm.extCursor += rows
+	case "home":
+		m.fm.extCursor = 0
+	case "end":
+		m.fm.extCursor = last
+	case "delete":
+		if len(m.fm.extList) > 0 {
+			m.fm.dialog = fmDialogExtDelete
+		}
+	case "esc", "q", "f10":
+		m.fm.dialog = fmDialogNone
+		return m, nil
+	}
+	m.fm.extCursor = max(min(m.fm.extCursor, last), 0)
+	m.fm.extOffset = scrollOffset(len(m.fm.extList), m.fm.extCursor, m.fm.extOffset, rows)
+	return m, nil
+}
+
+// handleExtAddKeys bedient das Hinzufügen-Feld. Erlaubt sind nur a-z und
+// 0-9: Großbuchstaben werden klein, alles andere (auch der Punkt) wird
+// verworfen. Enter fügt hinzu, Tab springt zur Liste, Esc verwirft die
+// Eingabe und springt zur Liste.
+//
+// @param msg - Tastendruck
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Folgekommando des Felds
+// @date   2026-10-23 20:04
+func (m AppModel) handleExtAddKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.fm.message = ""
+	switch msg.Type {
+	case tea.KeyEsc:
+		m.fm.extAdding = false
+		m.fm.extInput.Reset()
+		m.fm.extInput.Blur()
+		return m, nil
+	case tea.KeyTab:
+		m.fm.extAdding = false
+		m.fm.extInput.Blur()
+		return m, nil
+	case tea.KeyEnter:
+		return m.fmExtSubmit()
+	case tea.KeySpace:
+		return m, nil
+	case tea.KeyRunes:
+		runes := filterExtRunes(msg.Runes)
+		if len(runes) == 0 {
+			return m, nil
+		}
+		msg.Runes = runes
+	}
+	var cmd tea.Cmd
+	m.fm.extInput, cmd = m.fm.extInput.Update(msg)
+	return m, cmd
+}
+
+// filterExtRunes lässt nur Zeichen durch, die in einer Endung erlaubt sind
+// (a-z, 0-9); A-Z werden klein geschrieben.
+//
+// @param runes - getippte Zeichen
+// @return []rune - erlaubte Zeichen
+// @date   2026-10-23 20:04
+func filterExtRunes(runes []rune) []rune {
+	var out []rune
+	for _, r := range runes {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			out = append(out, r-'A'+'a')
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// fmExtSubmit übernimmt die Eingabe des Hinzufügen-Felds: leer = nichts,
+// schon vorhanden = Hinweis, außerhalb der sicheren Liste = kräftiger
+// Risikohinweis (j/y), sonst sofort hinzufügen.
+//
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtSubmit() (tea.Model, tea.Cmd) {
+	value := m.fm.extInput.Value()
+	if value == "" {
+		return m, nil
+	}
+	ext := "." + value
+	if i := sort.SearchStrings(m.fm.extList, ext); i < len(m.fm.extList) && m.fm.extList[i] == ext {
+		m.fm.message = fmt.Sprintf(m.tr(txtFMExtExists), ext)
+		m.fm.extCursor = i
+		m.fm.extOffset = scrollOffset(len(m.fm.extList), i, m.fm.extOffset, m.fmExtRows())
+		return m, nil
+	}
+	if !allowedOpenExtensions[ext] {
+		m.fm.extPending = []string{ext}
+		m.fm.dialog = fmDialogExtRisk
+		return m, nil
+	}
+	return m.fmExtAdd(ext)
+}
+
+// fmExtAdd nimmt eine Endung sortiert in die Liste auf, setzt den Cursor
+// darauf, leert das Feld und speichert sofort.
+//
+// @param ext - Endung mit Punkt
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtAdd(ext string) (tea.Model, tea.Cmd) {
+	list := append(append([]string{}, m.fm.extList...), ext)
+	sort.Strings(list)
+	m.fm.extList = list
+	m.fm.extCursor = sort.SearchStrings(list, ext)
+	m.fm.extOffset = scrollOffset(len(list), m.fm.extCursor, m.fm.extOffset, m.fmExtRows())
+	m.fm.extInput.Reset()
+	return m.fmExtSave(fmt.Sprintf(m.tr(txtFMExtAdded), ext))
+}
+
+// fmExtRemove entfernt die Endung unter dem Cursor und speichert sofort;
+// der Cursor bleibt an derselben Stelle (nächster Eintrag).
+//
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtRemove() (tea.Model, tea.Cmd) {
+	if m.fm.extCursor < 0 || m.fm.extCursor >= len(m.fm.extList) {
+		return m, nil
+	}
+	ext := m.fm.extList[m.fm.extCursor]
+	list := append(append([]string{}, m.fm.extList[:m.fm.extCursor]...), m.fm.extList[m.fm.extCursor+1:]...)
+	m.fm.extList = list
+	m.fm.extCursor = max(min(m.fm.extCursor, len(list)-1), 0)
+	m.fm.extOffset = scrollOffset(len(list), m.fm.extCursor, m.fm.extOffset, m.fmExtRows())
+	return m.fmExtSave(fmt.Sprintf(m.tr(txtFMExtRemoved), ext))
+}
+
+// fmExtSave übernimmt die Liste als erlaubte Endungen (auch leer = F9
+// öffnet nichts) und speichert sie in der Konfiguration.
+//
+// @param done - Meldung bei Erfolg
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtSave(done string) (tea.Model, tea.Cmd) {
+	m.fmOpenExtensions = append([]string{}, m.fm.extList...)
+	m.fm.message = done
 	if err := m.persistFMSettings(); err != nil {
 		m.fm.message = fmt.Sprintf(m.tr(txtFMErrSaveSettings), sanitizeFileName(err.Error()))
 	}
@@ -508,15 +690,75 @@ func (m AppModel) fmOptionDialogLines(inner int) (string, []string, string) {
 		}
 		return m.tr(txtFMThemeTitle), lines, m.tr(txtFMThemeHelp)
 	case fmDialogExtensions:
-		input := m.fm.extInput
-		input.Width = max(inner-1, 1)
-		lines := append(wrapText(m.tr(txtFMExtPrompt), inner), input.View())
-		return m.tr(txtFMExtTitle), lines, m.tr(txtFMExtHelp)
+		return m.tr(txtFMExtTitle), m.fmExtListLines(inner), m.fmExtHelp()
+	case fmDialogExtDelete:
+		ext := ""
+		if m.fm.extCursor < len(m.fm.extList) {
+			ext = m.fm.extList[m.fm.extCursor]
+		}
+		return m.tr(txtFMExtDeleteTitle), wrapText(fmt.Sprintf(m.tr(txtFMExtDeleteText), ext), inner), m.tr(txtFMExtDeleteHelp)
 	case fmDialogExtRisk:
 		text := fmt.Sprintf(m.tr(txtFMExtRiskText), strings.Join(riskyOpenExtensions(m.fm.extPending), " "))
 		return m.tr(txtFMRiskTitle), wrapText(text, inner), m.tr(txtFMExtRiskHelp)
 	}
 	return "", nil, ""
+}
+
+// fmExtListLines liefert den Inhalt der Endungen-Liste: ▲ (weitere oben),
+// die sichtbaren Einträge mit Cursor ▸, ▼ (weitere unten), Leerzeile,
+// Hinzufügen-Feld und Hinweis auf die erlaubten Zeichen. Die Zeilenzahl ist
+// fest, damit der Kasten beim Scrollen nicht springt.
+//
+// @param inner - Innenbreite
+// @return []string - Zeilen
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtListLines(inner int) []string {
+	rows := m.fmExtRows()
+	list := m.fm.extList
+	offset := scrollOffset(len(list), m.fm.extCursor, m.fm.extOffset, rows)
+	up, down := "", ""
+	if offset > 0 {
+		up = "  ▲"
+	}
+	if offset+rows < len(list) {
+		down = "  ▼"
+	}
+	lines := []string{up}
+	for i := 0; i < rows; i++ {
+		idx := offset + i
+		switch {
+		case len(list) == 0 && i == 0:
+			lines = append(lines, "  "+m.tr(txtFMExtEmpty))
+		case idx < len(list):
+			mark := "  "
+			if idx == m.fm.extCursor && !m.fm.extAdding {
+				mark = "▸ "
+			}
+			lines = append(lines, mark+list[idx])
+		default:
+			lines = append(lines, "")
+		}
+	}
+	label := m.tr(txtFMExtAddLabel) + " "
+	input := m.fm.extInput
+	// Platz: Markierung (2), Beschriftung, Punkt (1), Cursorzelle (1)
+	input.Width = max(inner-ansi.StringWidth(label)-4, 1)
+	mark := "  "
+	if m.fm.extAdding {
+		mark = "▸ "
+	}
+	return append(lines, down, "", mark+label+"."+input.View(), "  "+m.tr(txtFMExtChars))
+}
+
+// fmExtHelp liefert die Tastenhilfe passend zum Fokus (Liste oder Feld).
+//
+// @return string - Tastenhilfe
+// @date   2026-10-23 20:04
+func (m AppModel) fmExtHelp() string {
+	if m.fm.extAdding {
+		return m.tr(txtFMExtAddHelp)
+	}
+	return m.tr(txtFMExtListHelp)
 }
 
 // --- Darstellung der Menüs ---

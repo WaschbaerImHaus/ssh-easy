@@ -215,10 +215,13 @@ sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dat
 als heruntergeladen gekennzeichnet (Windows-SmartScreen warnt vor dem Ausführen).
 
 **Optionen (`F9` → Optionen):** *Aussehen* schaltet zwischen den Farbmodi klassisch (mc),
-ssh-easy und monochrom um. *Endungen für F9* legt fest, welche Dateitypen `F9` im Betrachter
-lokal öffnet (leer = sichere Standardliste). Typen außerhalb der sicheren Liste (Programme,
-Skripte, Office …) werden nur nach einem deutlichen Sicherheitshinweis übernommen, und beim
-Öffnen einer solchen Datei fragt ssh-easy noch einmal nach. Beide Einstellungen werden
+ssh-easy und monochrom um. *Endungen für F9* zeigt als sortierte Liste, welche Dateitypen
+`F9` im Betrachter lokal öffnet (anfangs die sichere Standardliste). `↑`/`↓`, `Bild↑`/`Bild↓`,
+`Pos1`/`Ende` blättern, `Entf` entfernt eine Endung nach Rückfrage (`j`/`y`), `Tab` oder
+`Einfg` springen ins Feld *Neue Endung* – erlaubt sind nur `a`–`z` und `0`–`9`, `Enter` fügt
+hinzu. Typen außerhalb der sicheren Liste (Programme, Skripte, Office …) werden nur nach einem
+deutlichen Sicherheitshinweis übernommen, und beim Öffnen einer solchen Datei fragt ssh-easy
+noch einmal nach. Eine leere Liste bedeutet: `F9` öffnet nichts. Alle Änderungen werden sofort
 gespeichert.
 
 ### Passwortabfrage

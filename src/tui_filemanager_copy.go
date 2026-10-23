@@ -55,6 +55,8 @@ const (
 	fmDialogExtensions
 	// fmDialogExtRisk - kräftiger Risikohinweis zu riskanten Endungen
 	fmDialogExtRisk
+	// fmDialogExtDelete - Endung aus der Liste entfernen? (j/y, n)
+	fmDialogExtDelete
 )
 
 // Höchstbreite der Dialoge in Zeichen
@@ -295,7 +297,7 @@ func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleFMMkdirKeys(msg)
 	case fmDialogDeleteConfirm, fmDialogDeleting:
 		return m.handleFMDeleteKeys(key)
-	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk:
+	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk, fmDialogExtDelete:
 		return m.handleFMOptionKeys(msg)
 	case fmDialogCopyConfirm:
 		switch key {
@@ -352,7 +354,7 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 	switch m.fm.dialog {
 	case fmDialogMkdir, fmDialogDeleteConfirm, fmDialogDeleting:
 		return m.fmOpsDialogLines(inner)
-	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk:
+	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk, fmDialogExtDelete:
 		return m.fmOptionDialogLines(inner)
 	case fmDialogCopyConfirm:
 		target := m.fm.panels[1-c.source].title()

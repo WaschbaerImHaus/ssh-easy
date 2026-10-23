@@ -258,6 +258,8 @@ func fmKey(key string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyBackspace}
 	case "insert":
 		return tea.KeyMsg{Type: tea.KeyInsert}
+	case "delete":
+		return tea.KeyMsg{Type: tea.KeyDelete}
 	case "nul":
 		// Windows: Einfg kommt als Rune 0x00 (VK_INSERT nicht gemappt)
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}}

@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.80] – Build 80
+- **Changed** file manager: *Options → Extensions for F9* is now a sorted, scrollable list with a visible cursor instead of one long text field. `Del` removes the extension under the cursor after a yes/no question (`j`/`y` confirms, `Enter` does not), `Tab` or `Ins` jump to the *New extension* field, `Enter` adds the extension and sorts it in. Only lowercase letters `a`–`z` and digits `0`–`9` can be typed (capital letters become lowercase). Extensions outside the safe default list still need the strong security warning. Every change is saved immediately; an empty list now stays empty (F9 opens nothing) instead of falling back to the default list
+
 ## [v0.79] – Build 79
 - **Security** file manager: when copying or moving several entries at once, names that a Windows target treats as the same file (`a.txt.` and `a.txt`, or case variants beyond plain ASCII such as the Kelvin sign) are now checked one by one. Before, the second file could silently replace the first, and moving could lose both sources (finding of the automated security review of Build 78)
 

@@ -691,7 +691,7 @@ func (m AppModel) updateInputs(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.fm.view.input, cmd = m.fm.view.input.Update(msg)
 		} else if m.fm.dialog == fmDialogMkdir {
 			m.fm.mkdirInput, cmd = m.fm.mkdirInput.Update(msg)
-		} else if m.fm.dialog == fmDialogExtensions {
+		} else if m.fm.dialog == fmDialogExtensions && m.fm.extAdding {
 			m.fm.extInput, cmd = m.fm.extInput.Update(msg)
 		}
 	}

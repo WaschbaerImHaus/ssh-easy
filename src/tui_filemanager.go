@@ -96,6 +96,12 @@ type fileManager struct {
 	themeCursor int
 	extInput    textinput.Model
 	extPending  []string
+	// Endungen-Liste (Optionen): Einträge, Cursor, Versatz, Fokus im
+	// Hinzufügen-Feld?
+	extList   []string
+	extCursor int
+	extOffset int
+	extAdding bool
 	// Betrachter (F3): offen?, Zustand, laufende Nummer (veraltete Ladeergebnisse)
 	viewing bool
 	view    fmViewer

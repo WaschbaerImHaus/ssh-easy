@@ -15,8 +15,11 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // openMenuManager öffnet den Datei-Manager mit zwei memFS.
@@ -265,47 +268,191 @@ func openExtDialog(t *testing.T) AppModel {
 	return m
 }
 
-// TestFileManagerExtDialogSafe - sichere Endungen werden ohne Rückfrage
-// gespeichert und gelten sofort.
-func TestFileManagerExtDialogSafe(t *testing.T) {
+// typeExt tippt Zeichen einzeln in das Eingabefeld (ohne Blink-Kommandos).
+func typeExt(t *testing.T, m AppModel, text string) AppModel {
+	t.Helper()
+	for _, r := range text {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		m = updated.(AppModel)
+	}
+	return m
+}
+
+// extCursorTo setzt den Cursor der Endungen-Liste per Pfeiltasten auf ext.
+func extCursorTo(t *testing.T, m AppModel, ext string) AppModel {
+	t.Helper()
+	m = pressRun(t, m, "home")
+	for i := 0; i < len(m.fm.extList); i++ {
+		if m.fm.extList[m.fm.extCursor] == ext {
+			return m
+		}
+		m = pressRun(t, m, "down")
+	}
+	t.Fatalf("%s nicht in der Liste %v", ext, m.fm.extList)
+	return m
+}
+
+// screenText liefert den Bildschirm ohne Farben, Leerraum zusammengefasst.
+func screenText(m AppModel) string {
+	return strings.Join(strings.Fields(stripANSI(m.View())), " ")
+}
+
+// TestExtListSortedWithCursor - Nutzerwunsch 2026-10-23: statt eines langen,
+// nicht bearbeitbaren Eingabefelds eine senkrechte Liste, alphanumerisch
+// sortiert, mit sichtbarem Cursor.
+func TestExtListSortedWithCursor(t *testing.T) {
 	m := openExtDialog(t)
-	if v := m.fm.extInput.Value(); !strings.Contains(v, ".pdf") || !strings.Contains(v, ".png") {
-		t.Errorf("Vorbelegung = %q", v)
+	if len(m.fm.extList) != len(allowedOpenExtensions) {
+		t.Fatalf("Liste hat %d Einträge, erwartet die %d der Standardliste", len(m.fm.extList), len(allowedOpenExtensions))
+	}
+	if !sort.StringsAreSorted(m.fm.extList) {
+		t.Errorf("Liste nicht sortiert: %v", m.fm.extList)
+	}
+	first := m.fm.extList[0]
+	if text := screenText(m); !strings.Contains(text, "▸ "+first) {
+		t.Errorf("Cursor auf %s nicht sichtbar:\n%s", first, text)
+	}
+	m = pressRun(t, m, "down")
+	if text := screenText(m); m.fm.extCursor != 1 || !strings.Contains(text, "▸ "+m.fm.extList[1]) {
+		t.Errorf("nach ↓: Cursor %d, Bildschirm:\n%s", m.fm.extCursor, text)
 	}
 	assertScreenSize(t, m)
-	m.fm.extInput.SetValue(".pdf png")
-	m = pressRun(t, m, "enter")
-	if m.fm.dialog != fmDialogNone {
-		t.Fatalf("Dialog %v", m.fm.dialog)
+}
+
+// TestExtListScrolls - die Liste ist länger als der Kasten: sie scrollt mit
+// dem Cursor, Pfeile ▲/▼ zeigen weitere Einträge an.
+func TestExtListScrolls(t *testing.T) {
+	m := openExtDialog(t)
+	first, last := m.fm.extList[0], m.fm.extList[len(m.fm.extList)-1]
+	text := screenText(m)
+	if !strings.Contains(text, "▼") || strings.Contains(text, "▲") {
+		t.Errorf("oben: ▼ erwartet, kein ▲:\n%s", text)
 	}
-	if want := fmt.Sprintf(m.tr(txtFMExtSaved), 2); m.fm.message != want {
-		t.Errorf("Meldung = %q, erwartet %q", m.fm.message, want)
+	m = pressRun(t, m, "end")
+	text = screenText(m)
+	if !strings.Contains(text, "▸ "+last) || strings.Contains(text, " "+first+" ") {
+		t.Errorf("nach Ende: %s sichtbar mit Cursor, %s weggescrollt erwartet:\n%s", last, first, text)
 	}
-	allowed := m.fmOpenAllowed()
-	if len(allowed) != 2 || !allowed[".pdf"] || !allowed[".png"] {
-		t.Errorf("erlaubt = %v", allowed)
+	if !strings.Contains(text, "▲") {
+		t.Errorf("unten: ▲ erwartet:\n%s", text)
 	}
-	cfg, _ := LoadConfig(m.configPath)
-	if strings.Join(cfg.FileManagerOpenExtensions, " ") != ".pdf .png" {
-		t.Errorf("gespeichert = %v", cfg.FileManagerOpenExtensions)
+	m = pressRun(t, m, "pgup")
+	m = pressRun(t, m, "home")
+	if m.fm.extCursor != 0 || m.fm.extOffset != 0 {
+		t.Errorf("Pos1: Cursor %d, Versatz %d", m.fm.extCursor, m.fm.extOffset)
 	}
-	again := NewAppModel(m.configPath, "72", NewSSHManager(NewLogger()))
-	if got := again.fmOpenAllowed(); len(got) != 2 {
-		t.Errorf("nach Neustart = %v", got)
+	for _, size := range [][2]int{{100, 30}, {80, 24}, {40, 12}, {20, 8}} {
+		m.termWidth, m.termHeight = size[0], size[1]
+		m = pressRun(t, m, "end")
+		assertScreenSize(t, m)
+		if !strings.Contains(screenText(m), last) {
+			t.Errorf("%dx%d: Cursor-Eintrag %s nicht sichtbar", size[0], size[1], last)
+		}
 	}
 }
 
-// TestFileManagerExtDialogRisky - riskante Endungen: kräftiger Hinweis,
-// Enter übernimmt NICHT, n kehrt zur Eingabe zurück, j speichert.
-func TestFileManagerExtDialogRisky(t *testing.T) {
+// TestExtListDeleteAsks - Entf fragt "wirklich entfernen?"; Enter bestätigt
+// nicht, n lässt den Eintrag stehen, j entfernt und speichert sofort.
+func TestExtListDeleteAsks(t *testing.T) {
 	m := openExtDialog(t)
-	m.fm.extInput.SetValue("exe .PDF")
+	m = extCursorTo(t, m, ".pdf")
+	pos := m.fm.extCursor
+	m = pressRun(t, m, "delete")
+	if m.fm.dialog != fmDialogExtDelete {
+		t.Fatalf("Dialog %v, erwartet Rückfrage", m.fm.dialog)
+	}
+	if text := screenText(m); !strings.Contains(text, fmt.Sprintf(m.tr(txtFMExtDeleteText), ".pdf")) {
+		t.Errorf("Rückfrage fehlt:\n%s", text)
+	}
+	assertScreenSize(t, m)
+	m = pressRun(t, m, "enter")
+	if m.fm.dialog != fmDialogExtDelete {
+		t.Fatal("Enter hat das Löschen bestätigt")
+	}
+	m = pressRun(t, m, "n")
+	if m.fm.dialog != fmDialogExtensions || !m.fmOpenAllowed()[".pdf"] {
+		t.Fatalf("n: Dialog %v, .pdf erlaubt %v", m.fm.dialog, m.fmOpenAllowed()[".pdf"])
+	}
+	m = pressRun(t, m, "delete")
+	m = pressRun(t, m, "j")
+	if m.fm.dialog != fmDialogExtensions || m.fmOpenAllowed()[".pdf"] {
+		t.Fatalf("j: Dialog %v, .pdf noch erlaubt", m.fm.dialog)
+	}
+	if m.fm.extCursor != pos || m.fm.extList[pos] == ".pdf" {
+		t.Errorf("Cursor %d (erwartet %d, nächster Eintrag)", m.fm.extCursor, pos)
+	}
+	cfg, _ := LoadConfig(m.configPath)
+	if len(cfg.FileManagerOpenExtensions) != len(allowedOpenExtensions)-1 {
+		t.Errorf("gespeichert %d Endungen, erwartet %d", len(cfg.FileManagerOpenExtensions), len(allowedOpenExtensions)-1)
+	}
+}
+
+// TestExtListAddWithTabAndInsert - Tab oder Einfg (auch Windows-Einfg als
+// NUL-Rune) wechseln ins Hinzufügen-Feld. Erlaubt sind nur a-z und 0-9
+// (Großbuchstaben werden klein, alles andere wird verworfen). Eine sichere
+// Endung kommt ohne Rückfrage einsortiert in die Liste.
+func TestExtListAddWithTabAndInsert(t *testing.T) {
+	stubShift(t, false)
+	for _, key := range []string{"tab", "insert", "nul"} {
+		m := openExtDialog(t)
+		m = extCursorTo(t, m, ".pdf")
+		m = pressRun(t, m, "delete")
+		m = pressRun(t, m, "j")
+		m = pressRun(t, m, key)
+		if !m.fm.extAdding {
+			t.Fatalf("%s: nicht im Hinzufügen-Feld", key)
+		}
+		m = typeExt(t, m, "P.d/Fü ")
+		if got := m.fm.extInput.Value(); got != "pdf" {
+			t.Errorf("%s: Eingabe %q, erwartet pdf (nur a-z, 0-9)", key, got)
+		}
+		m = pressRun(t, m, "enter")
+		if m.fm.dialog != fmDialogExtensions || !m.fmOpenAllowed()[".pdf"] {
+			t.Fatalf("%s: Dialog %v, .pdf nicht erlaubt", key, m.fm.dialog)
+		}
+		if !sort.StringsAreSorted(m.fm.extList) || m.fm.extList[m.fm.extCursor] != ".pdf" {
+			t.Errorf("%s: nicht einsortiert oder Cursor nicht darauf", key)
+		}
+		if m.fm.extInput.Value() != "" {
+			t.Errorf("%s: Eingabe nach dem Hinzufügen nicht leer", key)
+		}
+		assertScreenSize(t, m)
+	}
+}
+
+// TestExtListAddDigitsAndLimits - Ziffern sind erlaubt; doppelte Einträge
+// werden gemeldet statt verdoppelt; leeres Enter tut nichts.
+func TestExtListAddDigitsAndLimits(t *testing.T) {
+	m := openExtDialog(t)
+	n := len(m.fm.extList)
+	m = pressRun(t, m, "tab")
+	m = pressRun(t, m, "enter")
+	if len(m.fm.extList) != n || m.fm.dialog != fmDialogExtensions {
+		t.Error("leeres Enter hat etwas verändert")
+	}
+	m = typeExt(t, m, "PNG")
+	m = pressRun(t, m, "enter")
+	if len(m.fm.extList) != n || m.fm.message != fmt.Sprintf(m.tr(txtFMExtExists), ".png") {
+		t.Errorf("doppelt: %d Einträge, Meldung %q", len(m.fm.extList), m.fm.message)
+	}
+	m = typeExt(t, m, strings.Repeat("a", 40))
+	if got := len(m.fm.extInput.Value()); got > fmExtMaxLength {
+		t.Errorf("Eingabe %d Zeichen lang, Grenze %d", got, fmExtMaxLength)
+	}
+}
+
+// TestExtListAddRiskyWarns - eine Endung außerhalb der sicheren Liste: der
+// kräftige Risikohinweis erscheint; Enter bestätigt nicht, n verwirft, j
+// nimmt sie auf (Nutzerentscheidung: Warnung statt Sperre).
+func TestExtListAddRiskyWarns(t *testing.T) {
+	m := openExtDialog(t)
+	m = pressRun(t, m, "tab")
+	m = typeExt(t, m, "exe")
 	m = pressRun(t, m, "enter")
 	if m.fm.dialog != fmDialogExtRisk {
 		t.Fatalf("Dialog %v, erwartet Risikohinweis", m.fm.dialog)
 	}
-	text := strings.Join(strings.Fields(stripANSI(m.View())), " ")
-	if !strings.Contains(text, m.tr(txtFMRiskTitle)) || !strings.Contains(text, ".exe") {
+	if text := screenText(m); !strings.Contains(text, m.tr(txtFMRiskTitle)) || !strings.Contains(text, ".exe") {
 		t.Errorf("Risikohinweis unvollständig:\n%s", text)
 	}
 	assertScreenSize(t, m)
@@ -314,49 +461,79 @@ func TestFileManagerExtDialogRisky(t *testing.T) {
 		t.Fatal("Enter hat den Risikohinweis bestätigt")
 	}
 	m = pressRun(t, m, "n")
-	if m.fm.dialog != fmDialogExtensions || m.fm.extInput.Value() != "exe .PDF" {
-		t.Fatalf("n: Dialog %v, Eingabe %q", m.fm.dialog, m.fm.extInput.Value())
-	}
-	if m.fmOpenAllowed()[".exe"] {
-		t.Error(".exe ohne Bestätigung erlaubt")
+	if m.fm.dialog != fmDialogExtensions || m.fmOpenAllowed()[".exe"] {
+		t.Fatalf("n: Dialog %v, .exe erlaubt %v", m.fm.dialog, m.fmOpenAllowed()[".exe"])
 	}
 	m = pressRun(t, m, "enter")
 	m = pressRun(t, m, "j")
-	if m.fm.dialog != fmDialogNone || !m.fmOpenAllowed()[".exe"] || !m.fmOpenAllowed()[".pdf"] {
-		t.Errorf("j: Dialog %v, erlaubt %v", m.fm.dialog, m.fmOpenAllowed())
+	if !m.fmOpenAllowed()[".exe"] || !m.fmOpenAllowed()[".pdf"] {
+		t.Errorf("j: erlaubt %v", m.fmOpenAllowed())
+	}
+	again := NewAppModel(m.configPath, "79", NewSSHManager(NewLogger()))
+	if !again.fmOpenAllowed()[".exe"] {
+		t.Error(".exe nach Neustart nicht mehr erlaubt")
 	}
 }
 
-// TestFileManagerExtDialogInvalidAndReset - ungültige Endung: Meldung,
-// Dialog bleibt; leere Eingabe stellt den Standard wieder her.
-func TestFileManagerExtDialogInvalidAndReset(t *testing.T) {
+// TestExtListEmptyMeansNone - wer alle Einträge löscht, will, dass F9 nichts
+// öffnet: die leere Liste wird so gespeichert und nach einem Neustart nicht
+// stillschweigend durch die Standardliste ersetzt.
+func TestExtListEmptyMeansNone(t *testing.T) {
 	m := openExtDialog(t)
-	m.fm.extInput.SetValue(".pdf pd/f")
-	m = pressRun(t, m, "enter")
-	if m.fm.dialog != fmDialogExtensions || m.fm.message != fmt.Sprintf(m.tr(txtFMExtBad), "pd/f") {
-		t.Errorf("Dialog %v, Meldung %q", m.fm.dialog, m.fm.message)
+	for len(m.fm.extList) > 0 {
+		m = pressRun(t, m, "delete")
+		m = pressRun(t, m, "j")
 	}
-	m.fm.extInput.SetValue(".pdf")
-	m = pressRun(t, m, "enter")
-	m = menuChoose(t, m, 2, m.tr(txtFMMenuOpenExt))
-	m.fm.extInput.SetValue("  ")
-	m = pressRun(t, m, "enter")
-	if m.fm.message != m.tr(txtFMExtReset) {
-		t.Errorf("Meldung = %q", m.fm.message)
+	if text := screenText(m); !strings.Contains(text, m.tr(txtFMExtEmpty)) {
+		t.Errorf("Hinweis für leere Liste fehlt:\n%s", text)
 	}
-	if len(m.fmOpenAllowed()) != len(allowedOpenExtensions) {
-		t.Errorf("Standard nicht wiederhergestellt: %d", len(m.fmOpenAllowed()))
+	m = pressRun(t, m, "delete") // leere Liste: nichts zu löschen
+	if m.fm.dialog != fmDialogExtensions {
+		t.Errorf("Entf auf leerer Liste: Dialog %v", m.fm.dialog)
 	}
-	cfg, _ := LoadConfig(m.configPath)
-	if cfg.FileManagerOpenExtensions != nil {
-		t.Errorf("gespeichert = %v, erwartet leer (Standard)", cfg.FileManagerOpenExtensions)
+	assertScreenSize(t, m)
+	if len(m.fmOpenAllowed()) != 0 {
+		t.Errorf("erlaubt %d, erwartet keine", len(m.fmOpenAllowed()))
 	}
-	// Esc verwirft
-	m = menuChoose(t, m, 2, m.tr(txtFMMenuOpenExt))
-	m.fm.extInput.SetValue(".exe")
+	again := NewAppModel(m.configPath, "79", NewSSHManager(NewLogger()))
+	if got := len(again.fmOpenAllowed()); got != 0 {
+		t.Errorf("nach Neustart %d erlaubt, erwartet 0 (nicht die Standardliste)", got)
+	}
+}
+
+// TestExtListAddLineNotCut - die Zeile des Hinzufügen-Felds passt in den
+// Kasten (vorher war das Feld eine Zelle zu breit und wurde mit "~"
+// abgeschnitten), in jeder Größe und mit Eingabe.
+func TestExtListAddLineNotCut(t *testing.T) {
+	m := openExtDialog(t)
+	m = pressRun(t, m, "tab")
+	m = typeExt(t, m, "abc")
+	for _, size := range [][2]int{{100, 30}, {80, 24}, {60, 20}} {
+		m.termWidth, m.termHeight = size[0], size[1]
+		for _, line := range strings.Split(stripANSI(m.View()), "\n") {
+			if strings.Contains(line, m.tr(txtFMExtAddLabel)) && strings.Contains(line, "~") {
+				t.Errorf("%dx%d: Feld abgeschnitten: %q", size[0], size[1], line)
+			}
+		}
+	}
+}
+
+// TestExtListEscBehaviour - Esc im Hinzufügen-Feld führt zurück zur Liste
+// (Eingabe verworfen), Esc in der Liste schließt; q tippt im Feld ein q.
+func TestExtListEscBehaviour(t *testing.T) {
+	m := openExtDialog(t)
+	m = pressRun(t, m, "tab")
+	m = typeExt(t, m, "q")
+	if m.fm.extInput.Value() != "q" || m.fm.dialog != fmDialogExtensions {
+		t.Fatalf("q im Feld: Eingabe %q, Dialog %v", m.fm.extInput.Value(), m.fm.dialog)
+	}
 	m = pressRun(t, m, "esc")
-	if m.fm.dialog != fmDialogNone || m.fmOpenAllowed()[".exe"] {
-		t.Error("Esc hat übernommen")
+	if m.fm.extAdding || m.fm.extInput.Value() != "" || m.fm.dialog != fmDialogExtensions {
+		t.Errorf("Esc im Feld: Hinzufügen %v, Eingabe %q, Dialog %v", m.fm.extAdding, m.fm.extInput.Value(), m.fm.dialog)
+	}
+	m = pressRun(t, m, "esc")
+	if m.fm.dialog != fmDialogNone {
+		t.Errorf("Esc in der Liste: Dialog %v", m.fm.dialog)
 	}
 }
 
@@ -436,7 +613,13 @@ func TestFileManagerMenusAllThemesAndSizes(t *testing.T) {
 	m = pressRun(t, m, "esc")
 	m = menuChoose(t, m, 2, m.tr(txtFMMenuOpenExt))
 	check("Endungen")
-	m.fm.extInput.SetValue(".exe .bat .ps1")
+	m = pressRun(t, m, "tab")
+	check("Endungen hinzufügen")
+	m = typeExt(t, m, "exe")
 	m = pressRun(t, m, "enter")
 	check("Risiko")
+	m = pressRun(t, m, "n")
+	m = pressRun(t, m, "esc")
+	m = pressRun(t, m, "delete")
+	check("Endung löschen")
 }
