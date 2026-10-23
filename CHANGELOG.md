@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.76] – Build 76
+- **Fixed** Windows: a horizontal scroll bar could appear at the bottom of the console window (it could not be scrolled, but hid the last line). ssh-easy now shrinks a screen buffer that is wider than the window right away and, for a scroll bar that appears although nothing can be scrolled, briefly re-applies the window width so the console recalculates its frame (at most 3 attempts, 2 s apart). Corrections are written to the log
+- **Fixed** file manager: switching to another program with `Alt`+`Tab` no longer marks a file (Windows reports the `Alt` key like `Insert`)
+
 ## [v0.75] – Build 75
 - **Changed** source file headers now consistently name Kurt Ingwer as author (11 files had a wrong author line); no functional changes
 

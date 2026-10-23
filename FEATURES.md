@@ -78,6 +78,8 @@
 - [x] Menüs wie im mc über F9 (Build 73): Links/Rechts (Neu einlesen, Strg+R), Datei (F3–F8, *, F10), Optionen (Aussehen, Endungen für F9); "Befehl" entfällt (nichts davon angeboten)
 
 ## Offen
+- [ ] Datei-Manager: viele kleine Dateien schneller kopieren (Nutzerwunsch 2026-10-23: 700 Dateien/18 MB dauerten lange). Mehrere Dateien gleichzeitig übertragen, weniger Server-Rundreisen je Datei; Lese-/Schreibpuffer zum gleichzeitigen Lesen und Schreiben bis 1 GB erlaubt
+- [ ] Datei-Manager: letzten Pfad pro Verbindung merken; existiert er nicht mehr, im Home starten (Nutzerwunsch 2026-10-23)
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste
 - [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)

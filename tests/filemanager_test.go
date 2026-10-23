@@ -261,6 +261,10 @@ func fmKey(key string) tea.KeyMsg {
 	case "nul":
 		// Windows: Einfg kommt als Rune 0x00 (VK_INSERT nicht gemappt)
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}}
+	case "alt+nul":
+		// Windows: die Alt-Taste allein (z. B. beim Alt+Tab) kommt ebenfalls
+		// als Rune 0x00 an, aber mit gesetztem Alt
+		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}, Alt: true}
 	}
 	return keyMsgFor(key)
 }
@@ -1378,6 +1382,29 @@ func TestFileManagerInsertTogglesAndMovesDown(t *testing.T) {
 		if got := markedNames(m.fm.panels[0]); len(got) != 0 {
 			t.Errorf("%s: nach zweitem Druck noch markiert: %v", key, got)
 		}
+	}
+}
+
+// TestFileManagerAltDoesNotMark - Bug Build 75: Beim Wechsel mit Alt+Tab
+// erreicht der Alt-Tastendruck noch die Konsole. Bubbletea meldet ihn unter
+// Windows wie Einfg als Rune 0x00 (nur mit Alt) - das darf nichts markieren
+// und den Cursor nicht bewegen.
+func TestFileManagerAltDoesNotMark(t *testing.T) {
+	stubShift(t, false)
+	m, _ := openFileManagerFor(t)
+	m = cursorTo(t, m, "geheim")
+	start := m.fm.panels[0].cursor
+	m = pressRun(t, m, "alt+nul")
+	if got := markedNames(m.fm.panels[0]); len(got) != 0 {
+		t.Errorf("Alt (Alt+Tab) hat markiert: %v", got)
+	}
+	if m.fm.panels[0].cursor != start {
+		t.Errorf("Cursor = %d, erwartet unverändert %d", m.fm.panels[0].cursor, start)
+	}
+	// Einfg (NUL ohne Alt) markiert weiterhin
+	m = pressRun(t, m, "nul")
+	if got := strings.Join(markedNames(m.fm.panels[0]), ","); got != "geheim" {
+		t.Errorf("Einfg nach Alt: markiert = %q, erwartet geheim", got)
 	}
 }
 

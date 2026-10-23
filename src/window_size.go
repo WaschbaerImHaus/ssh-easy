@@ -53,6 +53,98 @@ var queryWindowState = getConsoleWindowState
 // setWindowSize setzt die Fenstergröße in Zeichen. Funktionszeiger für Tests.
 var setWindowSize = setConsoleWindowSize
 
+// fixHorizontalScroll entfernt einen waagrechten Bildlauf der Konsole
+// (Puffer breiter als das Fenster). Funktionszeiger für Tests.
+var fixHorizontalScroll = removeHorizontalScroll
+
+// hscrollAction ist die Korrektur eines waagrechten Bildlaufbalkens.
+type hscrollAction int
+
+const (
+	// hscrollNone - nichts zu tun (oder Bremse aktiv)
+	hscrollNone hscrollAction = iota
+	// hscrollShrinkBuffer - Puffer ist breiter als das Fenster: verkleinern
+	hscrollShrinkBuffer
+	// hscrollNudge - Scheinbalken: Fensterbreite kurz neu setzen
+	hscrollNudge
+)
+
+const (
+	// hscrollNudgeGap - Mindestabstand zwischen zwei Versuchen "Anstupsen"
+	hscrollNudgeGap = 2 * time.Second
+	// hscrollMaxNudges - so viele erfolglose Versuche in Folge, dann Ruhe
+	hscrollMaxNudges = 3
+)
+
+// hscrollGuard merkt sich die Versuche gegen einen Scheinbalken. Ein
+// Scheinbalken ist sichtbar, obwohl Puffer und Fenster gleich breit sind -
+// er lässt sich nicht scrollen, verdeckt aber die letzte Zeile (vermutlich
+// ein Pixel-Überstand des Fensterrahmens nach Schrift-/Monitorwechsel).
+type hscrollGuard struct {
+	// Erfolglose Versuche in Folge
+	attempts int
+	// Zeitpunkt des letzten Versuchs
+	last time.Time
+}
+
+// hscrollLog schreibt Korrekturen ins Log (setzt main). Standard: nichts.
+var hscrollLog = func(format string, args ...interface{}) {}
+
+// decide entscheidet, was gegen einen waagrechten Bildlaufbalken zu tun ist.
+// Ein zu breiter Puffer wird immer verkleinert (das beendet sich selbst);
+// gegen einen Scheinbalken wird höchstens alle hscrollNudgeGap und nur
+// hscrollMaxNudges-mal in Folge angestupst, damit nichts flackert.
+//
+// @param now - aktuelle Zeit
+// @param bufWidth - Pufferbreite in Zeichen
+// @param winLeft - linke sichtbare Spalte
+// @param winRight - rechte sichtbare Spalte
+// @param barVisible - zeigt das Fenster einen waagrechten Balken?
+// @return int - Fensterbreite in Zeichen
+// @return hscrollAction - Korrektur
+// @date   2026-10-23 19:34
+func (g *hscrollGuard) decide(now time.Time, bufWidth, winLeft, winRight int, barVisible bool) (int, hscrollAction) {
+	if width, needed := horizontalScrollFix(bufWidth, winLeft, winRight); needed {
+		return width, hscrollShrinkBuffer
+	}
+	width := winRight - winLeft + 1
+	if !barVisible || width < 2 {
+		g.attempts = 0
+		return width, hscrollNone
+	}
+	if g.attempts >= hscrollMaxNudges || (!g.last.IsZero() && now.Sub(g.last) < hscrollNudgeGap) {
+		return width, hscrollNone
+	}
+	g.attempts++
+	g.last = now
+	return width, hscrollNudge
+}
+
+// horizontalScrollFix berechnet, ob die Konsole waagrecht scrollen kann und
+// wie das behoben wird. Windows zeigt unten einen Bildlaufbalken, sobald der
+// Bildschirmpuffer breiter ist als das sichtbare Fenster - der Balken
+// verdeckt dann die letzte Zeile. Das passiert spontan, etwa wenn das
+// Fenster nach einer Schriftänderung (Strg+Mausrad), einem Monitorwechsel
+// oder dem Andocken in Pixeln knapp eine Spalte zu schmal ist. Abhilfe:
+// Fenster an Spalte 0 schieben und den Puffer auf Fensterbreite verkleinern.
+//
+// @param bufWidth - Breite des Bildschirmpuffers in Zeichen
+// @param winLeft - linke sichtbare Spalte
+// @param winRight - rechte sichtbare Spalte
+// @return int - neue Pufferbreite (= Fensterbreite)
+// @return bool - true wenn korrigiert werden muss
+// @date   2026-10-23 19:32
+func horizontalScrollFix(bufWidth, winLeft, winRight int) (int, bool) {
+	width := winRight - winLeft + 1
+	if width < 1 || bufWidth < 1 {
+		return 0, false
+	}
+	if bufWidth <= width && winLeft == 0 {
+		return width, false
+	}
+	return width, true
+}
+
 // validWindowSize prüft eine Fenstergröße auf Plausibilität.
 //
 // @param cols - Spalten
@@ -142,15 +234,18 @@ func windowPollCmd() tea.Cmd {
 	})
 }
 
-// handleWindowPoll speichert die aktuelle Fenstergröße (nur wenn normal und
-// geändert) und plant die nächste Abfrage. Unter Unix liefert
+// handleWindowPoll entfernt einen waagrechten Bildlauf, speichert die
+// aktuelle Fenstergröße (nur wenn normal und geändert) und plant die nächste
+// Abfrage. Unter Unix liefert
 // queryWindowState immer "nicht normal" - dann passiert nichts außer dem
 // nächsten Tick.
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Nächste Abfrage
-// @date   2026-10-16 10:00
+// @date   2026-10-23 19:33
 func (m AppModel) handleWindowPoll() (tea.Model, tea.Cmd) {
+	// Waagrechten Bildlauf (Balken verdeckt die letzte Zeile) sofort beheben
+	fixHorizontalScroll()
 	cols, rows, normal := queryWindowState()
 	if persistWindowSize(m.configPath, cols, rows, normal) {
 		m.configCache.Invalidate()

@@ -189,3 +189,36 @@ func TestUnixShiftInsertSequencePastesIntoForm(t *testing.T) {
 		t.Errorf("Host nach ESC[2;2~ = %q", got)
 	}
 }
+
+// TestIsInsertKeyIgnoresAlt - Einfg (NUL-Rune ohne Alt) ist die Markier-
+// Taste; die Alt-Taste allein (NUL-Rune mit Alt, z. B. beim Alt+Tab) nicht.
+// Shift+Einfg ist Einfügen, nicht Markieren.
+func TestIsInsertKeyIgnoresAlt(t *testing.T) {
+	stubShift(t, false)
+	if !isInsertKey(tea.KeyMsg{Type: tea.KeyInsert}) {
+		t.Error("KeyInsert (Unix) muss als Einfg gelten")
+	}
+	if !isInsertKey(nulKey) {
+		t.Error("NUL-Rune ohne Alt (Windows-Einfg) muss als Einfg gelten")
+	}
+	altNul := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}, Alt: true}
+	if isInsertKey(altNul) {
+		t.Error("NUL-Rune mit Alt (Alt-Taste) darf nicht als Einfg gelten")
+	}
+	if isInsertKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0, 0}}) {
+		t.Error("mehrere NUL-Runen sind kein einzelner Tastendruck")
+	}
+	stubShift(t, true)
+	if isInsertKey(nulKey) {
+		t.Error("Shift+Einfg ist Einfügen, nicht Markieren")
+	}
+}
+
+// TestIsPasteKeyIgnoresAlt - Alt+Shift (Layoutwechsel) mit gleichzeitig
+// gehaltener Einfg-Taste kommt als NUL-Rune mit Alt: kein Einfügen.
+func TestIsPasteKeyIgnoresAlt(t *testing.T) {
+	stubShift(t, true)
+	if isPasteKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0}, Alt: true}) {
+		t.Error("NUL-Rune mit Alt darf nicht einfügen")
+	}
+}

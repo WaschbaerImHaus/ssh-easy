@@ -240,7 +240,7 @@ func (t *sshTerminalCmd) Run() error {
 // @param initialWidth - Startbreite
 // @param initialHeight - Starthöhe
 // @param stop - Kanal zum Beenden der Goroutine
-// @date   2026-03-08 00:00
+// @date   2026-10-23 19:33
 func watchTerminalResize(session *ssh.Session, fd, initialWidth, initialHeight int, stop <-chan struct{}) {
 	lastW, lastH := initialWidth, initialHeight
 
@@ -249,6 +249,10 @@ func watchTerminalResize(session *ssh.Session, fd, initialWidth, initialHeight i
 		case <-stop:
 			return
 		default:
+			// Waagrechten Bildlauf der Windows-Konsole entfernen (sonst
+			// verdeckt der Balken die letzte Zeile); danach ändert sich
+			// ggf. die Höhe und wird unten an den Server gemeldet
+			fixHorizontalScroll()
 			// Aktuelle Terminalgröße prüfen
 			w, h, err := term.GetSize(fd)
 			if err == nil && (w != lastW || h != lastH) {

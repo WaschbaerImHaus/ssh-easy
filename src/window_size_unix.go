@@ -29,3 +29,11 @@ func getConsoleWindowState() (int, int, bool) {
 func setConsoleWindowSize(cols, rows int) bool {
 	return false
 }
+
+// removeHorizontalScroll ist unter Unix ein No-Op (das Terminal regelt das).
+//
+// @return bool - immer false
+// @date   2026-10-23 19:32
+func removeHorizontalScroll() bool {
+	return false
+}

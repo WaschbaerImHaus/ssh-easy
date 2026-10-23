@@ -106,12 +106,30 @@ const shiftInsertCSI = "\x1b[2;2~"
 //
 // @param msg - Tastendruck
 // @return bool - true wenn eingefügt werden soll
-// @date   2026-10-16 10:00
+// @date   2026-10-23 19:33
 func isPasteKey(msg tea.KeyMsg) bool {
 	if isPasteShortcut(msg.String()) {
 		return true
 	}
-	return isNulKey(msg) && len(msg.Runes) == 1 && shiftInsertPressed()
+	return !msg.Alt && isNulKey(msg) && len(msg.Runes) == 1 && shiftInsertPressed()
+}
+
+// isInsertKey prüft ob ein Tastendruck die Markier-Taste Einfg ist.
+//
+// Windows-Besonderheit: Bubbletea meldet Einfg als einzelne NUL-Rune - und
+// ebenso die Alt-Taste allein (VK_MENU), etwa wenn man mit Alt+Tab zu einem
+// anderen Programm wechselt: Der Alt-Druck erreicht noch die Konsole, Tab
+// nicht mehr. Die Alt-Taste trägt dabei das Alt-Kennzeichen, Einfg nicht.
+// Shift+Einfg ist Einfügen und zählt nicht als Markieren.
+//
+// @param msg - Tastendruck
+// @return bool - true bei Einfg
+// @date   2026-10-23 19:32
+func isInsertKey(msg tea.KeyMsg) bool {
+	if msg.Type == tea.KeyInsert {
+		return true
+	}
+	return !msg.Alt && isNulKey(msg) && len(msg.Runes) == 1 && !shiftInsertPressed()
 }
 
 // isNulKey prüft ob ein Tastendruck nur aus NUL-Runen besteht (unter

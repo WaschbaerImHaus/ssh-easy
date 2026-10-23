@@ -37,6 +37,8 @@ func main() {
 
 	// Logger initialisieren
 	logger := NewLogger()
+	// Korrekturen am waagrechten Bildlaufbalken der Konsole protokollieren
+	hscrollLog = logger.Info
 	logger.Info("ssh-easy gestartet (%s/%s)", runtime.GOOS, runtime.GOARCH)
 
 	// Build-Nummer lesen

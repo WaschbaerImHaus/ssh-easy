@@ -202,3 +202,90 @@ func TestWindowSaveDelay(t *testing.T) {
 		t.Errorf("windowSaveDelay = %v", windowSaveDelay)
 	}
 }
+
+// TestHorizontalScrollFix - Bug seit Build 52: unten erscheint spontan ein
+// waagrechter Bildlaufbalken und verdeckt die letzte Zeile. Ursache: der
+// Konsolenpuffer ist breiter als das sichtbare Fenster (z. B. ist das
+// Fenster nach Schriftänderung oder Monitorwechsel in Pixeln knapp eine
+// Spalte zu schmal). Korrektur: Fenster an Spalte 0 und Pufferbreite =
+// Fensterbreite.
+func TestHorizontalScrollFix(t *testing.T) {
+	cases := []struct {
+		name                       string
+		bufWidth, winLeft, winRight int
+		wantWidth                  int
+		wantFix                    bool
+	}{
+		{"passt genau", 120, 0, 119, 120, false},
+		{"eine Spalte zu breit", 120, 0, 118, 119, true},
+		{"waagrecht gescrollt", 120, 1, 119, 119, true},
+		{"viel zu breit", 300, 0, 79, 80, true},
+		{"kaputte Werte", 0, 0, -1, 0, false},
+	}
+	for _, c := range cases {
+		width, fix := horizontalScrollFix(c.bufWidth, c.winLeft, c.winRight)
+		if fix != c.wantFix || (fix && width != c.wantWidth) {
+			t.Errorf("%s: horizontalScrollFix(%d, %d, %d) = %d, %v; erwartet %d, %v",
+				c.name, c.bufWidth, c.winLeft, c.winRight, width, fix, c.wantWidth, c.wantFix)
+		}
+	}
+}
+
+// TestWindowPollRemovesHorizontalScroll - die regelmäßige Fensterabfrage
+// entfernt einen waagrechten Bildlauf, egal wodurch er entstanden ist.
+func TestWindowPollRemovesHorizontalScroll(t *testing.T) {
+	m := newListTestModel(t, "A")
+	stubWindowState(t, 0, 0, false)
+	old := fixHorizontalScroll
+	calls := 0
+	fixHorizontalScroll = func() bool { calls++; return true }
+	t.Cleanup(func() { fixHorizontalScroll = old })
+	m.Update(windowPollMsg{})
+	if calls != 1 {
+		t.Errorf("fixHorizontalScroll %d-mal aufgerufen, erwartet 1", calls)
+	}
+}
+
+// TestHScrollGuardPhantomBar - Nutzerhinweis: der Balken lässt sich gar
+// nicht scrollen. Puffer und Fenster sind dann in Zeichen gleich breit,
+// conhost zeigt den Balken trotzdem (Pixel-Überstand des Rahmens). Dann
+// hilft kein Verkleinern des Puffers, sondern ein kurzes Neusetzen der
+// Fensterbreite ("Anstupsen") - aber höchstens alle 2 s und nur 3-mal in
+// Folge, damit es nicht flackert, falls es nichts nützt.
+func TestHScrollGuardPhantomBar(t *testing.T) {
+	var g hscrollGuard
+	t0 := time.Date(2026, 10, 23, 8, 0, 0, 0, time.UTC)
+
+	// Kein Balken, passende Breite: nichts tun
+	if _, a := g.decide(t0, 120, 0, 119, false); a != hscrollNone {
+		t.Errorf("ohne Balken: Aktion %v, erwartet keine", a)
+	}
+	// Echter Überstand (Puffer breiter): immer Puffer verkleinern, ohne Bremse
+	for i := 0; i < 5; i++ {
+		if w, a := g.decide(t0, 121, 0, 119, true); a != hscrollShrinkBuffer || w != 120 {
+			t.Fatalf("Puffer breiter: Aktion %v, Breite %d; erwartet Verkleinern auf 120", a, w)
+		}
+	}
+	// Scheinbalken: anstupsen
+	if w, a := g.decide(t0, 120, 0, 119, true); a != hscrollNudge || w != 120 {
+		t.Fatalf("Scheinbalken: Aktion %v, Breite %d; erwartet Anstupsen bei 120", a, w)
+	}
+	// Gleich danach (100 ms): noch nicht wieder
+	if _, a := g.decide(t0.Add(100*time.Millisecond), 120, 0, 119, true); a != hscrollNone {
+		t.Errorf("nach 100 ms erneut angestupst (%v) - Bremse fehlt", a)
+	}
+	// Nach 2 s zweiter, nach 4 s dritter Versuch, danach Schluss
+	for i, d := range []time.Duration{2 * time.Second, 4 * time.Second} {
+		if _, a := g.decide(t0.Add(d), 120, 0, 119, true); a != hscrollNudge {
+			t.Errorf("Versuch %d nach %v: Aktion %v, erwartet Anstupsen", i+2, d, a)
+		}
+	}
+	if _, a := g.decide(t0.Add(10*time.Second), 120, 0, 119, true); a != hscrollNone {
+		t.Errorf("4. Versuch (%v) - nach 3 erfolglosen Versuchen muss Schluss sein", a)
+	}
+	// Balken weg: Zähler zurück, ein neuer Scheinbalken wird wieder behandelt
+	g.decide(t0.Add(11*time.Second), 120, 0, 119, false)
+	if _, a := g.decide(t0.Add(12*time.Second), 120, 0, 119, true); a != hscrollNudge {
+		t.Errorf("neuer Scheinbalken nach Erholung: Aktion %v, erwartet Anstupsen", a)
+	}
+}

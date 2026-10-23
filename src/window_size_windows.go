@@ -11,7 +11,7 @@
 // Die Pufferhöhe (Scrollback) bleibt erhalten.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-23 19:32
 
 //go:build windows
 
@@ -19,6 +19,8 @@ package main
 
 import (
 	"os"
+	"sync"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -37,7 +39,12 @@ var (
 	procGetClassNameW = user32Win.NewProc("GetClassNameW")
 	// procGetLargestConsoleWindowSize - größtmögliches Fenster (in Zeichen)
 	procGetLargestConsoleWindowSize = kernel32Win.NewProc("GetLargestConsoleWindowSize")
+	// procGetWindowLongW - Fensterstil lesen (sichtbare Bildlaufbalken)
+	procGetWindowLongW = user32Win.NewProc("GetWindowLongW")
 )
+
+// wsHScroll - Fensterstil-Bit WS_HSCROLL (waagrechter Bildlaufbalken sichtbar)
+const wsHScroll = 0x00100000
 
 // consoleFullscreenMode - Flag von GetConsoleDisplayMode für Vollbild
 const consoleFullscreenMode = 0x1
@@ -84,7 +91,7 @@ func getConsoleWindowState() (int, int, bool) {
 // @param cols - Gewünschte Spalten
 // @param rows - Gewünschte Zeilen
 // @return bool - true wenn die Größe gesetzt wurde
-// @date   2026-10-16 10:00
+// @date   2026-10-23 19:33
 func setConsoleWindowSize(cols, rows int) bool {
 	if isPseudoConsoleHost() {
 		return false
@@ -119,6 +126,9 @@ func setConsoleWindowSize(cols, rows int) bool {
 	if !setScreenBufferSize(handle, tmpWidth, bufHeight) {
 		return false
 	}
+	// Was auch immer danach scheitert: der Puffer darf nie breiter bleiben
+	// als das Fenster, sonst erscheint unten ein Bildlaufbalken
+	defer removeHorizontalScroll()
 
 	// Schritt 2: Fenster setzen - obere Zeile möglichst beibehalten
 	top := int(info.Window.Top)
@@ -176,4 +186,86 @@ func isPseudoConsoleHost() bool {
 	buf := make([]uint16, 64)
 	n, _, _ := procGetClassNameW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
 	return n > 0 && windows.UTF16ToString(buf[:n]) == "PseudoConsoleWindow"
+}
+
+var (
+	// consoleHScroll - Versuche gegen den Scheinbalken
+	consoleHScroll hscrollGuard
+	// consoleHScrollMu - TUI-Abfrage und Terminal-Schleife dürfen nie
+	// gleichzeitig am Fenster drehen
+	consoleHScrollMu sync.Mutex
+)
+
+// removeHorizontalScroll entfernt einen waagrechten Bildlaufbalken:
+//   - Puffer breiter als das Fenster (oder Fenster waagrecht verschoben):
+//     Fenster an Spalte 0 schieben, Puffer auf Fensterbreite verkleinern.
+//   - Scheinbalken (Balken sichtbar, aber nichts zu scrollen): Fenster kurz
+//     eine Spalte schmaler und wieder zurück setzen - conhost berechnet
+//     dabei die Rahmengröße neu. Mit Bremse (hscrollGuard).
+//
+// Die Pufferhöhe (Scrollback) bleibt. In Windows Terminal (ConPTY)
+// wirkungslos und daher übersprungen.
+//
+// @return bool - true wenn korrigiert wurde
+// @date   2026-10-23 19:34
+func removeHorizontalScroll() bool {
+	if isPseudoConsoleHost() {
+		return false
+	}
+	consoleHScrollMu.Lock()
+	defer consoleHScrollMu.Unlock()
+	handle := windows.Handle(getStdoutHandle())
+	if handle == windows.InvalidHandle || handle == 0 {
+		return false
+	}
+	var info windows.ConsoleScreenBufferInfo
+	if err := windows.GetConsoleScreenBufferInfo(handle, &info); err != nil {
+		return false
+	}
+	width, action := consoleHScroll.decide(time.Now(), int(info.Size.X),
+		int(info.Window.Left), int(info.Window.Right), consoleHScrollBarVisible())
+	rect := windows.SmallRect{
+		Left:   0,
+		Top:    info.Window.Top,
+		Right:  int16(width - 1),
+		Bottom: info.Window.Bottom,
+	}
+	switch action {
+	case hscrollShrinkBuffer:
+		// Erst das Fenster an Spalte 0 schieben - der Puffer darf nie
+		// schmaler werden als der sichtbare Ausschnitt reicht
+		if err := setConsoleWindowInfo(handle, true, &rect); err != nil {
+			return false
+		}
+		ok := setScreenBufferSize(handle, width, int(info.Size.Y))
+		hscrollLog("Konsole: Puffer %d -> %d Spalten (waagrechter Bildlauf entfernt: %v)", info.Size.X, width, ok)
+		return ok
+	case hscrollNudge:
+		narrow := rect
+		narrow.Right--
+		if err := setConsoleWindowInfo(handle, true, &narrow); err != nil {
+			hscrollLog("Konsole: Scheinbalken, Anstupsen gescheitert: %v", err)
+			return false
+		}
+		err := setConsoleWindowInfo(handle, true, &rect)
+		hscrollLog("Konsole: Scheinbalken bei %d Spalten angestupst (Fehler: %v, Balken danach sichtbar: %v)",
+			width, err, consoleHScrollBarVisible())
+		return err == nil
+	}
+	return false
+}
+
+// consoleHScrollBarVisible meldet, ob das Konsolenfenster einen waagrechten
+// Bildlaufbalken zeigt (Fensterstil WS_HSCROLL).
+//
+// @return bool - true wenn der Balken sichtbar ist
+// @date   2026-10-23 19:34
+func consoleHScrollBarVisible() bool {
+	hwnd, _, _ := procGetConsoleWindow.Call()
+	if hwnd == 0 {
+		return false
+	}
+	gwlStyle := int32(-16)
+	style, _, _ := procGetWindowLongW.Call(hwnd, uintptr(gwlStyle))
+	return style&wsHScroll != 0
 }

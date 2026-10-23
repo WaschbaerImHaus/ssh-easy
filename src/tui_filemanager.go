@@ -476,8 +476,9 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.fmVisibleRows()
 
 	// Einfg: unter Windows als einzelne NUL-Rune (VK_INSERT ist in Bubbletea
-	// nicht gemappt); mit gedrückter Umschalttaste wäre es Einfügen
-	if msg.Type == tea.KeyInsert || (isNulKey(msg) && len(msg.Runes) == 1 && !shiftInsertPressed()) {
+	// nicht gemappt); die Alt-Taste (Alt+Tab) sieht genauso aus und darf
+	// nicht markieren, Shift+Einfg wäre Einfügen
+	if isInsertKey(msg) {
 		panel.toggleMark()
 		panel.offset = scrollOffset(len(panel.entries), panel.cursor, panel.offset, rows)
 		return m, nil

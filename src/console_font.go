@@ -70,12 +70,13 @@ func (t Translations) fontSizeUnsupportedText() string {
 // dann bleibt die Konsole unverändert. Nur unter Windows wirksam.
 //
 // @param size - Gespeicherte Schriftgröße aus AppConfig.FontSize
-// @date   2026-07-03 19:45
+// @date   2026-10-23 19:33
 func applyStartupFontSize(size int) {
 	if size <= 0 {
 		return
 	}
 	setConsoleFontSize(clampFontSize(size))
+	fixHorizontalScroll()
 }
 
 // persistFontSize speichert eine Schriftgröße in der Config, falls sie sich
@@ -107,7 +108,7 @@ func persistFontSize(configPath string, size int) bool {
 // @param delta - Änderung in Pixeln (+FontSizeStep / -FontSizeStep)
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Immer nil
-// @date   2026-07-03 19:45
+// @date   2026-10-23 19:33
 func (m AppModel) changeFontSize(delta int) (tea.Model, tea.Cmd) {
 	current := getConsoleFontSize()
 	if current <= 0 {
@@ -125,6 +126,9 @@ func (m AppModel) changeFontSize(delta int) (tea.Model, tea.Cmd) {
 	if !setConsoleFontSize(newSize) {
 		return m, nil
 	}
+	// Größere Schrift am Bildschirmrand: Fenster verliert Spalten, der
+	// Puffer nicht - waagrechten Bildlauf gleich wieder entfernen
+	fixHorizontalScroll()
 
 	m.successMsg = fmt.Sprintf(m.lang.fontSizeChangedText(), newSize)
 	m.errorMsg = ""
