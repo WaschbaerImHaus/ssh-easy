@@ -28,6 +28,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 const (
@@ -278,9 +279,9 @@ func (r *copyRun) setCancelled() {
 // Zielverzeichnis einmal gelesen; neu angelegte Verzeichnisse sind leer.
 //
 // Der Liste wird nur geglaubt, wenn das sicher ist (Review Build 78):
-//   - Kollidiert der Name ohne Rücksicht auf Groß-/Kleinschreibung mit einem
-//     in diesem Lauf schon vergebenen (README und readme auf einem Windows-
-//     Ziel), wird gewartet, bis alle laufenden Übertragungen fertig sind,
+//   - Kollidiert der Name gefaltet (looseTargetKey) mit einem in diesem
+//     Lauf schon vergebenen (README und readme, a.txt. und a.txt auf einem
+//     Windows-Ziel), wird gewartet, bis alle laufenden Übertragungen fertig sind,
 //     und dann einzeln gefragt - sonst würde die zweite Datei die erste
 //     still ersetzen (beim Verschieben: beide Quellen weg).
 //   - Ungewöhnliche Namen, die ein Server selbst umdeuten kann (Punkt oder
@@ -323,23 +324,50 @@ func (r *copyRun) targetInfo(rel, dstPath string) (os.FileInfo, bool) {
 	return info, err == nil
 }
 
-// looseTargetKey liefert einen Vergleichsschlüssel für einen Zielpfad, der
-// Groß-/Kleinschreibung ignoriert, und ob alle Namensteile "einfach" sind:
-// nur druckbares ASCII, kein Punkt/Leerzeichen am Ende, kein "~". Nur für
-// einfache Namen ist ein Vergleich per Liste verlässlich.
+// looseTargetKey liefert einen Vergleichsschlüssel für einen Zielpfad, so
+// wie das großzügigste Ziel Namen gleichsetzt (Sicherheitsreview Build 78):
+// Groß-/Kleinschreibung nach Unicode gefaltet (auch das Kelvin-Zeichen K
+// = k, ſ = s), Punkte und Leerzeichen am Ende jedes Namensteils entfernt
+// (Windows legt "a.txt." als "a.txt" ab). Dazu, ob alle Namensteile
+// "einfach" sind: nur druckbares ASCII, kein Punkt/Leerzeichen am Ende,
+// kein "~". Nur für einfache Namen ist ein Vergleich per Liste verlässlich.
 //
 // @param rel - Pfad relativ zum Zielverzeichnis des Auftrags
-// @return string - Schlüssel (klein geschrieben)
+// @return string - Schlüssel
 // @return bool - true wenn alle Namensteile einfach sind
-// @date   2026-10-23 19:55
+// @date   2026-10-23 20:01
 func looseTargetKey(rel string) (string, bool) {
 	simple := true
-	for _, part := range strings.Split(rel, "/") {
+	parts := strings.Split(rel, "/")
+	for i, part := range parts {
 		if !simpleTargetName(part) {
 			simple = false
 		}
+		folded := strings.Map(foldRune, part)
+		if trimmed := strings.TrimRight(folded, ". "); trimmed != "" {
+			folded = trimmed
+		}
+		parts[i] = folded
 	}
-	return strings.ToLower(rel), simple
+	return strings.Join(parts, "/"), simple
+}
+
+// foldRune faltet ein Zeichen auf einen festen Vertreter aller Zeichen, die
+// sich nur in der Groß-/Kleinschreibung unterscheiden (kleinstes Zeichen
+// der Faltungskette, klein geschrieben): K, k und das Kelvin-Zeichen
+// ergeben alle "k".
+//
+// @param r - Zeichen
+// @return rune - gefaltetes Zeichen
+// @date   2026-10-23 20:01
+func foldRune(r rune) rune {
+	smallest := r
+	for f := unicode.SimpleFold(r); f != r; f = unicode.SimpleFold(f) {
+		if f < smallest {
+			smallest = f
+		}
+	}
+	return unicode.ToLower(smallest)
 }
 
 // simpleTargetName prüft einen einzelnen Namen (siehe looseTargetKey).

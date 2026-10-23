@@ -445,12 +445,20 @@ func TestMoveDeletesSourceOnlyAfterWritten(t *testing.T) {
 
 // --- Review-Funde Build 78: Groß-/Kleinschreibung, besondere Namen ---
 
-// foldFS verhält sich wie ein Ziel ohne Unterscheidung von Groß- und
-// Kleinschreibung (Windows-PC, Windows-SFTP-Server): jeder Pfad wird klein
-// geschrieben abgelegt und gesucht.
+// foldFS verhält sich wie ein Windows-Ziel (Windows-PC, Windows-SFTP-
+// Server): Groß-/Kleinschreibung zählt nicht, Punkte und Leerzeichen am
+// Ende eines Namens fallen weg. Jeder Pfad wird so abgelegt und gesucht.
 type foldFS struct{ *memFS }
 
-func fold(p string) string { return strings.ToLower(p) }
+func fold(p string) string {
+	parts := strings.Split(strings.ToLower(p), "/")
+	for i, part := range parts {
+		if trimmed := strings.TrimRight(part, ". "); trimmed != "" {
+			parts[i] = trimmed
+		}
+	}
+	return strings.Join(parts, "/")
+}
 
 func (f *foldFS) Lstat(p string) (os.FileInfo, error)     { return f.memFS.Lstat(fold(p)) }
 func (f *foldFS) Stat(p string) (os.FileInfo, error)      { return f.memFS.Stat(fold(p)) }
@@ -671,5 +679,71 @@ func TestPipeCopyPerFileLimit(t *testing.T) {
 	}
 	if limit := int64(copyPipeChunks+1) * chunk; w.maxAhead > limit {
 		t.Errorf("Leser lief %d Bytes voraus, pro Datei erlaubt %d", w.maxAhead, limit)
+	}
+}
+
+// TestCopyNormalizedCollisionAsks - Sicherheitsreview Build 78: der
+// Vergleich im Lauf darf nicht nur klein schreiben. "a.txt." landet auf
+// Windows als "a.txt", das Kelvin-Zeichen K wird zu k gefaltet. Egal in
+// welcher Reihenfolge die Einträge markiert sind: der zweite darf den
+// ersten nicht still ersetzen, sondern es kommt die Rückfrage.
+func TestCopyNormalizedCollisionAsks(t *testing.T) {
+	pairs := [][2]string{
+		{"a.txt.", "a.txt"},
+		{"a.txt", "a.txt."},
+		{"b.txt ", "b.txt"},
+		{"\u212aey.txt", "key.txt"},
+		{"key.txt", "\u212aey.txt"},
+	}
+	for _, pair := range pairs {
+		for _, move := range []bool{false, true} {
+			src := newMemFS("/home/a")
+			src.addFile("/home/a/"+pair[0], "erste", 0o644, copyTestTime)
+			src.addFile("/home/a/"+pair[1], "zweite", 0o644, copyTestTime)
+			dst := &foldFS{memFS: newMemFS("/srv/b")}
+			req := copyRequest{src: src, dst: dst, srcDir: "/home/a", dstDir: "/srv/b", names: []string{pair[0], pair[1]}, move: move}
+			_, conflicts := runCopySync(t, context.Background(), req, func(string) copyConflictAnswer { return copyAnswerSkip })
+			if len(conflicts) != 1 {
+				t.Errorf("%q dann %q (verschieben %v): Rückfragen %v, erwartet eine", pair[0], pair[1], move, conflicts)
+				continue
+			}
+			if got, _ := dst.content(fold("/srv/b/" + pair[0])); got != "erste" {
+				t.Errorf("%q dann %q: Ziel %q, erwartet erste (zweite übersprungen)", pair[0], pair[1], got)
+			}
+			if move {
+				if got, ok := src.content("/home/a/" + pair[1]); !ok || got != "zweite" {
+					t.Errorf("%q dann %q: übersprungene Quelle verloren", pair[0], pair[1])
+				}
+			}
+		}
+	}
+}
+
+// TestLooseTargetKey - der Vergleichsschlüssel faltet wie das großzügigste
+// Ziel: Groß-/Kleinschreibung (auch Unicode wie das Kelvin-Zeichen) und
+// Punkte/Leerzeichen am Ende jedes Namensteils.
+func TestLooseTargetKey(t *testing.T) {
+	same := [][2]string{
+		{"Docs/README.md", "docs/readme.md"},
+		{"a.txt.", "a.txt"},
+		{"a.txt . .", "A.TXT"},
+		{"dir./x", "DIR/x"},
+		{"\u212aey", "key"},
+		{"\u017fun", "SUN"},
+	}
+	for _, c := range same {
+		a, _ := looseTargetKey(c[0])
+		b, _ := looseTargetKey(c[1])
+		if a != b {
+			t.Errorf("looseTargetKey(%q) = %q, looseTargetKey(%q) = %q - müssen gleich sein", c[0], a, c[1], b)
+		}
+	}
+	if _, simple := looseTargetKey("ordner/datei.txt"); !simple {
+		t.Error("einfacher Name als ungewöhnlich eingestuft")
+	}
+	for _, rel := range []string{"a.txt.", "x/b ", "LONGFI~1.TXT", "\u00e4.txt", "\u212aey"} {
+		if _, simple := looseTargetKey(rel); simple {
+			t.Errorf("%q als einfach eingestuft", rel)
+		}
 	}
 }

@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.79] – Build 79
+- **Security** file manager: when copying or moving several entries at once, names that a Windows target treats as the same file (`a.txt.` and `a.txt`, or case variants beyond plain ASCII such as the Kelvin sign) are now checked one by one. Before, the second file could silently replace the first, and moving could lose both sources (finding of the automated security review of Build 78)
+
 ## [v0.78] – Build 78
 - **Changed** file manager: copying and moving many small files is much faster. Up to 8 files are transferred at the same time, directory listings replace one server round trip per file (on both sides), and each file is read while it is being written (read-ahead limited to 64 MB in total and 16 MB per file). When moving, a source file is still only deleted after it has been completely written and renamed on the target. Every file still goes through an exclusive temporary file and an atomic rename. Names that differ only in upper/lower case (e.g. README and readme copied to Windows) and names a server may reinterpret (trailing dot or space, "~", non-ASCII) are still checked one by one, so nothing is overwritten without asking
 
