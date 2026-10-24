@@ -5,6 +5,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.81] – Build 81
+- **Changed** file manager: copying over slow or distant connections (internet) is much faster. Large files keep up to 4 blocks of 2 MB in flight instead of pausing after every block, up to 32 files are transferred at the same time (was 8), permissions and modification time are set in one round trip, and new directories are created in parallel (each one still becomes private before anything is created inside it). Measured on a 40 Mbit/s link with 40 ms ping: 4 KB files 0.9 → 4.0 Mbit/s, 100 KB files 15.8 → 31.4 Mbit/s, one large file 34.5 → 37.9 Mbit/s, directories about 6× faster
+- **Fixed** file manager: a copy over a connection that died silently (Wi-Fi change, router restart, NAT timeout) hung forever, and `Esc` could not stop it. File manager connections now send a keepalive every 15 s; if the server neither answers it nor sends anything else for 45 s, the connection is closed (slow but working links are not cut) and the copy ends with the message "connection lost". A partly written temporary file `.ssh-easy-copy-….tmp` can remain on the target in this case, because nothing can be deleted over a dead connection
+
 ## [v0.80] – Build 80
 - **Changed** file manager: *Options → Extensions for F9* is now a sorted, scrollable list with a visible cursor instead of one long text field. `Del` removes the extension under the cursor after a yes/no question (`j`/`y` confirms, `Enter` does not), `Tab` or `Ins` jump to the *New extension* field, `Enter` adds the extension and sorts it in. Only lowercase letters `a`–`z` and digits `0`–`9` can be typed (capital letters become lowercase). Extensions outside the safe default list still need the strong security warning. Every change is saved immediately; an empty list now stays empty (F9 opens nothing) instead of falling back to the default list
 

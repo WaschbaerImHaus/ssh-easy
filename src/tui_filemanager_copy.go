@@ -259,7 +259,7 @@ func (m AppModel) fmFinishCopy(result copyResult) (tea.Model, tea.Cmd) {
 //
 // @param f - Fehler
 // @return string - Text (bereinigt, ohne Steuerzeichen)
-// @date   2026-10-21 21:03
+// @date   2026-10-24 20:29
 func (m AppModel) fmDescribeFailure(f copyFailure) string {
 	p := sanitizeFileName(f.path)
 	switch {
@@ -279,6 +279,8 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrDeleteRace), p)
 	case errors.Is(f.err, errUnsafeSymlink):
 		return fmt.Sprintf(m.tr(txtFMErrUnsafeLink), p)
+	case errors.Is(f.err, errConnectionLost):
+		return fmt.Sprintf(m.tr(txtFMErrConnectionLost), p)
 	}
 	return p + ": " + sanitizeFileName(f.err.Error())
 }

@@ -68,5 +68,13 @@
 - Vorhandene Namen: markiert, anfangs abgewaehlt; gewaehlt = ersetzen (lokale ID/CreatedAt/Key bleiben)
 - Datei untrusted: 1 MiB, Validate + validGroupName, keine Steuer-/Cf-Zeichen (ZWNJ/ZWJ erlaubt), key_path verworfen, neue IDs
 
+## Build 81 (2026-10-24) - Upload übers Internet + Hänger
+- Nutzerbericht: 4-5 statt 40 Mbit beim Kopieren von ~/x (11.869 Dateien, 3.763 Verzeichnisse, 23 GB; 92 % der Bytes in 13 Dateien > 100 MB)
+- Messverfahren: Wegwerf-sshd 127.0.0.1:2222 + Go-Proxy mit Latenz und 40-Mbit-Begrenzung (Test im Scratchpad, nicht im Repo); "schwarzes Loch" für tote Leitung
+- pipeCopyAt (4 Blöcke per WriteAt gleichzeitig), copyParallel 32, setAttributes, dirJob (Verzeichnisse parallel, Einträge warten auf 0700-Elternverzeichnis), finishDirs ebenenweise parallel
+- watchConnection/newSFTPFS: Keepalive 15 s, Timeout 45 s, dann client.Close; errConnectionLost + txtFMErrConnectionLost
+- Fable-Audit: MITTEL behoben vor Release (gescheitertes Mkdir + Lstat durch untergeschobenen Symlink -> fremder Ordner); Review: Keepalive wertet jetzt auch eingehende Daten (activityReader), Esc nach Ablaufende = abgebrochen, dirPending-Grenze
+- Offen: Temp-Datei nach Abriss bleibt liegen (BUGS.md), Download-Pausen pro Block (OPTIMIZE.md)
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

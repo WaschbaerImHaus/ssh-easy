@@ -52,8 +52,9 @@ import (
 	"unicode"
 )
 
-// copyBufferSize - Schreibpuffer pro Datei. SFTP überträgt einen vollen
-// Puffer mit mehreren gleichzeitigen Paketen (UseConcurrentWrites).
+// copyBufferSize - Schreibpuffer pro Datei für Ziele ohne WriteAt (dort
+// schreibt pipeCopy der Reihe nach). Ziele mit WriteAt (SFTP, lokale
+// Dateien) schreibt pipeCopyAt blockweise und gleichzeitig.
 const copyBufferSize = 1 << 20
 
 // copyProgressInterval - höchstens so oft wird Fortschritt gemeldet.
@@ -81,6 +82,55 @@ var errCannotProtect = errors.New("cannot restrict permissions on target")
 // errUnsafeSymlink - Symlinks vom Server werden auf dem PC nicht angelegt
 // (sein Ziel könnte auf vorhandene lokale Dateien zeigen).
 var errUnsafeSymlink = errors.New("symlinks from a server are not created on the PC")
+
+// errConnectionLost - die Verbindung zu Quelle oder Ziel ist abgerissen oder
+// antwortete nicht mehr (watchConnection); der eigentliche Fehler steckt
+// in connectionLostError.
+var errConnectionLost = errors.New("connection lost")
+
+// connectionLostError kennzeichnet einen Fehler nach Verbindungsverlust;
+// errors.Is findet errConnectionLost und den ursprünglichen Fehler.
+type connectionLostError struct {
+	err error
+}
+
+// Error liefert "connection lost: <Ursache>", ohne den Text zu doppeln,
+// wenn die Ursache das schon sagt (pkg/sftp meldet selbst "connection lost").
+//
+// @return string - Fehlertext
+// @date   2026-10-24 20:29
+func (e *connectionLostError) Error() string {
+	msg := e.err.Error()
+	if strings.Contains(msg, errConnectionLost.Error()) {
+		return msg
+	}
+	return errConnectionLost.Error() + ": " + msg
+}
+
+// Unwrap liefert errConnectionLost und den ursprünglichen Fehler.
+//
+// @return []error - beide Fehler
+// @date   2026-10-24 20:29
+func (e *connectionLostError) Unwrap() []error {
+	return []error{errConnectionLost, e.err}
+}
+
+// connectionWatcher meldet, ob die Verbindung eines Dateisystems verloren
+// ging (sftpFS).
+type connectionWatcher interface {
+	connectionLost() bool
+}
+
+// fsConnectionLost meldet, ob die Verbindung eines Dateisystems verloren
+// ging; Dateisysteme ohne Verbindung (lokaler PC) nie.
+//
+// @param fsys - Dateisystem
+// @return bool - true wenn verloren
+// @date   2026-10-24 20:29
+func fsConnectionLost(fsys remoteFS) bool {
+	w, ok := fsys.(connectionWatcher)
+	return ok && w.connectionLost()
+}
 
 // errCopyLimit - zu viele Einträge oder zu tief verschachtelt (Schutz vor
 // bösartigen Servern mit endlosen Verzeichnisbäumen); nichts wird kopiert.
@@ -217,8 +267,18 @@ type copyRun struct {
 	incomplete map[string]bool
 	// Verzeichnisse (rel), deren Inhalt übersprungen wird
 	skipDirs map[string]bool
-	// Neu angelegte Verzeichnisse (Rechte/Zeit am Ende setzen)
+	// Neu angelegte Verzeichnisse (Rechte/Zeit am Ende setzen; nur die,
+	// deren dirJob gelungen ist)
 	createdDirs []copyNode
+	// Aufträge "Verzeichnis anlegen" dieses Laufs (rel -> Auftrag); die
+	// Map nur in dispatch, finishDirs und removeMovedDirs (nach dirWG.Wait)
+	dirJobs map[string]*dirJob
+	// Laufende Aufträge "Verzeichnis anlegen"
+	dirWG sync.WaitGroup
+	// Höchstens so viele Verzeichnisse werden gleichzeitig angelegt
+	dirSlots chan struct{}
+	// Höchstens so viele Aufträge "Verzeichnis anlegen" sind offen
+	dirPending chan struct{}
 	// Grenze beim Erfassen erreicht (copyMaxEntries/copyMaxDepth)
 	limitHit bool
 	// Verschieben: Quellverzeichnisse, die am Ende gelöscht werden, wenn
@@ -263,6 +323,9 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 		incomplete: map[string]bool{},
 		skipDirs:   map[string]bool{},
 		sameDirs:   map[string]bool{},
+		dirJobs:    map[string]*dirJob{},
+		dirSlots:   make(chan struct{}, max(copyParallel, 1)),
+		dirPending: make(chan struct{}, copyMaxPendingDirs),
 	}
 	run.progress.scanning = true
 	nodes := run.scan()
@@ -355,12 +418,17 @@ func satAdd(a, b int64) int64 {
 }
 
 // fail merkt einen Fehler und markiert den obersten Eintrag als unvollständig.
+// Ist die Verbindung zu Quelle oder Ziel verloren, wird der Fehler als
+// errConnectionLost gekennzeichnet (sonst sähe der Nutzer nur z. B. "EOF").
 //
 // @param node - Betroffener Eintrag
 // @param p - Pfad für die Meldung
 // @param err - Fehler
-// @date   2026-10-21 21:03
+// @date   2026-10-24 20:29
 func (r *copyRun) fail(node copyNode, p string, err error) {
+	if !errors.Is(err, errConnectionLost) && (fsConnectionLost(r.req.src) || fsConnectionLost(r.req.dst)) {
+		err = &connectionLostError{err: err}
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.result.failures = append(r.result.failures, copyFailure{path: p, err: err})
@@ -471,6 +539,8 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 	}
 	close(jobs)
 	wait()
+	// Auch leere neue Verzeichnisse müssen fertig sein (finishDirs)
+	r.dirWG.Wait()
 }
 
 // dispatch geht die erfassten Einträge der Reihe nach durch: Verzeichnisse,
@@ -480,7 +550,7 @@ func (r *copyRun) copyAll(nodes []copyNode) {
 // @param nodes - Erfasste Einträge
 // @param jobs - Aufträge an die Arbeiter
 // @return bool - false = Vorgang abgebrochen
-// @date   2026-10-23 19:44
+// @date   2026-10-24 20:29
 func (r *copyRun) dispatch(nodes []copyNode, jobs chan<- copyJob) bool {
 	for _, node := range nodes {
 		if r.ctx.Err() != nil {
@@ -511,7 +581,13 @@ func (r *copyRun) dispatch(nodes []copyNode, jobs chan<- copyJob) bool {
 			r.countSkipped(node)
 			continue
 		}
-		existing, exists := r.targetInfo(node.rel, dstPath)
+		existing, exists, skip := r.targetInfo(node.rel, dstPath)
+		if skip {
+			// Elternverzeichnis nicht angelegt: Inhalt übersprungen
+			r.skipDir(node)
+			r.countSkipped(node)
+			continue
+		}
 		// Verschieben auf ein vorhandenes Ziel: ist es die Quelle selbst
 		// (zweiter Verbindungseintrag zum selben Server)? Dann würde das
 		// Löschen der Quelle die einzige Kopie vernichten
@@ -545,7 +621,7 @@ func (r *copyRun) dispatch(nodes []copyNode, jobs chan<- copyJob) bool {
 
 // copyDir legt ein Verzeichnis an bzw. führt es mit einem vorhandenen zusammen.
 //
-// @date   2026-10-21 21:03
+// @date   2026-10-24 20:29
 func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, exists bool) {
 	if exists {
 		if !existing.IsDir() {
@@ -553,20 +629,23 @@ func (r *copyRun) copyDir(node copyNode, dstPath string, existing os.FileInfo, e
 			r.skipDir(node)
 			return
 		}
+		// Zusammengeführt: Einträge darin hängen weiter am Auftrag des neu
+		// angelegten Elternverzeichnisses, falls es einen gibt
+		// (Sicherheitsaudit Build 81 - sonst gälte ein Verzeichnis hinter
+		// einem gescheiterten Mkdir als "gab es schon")
+		if parent := r.parentDirJob(node); parent != nil {
+			r.dirJobs[node.rel] = parent
+		}
 		r.rememberMovedDir(node)
 		return
 	}
-	if err := r.req.dst.Mkdir(dstPath); err != nil {
-		r.fail(node, dstPath, err)
-		r.skipDir(node)
-		return
-	}
+	// Anlegen läuft im Hintergrund (startDirJob); Einträge darin warten
+	// auf diesen Auftrag. Scheitert er, werden sie übersprungen
+	job := r.startDirJob(node, dstPath)
+	r.dirJobs[node.rel] = job
 	r.rememberMovedDir(node)
 	// Neu angelegt = leer: Einträge darin muss niemand mehr abfragen
 	r.dstDirs[dstPath] = newTargetListing(nil)
-	// Während des Kopierens nur für den Besitzer zugänglich; die echten
-	// Rechte setzt finishDirs am Ende
-	_ = r.req.dst.Chmod(dstPath, 0o700)
 	r.createdDirs = append(r.createdDirs, node)
 }
 
@@ -583,6 +662,10 @@ func (r *copyRun) copySymlink(node copyNode, srcPath, dstPath string, existing o
 		// Einträge im Zielordner zeigen (".ssh" in ~) oder über dort
 		// liegende Symlinks hinausführen
 		r.fail(node, srcPath, errUnsafeSymlink)
+		return true
+	}
+	if !r.parentDirJob(node).wait() {
+		// Elternverzeichnis nicht angelegt: übersprungen
 		return true
 	}
 	target, err := r.req.src.ReadLink(srcPath)
@@ -645,7 +728,7 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 	// ein Arbeiter - siehe transfer
 	r.inflight.Add(1)
 	select {
-	case jobs <- copyJob{node: node, srcPath: srcPath, dstPath: dstPath}:
+	case jobs <- copyJob{node: node, srcPath: srcPath, dstPath: dstPath, parent: r.parentDirJob(node)}:
 		return true
 	case <-r.ctx.Done():
 		r.inflight.Done()
@@ -658,7 +741,8 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 //     untergeschobener Symlink, keine fremde Datei wird benutzt)
 //  2. sofort auf 0600 setzen - der Inhalt ist nie für andere lesbar; geht
 //     das nicht und ist die Quelle privat, wird abgebrochen (errCannotProtect)
-//  3. Inhalt schreiben, dann echte Rechte und Änderungszeit setzen
+//  3. Inhalt schreiben (mit WriteAt mehrere Blöcke gleichzeitig), dann
+//     echte Rechte und Änderungszeit gleichzeitig setzen
 //  4. in einem Schritt auf den Zielnamen umbenennen (ersetzt ein vorhandenes
 //     Ziel bzw. einen Symlink dort, ohne ihm zu folgen)
 //
@@ -671,7 +755,7 @@ func (r *copyRun) copyRegular(node copyNode, srcPath, dstPath string, existing o
 // @param dstPath - Ziel
 // @param info - Infos der Quelle (Rechte, Zeit)
 // @return error - Fehler beim Lesen/Schreiben oder ctx.Err()
-// @date   2026-10-21 21:17
+// @date   2026-10-24 20:10
 func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error) {
 	reader, err := r.req.src.OpenRead(srcPath)
 	if err != nil {
@@ -695,8 +779,7 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 		return errCannotProtect
 	}
 
-	buffered := bufio.NewWriterSize(writer, copyBufferSize)
-	counter := &copyCountingWriter{run: r, w: buffered}
+	counter := &copyCountingWriter{run: r}
 	defer func() {
 		if err != nil {
 			// Fortschritt dieser Datei zurücknehmen; der Aufrufer zählt sie
@@ -707,9 +790,16 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 		}
 	}()
 	// Lesen und Schreiben gleichzeitig (Lesevorlauf im gemeinsamen Budget)
-	_, err = pipeCopy(r.ctx, counter, reader, copyReadAhead)
-	if err == nil {
-		err = buffered.Flush()
+	if at, ok := writer.(io.WriterAt); ok {
+		// Mehrere Blöcke gleichzeitig unterwegs: keine Pause nach jedem Block
+		_, err = pipeCopyAt(r.ctx, at, reader, copyReadAhead, counter.add)
+	} else {
+		buffered := bufio.NewWriterSize(writer, copyBufferSize)
+		counter.w = buffered
+		_, err = pipeCopy(r.ctx, counter, reader, copyReadAhead)
+		if err == nil {
+			err = buffered.Flush()
+		}
 	}
 	if closeErr := writer.Close(); err == nil {
 		err = closeErr
@@ -729,9 +819,9 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 			return err
 		}
 	}
-	// Rechte und Zeit übernehmen; Fehler ignorieren (eingeschränkte Hoster)
-	_ = r.req.dst.Chmod(tmp, perm)
-	_ = r.req.dst.Chtimes(tmp, info.ModTime(), info.ModTime())
+	// Rechte und Zeit übernehmen (gleichzeitig, die Datei ist geschlossen);
+	// Fehler ignorieren (eingeschränkte Hoster)
+	setAttributes(r.req.dst, tmp, perm, info.ModTime())
 	return r.req.dst.RenameOverwrite(tmp, dstPath)
 }
 
@@ -762,25 +852,35 @@ func tempCopyName(dstPath string) string {
 // bricht ab, sobald der Kontext beendet ist.
 type copyCountingWriter struct {
 	run *copyRun
-	w   io.Writer
-	// In diese Datei geschriebene Bytes
+	// Ziel für Write (nur ohne WriteAt; pipeCopyAt meldet über add)
+	w io.Writer
+	// In diese Datei geschriebene Bytes (unter run.mu)
 	n int64
 }
 
 // Write leitet weiter, zählt und prüft auf Abbruch.
 //
-// @date   2026-10-21 21:03
+// @date   2026-10-24 20:10
 func (c *copyCountingWriter) Write(b []byte) (int, error) {
 	if err := c.run.ctx.Err(); err != nil {
 		return 0, err
 	}
 	n, err := c.w.Write(b)
-	c.n += int64(n)
+	c.add(n)
+	return n, err
+}
+
+// add verbucht geschriebene Bytes im Fortschritt; darf gleichzeitig
+// aufgerufen werden (pipeCopyAt).
+//
+// @param n - geschriebene Bytes
+// @date   2026-10-24 20:10
+func (c *copyCountingWriter) add(n int) {
 	c.run.mu.Lock()
+	defer c.run.mu.Unlock()
+	c.n += int64(n)
 	c.run.progress.doneBytes = satAdd(c.run.progress.doneBytes, int64(n))
 	c.run.sendProgressLocked(false)
-	c.run.mu.Unlock()
-	return n, err
 }
 
 // resolveConflict entscheidet, ob ein vorhandenes Ziel überschrieben wird -
@@ -856,15 +956,28 @@ func (r *copyRun) ask(dstPath string, src, dst os.FileInfo) (copyConflictAnswer,
 
 // finishDirs setzt Rechte und Zeit neu angelegter Verzeichnisse - von innen
 // nach außen, damit das Setzen der Zeit nicht durch Änderungen am Inhalt
-// wieder überschrieben wird.
+// wieder überschrieben wird und Rechte ohne x-Bit am Elternverzeichnis den
+// Weg zu den Unterverzeichnissen nicht versperren. Alle Verzeichnisse einer
+// Ebene laufen gleichzeitig (sonst bei vielen Verzeichnissen und hoher
+// Latenz minutenlanges Warten).
 //
-// @date   2026-10-21 21:03
+// @date   2026-10-24 20:10
 func (r *copyRun) finishDirs() {
-	for i := len(r.createdDirs) - 1; i >= 0; i-- {
-		node := r.createdDirs[i]
-		dstPath := path.Join(r.req.dstDir, node.rel)
-		_ = r.req.dst.Chmod(dstPath, node.info.Mode().Perm())
-		_ = r.req.dst.Chtimes(dstPath, node.info.ModTime(), node.info.ModTime())
+	levels := map[int][]copyNode{}
+	deepest := 0
+	for _, node := range r.createdDirs {
+		if !r.dirJobs[node.rel].succeeded() {
+			continue
+		}
+		depth := strings.Count(node.rel, "/")
+		levels[depth] = append(levels[depth], node)
+		deepest = max(deepest, depth)
+	}
+	for depth := deepest; depth >= 0; depth-- {
+		forEachParallel(levels[depth], func(node copyNode) {
+			dstPath := path.Join(r.req.dstDir, node.rel)
+			setAttributes(r.req.dst, dstPath, node.info.Mode().Perm(), node.info.ModTime())
+		})
 	}
 }
 

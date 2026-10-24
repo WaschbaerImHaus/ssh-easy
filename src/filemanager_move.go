@@ -110,6 +110,10 @@ func (r *copyRun) rememberMovedDir(node copyNode) {
 func (r *copyRun) removeMovedDirs() {
 	for i := len(r.movedDirs) - 1; i >= 0; i-- {
 		node := r.movedDirs[i]
+		if !r.dirJobs[node.rel].succeeded() {
+			// Am Ziel nicht angelegt: Quelle bleibt (auch wenn sie leer ist)
+			continue
+		}
 		srcPath := path.Join(r.req.srcDir, node.rel)
 		if err := r.req.src.Remove(srcPath); err != nil {
 			if children, readErr := r.req.src.ReadDir(srcPath); readErr == nil && len(children) > 0 {
