@@ -59,7 +59,8 @@ Programm starten:
 | `u` | Auto-Update ein-/ausschalten (letzte Menüzeile) |
 | `E` | Verbindungen exportieren (alle oder Auswahl) |
 | `I` | Verbindungen aus einer Exportdatei importieren |
-| `Enter` auf *Datei-Manager* | Zwei-Fenster-Datei-Manager öffnen (letzter Listeneintrag) |
+| `Enter` auf *Datei-Manager (eine Verbindung)* | Ein-Fenster-Datei-Manager zum Ansehen und Bearbeiten öffnen (vorletzter Listeneintrag) |
+| `Enter` auf *Datei-Manager (zwei Verbindungen)* | Zwei-Fenster-Datei-Manager öffnen (letzter Listeneintrag) |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
 | `Strg+Hoch` / `Strg+Runter` | Schriftgroesse aendern (Windows, wird gespeichert; Strg+Mausrad geht auch) |
@@ -132,9 +133,18 @@ Die Datei hat das Format von `connections.json` und kann damit auf einem anderen
 
 Die Datei gilt als nicht vertrauenswürdig: höchstens 1 MiB, jeder Eintrag wird geprüft (Name, Host, Port, Benutzer, Tunnel), Einträge mit Steuerzeichen (z. B. Terminal-Escape-Sequenzen) und doppelte Namen innerhalb der Datei werden übersprungen, Schlüsselpfade werden nie übernommen. Importiert werden nur Verbindungen – Einstellungen wie Sprache oder Auto-Update bleiben unverändert.
 
+### Datei-Manager (eine Verbindung)
+
+Der vorletzte Eintrag der Verbindungsliste fragt nur nach **einer** Verbindung (auch
+*Lokaler PC*, er funktioniert also auch ohne gespeicherte Verbindung), baut nur diese auf
+und zeigt ein Fenster über die ganze Breite. Alles aus dem folgenden Abschnitt gilt –
+Ansehen (`F3`), Bearbeiten (`F4`), Verzeichnis anlegen (`F7`), Löschen (`F8`), lokal öffnen,
+Menü (`F9`: *Fenster*, *Datei*, *Optionen*) –, nur Kopieren und Verschieben (`F5`/`F6`)
+entfallen, weil es kein zweites Fenster als Ziel gibt. `Tab` hat hier keine Wirkung.
+
 ### Datei-Manager (zwei Verbindungen)
 
-Der letzte Eintrag der Verbindungsliste, durch eine Leerzeile abgesetzt, öffnet einen
+Der letzte Eintrag der Verbindungsliste öffnet einen
 reduzierten Datei-Manager im Stil des Midnight Commander, um mit zwei SSH-Servern
 nebeneinander zu arbeiten:
 
@@ -182,7 +192,10 @@ Größe und Datum beider Dateien nachgefragt: `j` überschreiben, `n` übersprin
 Daten laufen über deinen Rechner, die Server müssen sich nicht gegenseitig erreichen.
 Jede Datei wird erst unter einem Temp-Namen nur für dich lesbar geschrieben und am Ende
 umbenannt: Private Dateien sind auf dem Ziel nie für andere lesbar, eine vorhandene
-Datei wird erst ersetzt, wenn die neue vollständig ist.
+Datei wird erst ersetzt, wenn die neue vollständig ist. Bleibt nach einem Abbruch (z. B.
+Verbindungsabriss) eine solche Temp-Datei `.ssh-easy-copy-….tmp` liegen, räumt ssh-easy sie
+beim nächsten Kopieren in denselben Ordner weg, sobald sie mindestens 24 Stunden unverändert
+ist (auf Servern nur mit Rechten 0600); jede Löschung steht im Log.
 
 **Verschieben (`F6`)** läuft wie das Kopieren; jede Datei wird in der Quelle erst gelöscht,
 wenn ihre Kopie vollständig angekommen ist. Was fehlschlägt oder übersprungen wird, bleibt
@@ -210,8 +223,8 @@ unbekannte Typen werden abgelehnt, weil „Öffnen“ dort „Ausführen“ hei�
 Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
 von ssh-easy gelöscht.
 
-Der Datei-Manager braucht mindestens eine Verbindung (die andere Seite kann *Lokaler PC*
-sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dateien werden
+Der Datei-Manager mit zwei Verbindungen braucht mindestens eine gespeicherte Verbindung
+(die andere Seite kann *Lokaler PC* sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dateien werden
 als heruntergeladen gekennzeichnet (Windows-SmartScreen warnt vor dem Ausführen).
 
 **Optionen (`F9` → Optionen):** *Aussehen* schaltet zwischen den Farbmodi klassisch (mc),

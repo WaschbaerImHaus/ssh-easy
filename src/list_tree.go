@@ -40,9 +40,23 @@ const (
 	rowGroup
 	// rowChild - Verbindung innerhalb einer aufgeklappten Gruppe
 	rowChild
-	// rowFileManager - Eintrag "Datei-Manager" ganz unten (keine Verbindung)
+	// rowFileManager - Eintrag "Datei-Manager (zwei Verbindungen)" ganz
+	// unten (keine Verbindung)
 	rowFileManager
+	// rowFileManagerSingle - Eintrag "Datei-Manager (eine Verbindung)"
+	// direkt darüber (Build 82: nur ansehen und bearbeiten)
+	rowFileManagerSingle
 )
+
+// isFileManagerRow meldet, ob ein Zeilentyp einer der beiden
+// Datei-Manager-Einträge ist.
+//
+// @param kind - Zeilentyp
+// @return bool - true bei rowFileManager und rowFileManagerSingle
+// @date   2026-10-26 21:04
+func isFileManagerRow(kind listRowKind) bool {
+	return kind == rowFileManager || kind == rowFileManagerSingle
+}
 
 // listRow ist eine sichtbare Zeile der Verbindungsliste.
 type listRow struct {
@@ -52,7 +66,8 @@ type listRow struct {
 	label string
 	// Gruppenschlüssel in Kleinbuchstaben (nur rowGroup/rowChild)
 	groupKey string
-	// Index in der Verbindungsliste (-1 bei rowGroup und rowFileManager)
+	// Index in der Verbindungsliste (-1 bei rowGroup und den
+	// Datei-Manager-Einträgen)
 	connIndex int
 	// Indizes aller Verbindungen der Gruppe (nur rowGroup)
 	children []int

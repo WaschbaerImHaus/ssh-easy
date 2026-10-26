@@ -66,34 +66,49 @@ type fmMenu struct {
 // fmExtMaxLength - Höchstlänge einer Endung (ohne Punkt)
 const fmExtMaxLength = 16
 
-// fmMenus liefert die Menüs in der Reihenfolge der Leiste.
+// fmMenus liefert die Menüs in der Reihenfolge der Leiste. Mit nur einer
+// Verbindung gibt es ein Fenster-Menü statt Links/Rechts und im
+// Datei-Menü weder Kopieren noch Verschieben.
 //
-// @return []fmMenu - Links, Datei, Optionen, Rechts
-// @date   2026-10-22 07:50
+// @return []fmMenu - Links, Datei, Optionen, Rechts (bzw. Fenster, Datei, Optionen)
+// @date   2026-10-26 21:04
 func (m AppModel) fmMenus() []fmMenu {
 	titles := strings.Split(m.tr(txtFMMenuBar), "|")
 	for len(titles) < 4 {
 		titles = append(titles, "")
 	}
 	panel := []fmMenuItem{{label: txtFMMenuRescan, key: m.tr(txtFMKeyCtrlR), action: fmActRescan}}
+	file := []fmMenuItem{
+		{label: txtFMMenuView, key: "F3", action: fmActView},
+		{label: txtFMMenuEdit, key: "F4", action: fmActEdit},
+	}
+	if !m.fm.single {
+		file = append(file,
+			fmMenuItem{label: txtFMMenuCopy, key: "F5", action: fmActCopy},
+			fmMenuItem{label: txtFMMenuMove, key: "F6", action: fmActMove})
+	}
+	file = append(file,
+		fmMenuItem{label: txtFMMenuMkdir, key: "F7", action: fmActMkdir},
+		fmMenuItem{label: txtFMMenuDelete, key: "F8", action: fmActDelete},
+		fmMenuItem{},
+		fmMenuItem{label: txtFMMenuInvert, key: "*", action: fmActInvert},
+		fmMenuItem{},
+		fmMenuItem{label: txtFMMenuExit, key: "F10", action: fmActExit})
+	options := []fmMenuItem{
+		{label: txtFMMenuAppearance, action: fmActAppearance},
+		{label: txtFMMenuOpenExt, action: fmActOpenExt},
+	}
+	if m.fm.single {
+		return []fmMenu{
+			{title: m.tr(txtFMMenuPanel), items: panel},
+			{title: titles[1], items: file},
+			{title: titles[2], items: options},
+		}
+	}
 	return []fmMenu{
 		{title: titles[0], items: panel},
-		{title: titles[1], items: []fmMenuItem{
-			{label: txtFMMenuView, key: "F3", action: fmActView},
-			{label: txtFMMenuEdit, key: "F4", action: fmActEdit},
-			{label: txtFMMenuCopy, key: "F5", action: fmActCopy},
-			{label: txtFMMenuMove, key: "F6", action: fmActMove},
-			{label: txtFMMenuMkdir, key: "F7", action: fmActMkdir},
-			{label: txtFMMenuDelete, key: "F8", action: fmActDelete},
-			{},
-			{label: txtFMMenuInvert, key: "*", action: fmActInvert},
-			{},
-			{label: txtFMMenuExit, key: "F10", action: fmActExit},
-		}},
-		{title: titles[2], items: []fmMenuItem{
-			{label: txtFMMenuAppearance, action: fmActAppearance},
-			{label: txtFMMenuOpenExt, action: fmActOpenExt},
-		}},
+		{title: titles[1], items: file},
+		{title: titles[2], items: options},
 		{title: titles[3], items: panel},
 	}
 }

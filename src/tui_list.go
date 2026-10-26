@@ -5,7 +5,7 @@
 // Auto-Connect (Agent + alle verfügbaren Keys) ohne Nutzerabfrage.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-26 21:04
 package main
 
 import (
@@ -25,7 +25,7 @@ import (
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-21 21:06
+// @date   2026-10-26 21:04
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.listRows()
 	limit := visibleRowLimit(m.termHeight)
@@ -112,12 +112,16 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "enter":
-		// Datei-Manager-Eintrag ganz unten (erst ab zwei Verbindungen nutzbar)
+		// Datei-Manager mit einer Verbindung: immer nutzbar (Lokaler PC)
+		if row != nil && row.kind == rowFileManagerSingle {
+			return m.openFileManager(true)
+		}
+		// Datei-Manager-Eintrag ganz unten (erst ab einer Verbindung nutzbar)
 		if row != nil && row.kind == rowFileManager {
 			if !m.fileManagerEnabled() {
 				break
 			}
-			return m.openFileManager()
+			return m.openFileManager(false)
 		}
 		// Gruppe: auf-/zuklappen
 		if row != nil && row.kind == rowGroup {
@@ -211,15 +215,18 @@ func (m AppModel) startAutoConnect(conn Connection) (tea.Model, tea.Cmd) {
 }
 
 // listRows liefert die aktuell sichtbaren Zeilen der Verbindungsliste.
-// Ganz unten steht immer der Datei-Manager-Eintrag (ohne Verbindung
-// ausgegraut, siehe fileManagerEnabled).
+// Ganz unten stehen immer die Datei-Manager-Einträge: "eine Verbindung"
+// und darunter "zwei Verbindungen" (ohne Verbindung ausgegraut, siehe
+// fileManagerEnabled).
 //
 // @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen,
 // Datei-Manager)
-// @date   2026-10-21 21:06
+// @date   2026-10-26 21:04
 func (m AppModel) listRows() []listRow {
 	rows := buildListRows(m.connections, m.expandedGroups)
-	return append(rows, listRow{kind: rowFileManager, connIndex: -1})
+	return append(rows,
+		listRow{kind: rowFileManagerSingle, connIndex: -1},
+		listRow{kind: rowFileManager, connIndex: -1})
 }
 
 // fmDisabledFg - Schriftfarbe des ausgegrauten Datei-Manager-Eintrags
@@ -308,7 +315,7 @@ func (m *AppModel) selectConnectionByID(id string) {
 // Hinweise "↑ +N" / "↓ +N" nennen die Zahl der verborgenen Zeilen.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 21:06
+// @date   2026-10-26 21:04
 func (m AppModel) renderList(s *strings.Builder) {
 	// Titel mit Version und Build, z.B. "ssh-easy v0.46 (Build 46)"
 	s.WriteString(titleStyle.Render("  " + formatAppTitle(m.buildNumber)))
@@ -330,8 +337,8 @@ func (m AppModel) renderList(s *strings.Builder) {
 		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
 	}
 	for i := offset; i < end; i++ {
-		// Datei-Manager-Eintrag mit Leerzeile von den Verbindungen absetzen
-		if rows[i].kind == rowFileManager {
+		// Datei-Manager-Einträge mit Leerzeile von den Verbindungen absetzen
+		if rows[i].kind == rowFileManagerSingle {
 			s.WriteString("\n")
 		}
 		s.WriteString(m.renderListRow(rows[i], i == m.cursor))
@@ -377,7 +384,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 // @param row - Darzustellende Zeile
 // @param selected - true wenn der Cursor auf der Zeile steht
 // @return string - Gerenderte Zeile
-// @date   2026-10-21 19:45
+// @date   2026-10-26 21:04
 func (m AppModel) renderListRow(row listRow, selected bool) string {
 	base := normalStyle
 	if selected {
@@ -385,8 +392,11 @@ func (m AppModel) renderListRow(row listRow, selected bool) string {
 	}
 	dotStyle := base.Foreground(lipgloss.Color("46")).Bold(true)
 
-	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt; ohne
-	// Verbindung ausgegraut mit Hinweis
+	// Datei-Manager-Einträge: keine Verbindung, kein Statuspunkt; "zwei
+	// Verbindungen" ohne Verbindung ausgegraut mit Hinweis
+	if row.kind == rowFileManagerSingle {
+		return base.Render("    ▸ " + m.tr(txtFMListEntrySingle))
+	}
 	if row.kind == rowFileManager {
 		if m.fileManagerEnabled() {
 			return base.Render("    ▸ " + m.tr(txtFMListEntry))
@@ -553,7 +563,7 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-10-21 19:45
+// @date   2026-10-26 21:04
 func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "j":
@@ -571,12 +581,13 @@ func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.configCache.Invalidate()
 		m.reloadConfig()
 		m.clampListCursor()
-		// Wurde die letzte Verbindung gelöscht, nicht auf dem
+		// Wurde die letzte Verbindung gelöscht, nicht auf einem
 		// Datei-Manager-Eintrag stehen bleiben, sondern auf der Verbindung davor
-		if rows := m.listRows(); m.cursor > 0 && m.cursor < len(rows) && rows[m.cursor].kind == rowFileManager {
+		rows := m.listRows()
+		for m.cursor > 0 && m.cursor < len(rows) && isFileManagerRow(rows[m.cursor].kind) {
 			m.cursor--
-			m.clampListCursor()
 		}
+		m.clampListCursor()
 		m.state = ViewList
 
 	case "n", "esc":

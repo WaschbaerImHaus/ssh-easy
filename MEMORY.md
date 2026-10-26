@@ -76,5 +76,12 @@
 - Fable-Audit: MITTEL behoben vor Release (gescheitertes Mkdir + Lstat durch untergeschobenen Symlink -> fremder Ordner); Review: Keepalive wertet jetzt auch eingehende Daten (activityReader), Esc nach Ablaufende = abgebrochen, dirPending-Grenze
 - Offen: Temp-Datei nach Abriss bleibt liegen (BUGS.md), Download-Pausen pro Block (OPTIMIZE.md)
 
+## Build 82 (2026-10-26) - Download-Tempo, Temp-Aufräumen, eine Verbindung
+- readChunksAt: Quellen mit io.ReaderAt bis zu 4 Blöcke gleichzeitig, langsamer Start (erst nach vollem 1. Block), copyPipeChunks 10; Messung 40 ms: 35,7 -> 38,8 Mbit/s, kleine Dateien unverändert
+- Temp-Aufräumen (filemanager_stale_temp.go): vormerken in listTarget, löschen am Laufende nach Lstat-Vergleich; 24 h, Server nur 0600, max. 100/Lauf, Log über copyRequest.logf
+- Audit MITTEL behoben: Prüfdatei sameEntry eigener Name (.ssh-easy-probe-), fail-closed (errMoveCheckFailed)
+- Nutzerwunsch: "Datei-Manager (eine Verbindung)" (rowFileManagerSingle, fm.single): ein Fenster, F5/F6 entfallen, Menüs Fenster/Datei/Optionen; F7/F8 bleiben (Auslegung, Nutzer informiert)
+- Container-Neustart 2026-10-26 05:00 unterbrach die vorige Sitzung (kein Programmfehler); Sanitize-Lauf scheitert seit jeher mit "Not logged in" wegen --bare (sanitize.sh, Nutzer informiert)
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

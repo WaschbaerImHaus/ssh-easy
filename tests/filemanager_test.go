@@ -379,8 +379,8 @@ func TestFileManagerRowIsLastListRow(t *testing.T) {
 func TestFileManagerRowGreyedWithoutConnection(t *testing.T) {
 	m := newListTestModel(t)
 	rows := m.listRows()
-	if len(rows) != 1 || rows[0].kind != rowFileManager {
-		t.Fatalf("Zeilen %v, erwartet nur den Datei-Manager", rows)
+	if len(rows) != 2 || rows[0].kind != rowFileManagerSingle || rows[1].kind != rowFileManager {
+		t.Fatalf("Zeilen %v, erwartet nur die beiden Datei-Manager-Einträge", rows)
 	}
 	text := stripANSI(renderListText(m))
 	if !strings.Contains(text, m.tr(txtFMListEntry)) || !strings.Contains(text, m.tr(txtFMNeedConnection)) {
@@ -437,11 +437,12 @@ func TestFileManagerRowGreyedStyle(t *testing.T) {
 	}
 }
 
-// TestFileManagerRowSeparatedByBlankLine prüft die Leerzeile davor.
+// TestFileManagerRowSeparatedByBlankLine prüft die Leerzeile vor dem
+// ersten Datei-Manager-Eintrag ("eine Verbindung", seit Build 82).
 func TestFileManagerRowSeparatedByBlankLine(t *testing.T) {
 	m := newListTestModel(t, "Server")
 	lines := strings.Split(stripANSI(renderListText(m)), "\n")
-	entry := m.tr(txtFMListEntry)
+	entry := m.tr(txtFMListEntrySingle)
 	for i, line := range lines {
 		if strings.Contains(line, entry) {
 			if i == 0 || strings.TrimSpace(lines[i-1]) != "" {

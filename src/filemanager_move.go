@@ -51,24 +51,39 @@ func (r *copyRun) movesIntoItself(name string) bool {
 // nachgesehen, ob sie über die Quellverbindung im Quellverzeichnis
 // auftaucht. Das Ergebnis gilt für das Verzeichnispaar und wird gemerkt.
 //
+// Im Zweifel sperren (Sicherheitsaudit Build 82): Taucht die Prüfdatei in
+// der Quelle nicht auf, muss sie am Ziel danach noch da sein - sonst hat
+// jemand sie zwischendurch gelöscht (fremder Aufräumer), und "nicht
+// gefunden" hieße nichts. Dann wird nicht verschoben, statt womöglich die
+// einzige Kopie zu löschen. Die Prüfdatei heißt anders als Temp-Dateien
+// (tempProbeName), damit das Aufräumen alter Temp-Dateien sie nie erfasst.
+//
 // @param srcPath - Pfad in der Quelle
 // @param dstPath - Pfad am Ziel (existiert)
 // @return bool - true = dasselbe Verzeichnis, also dieselbe Datei
-// @return error - Prüfdatei nicht anlegbar (dann nicht verschieben)
-// @date   2026-10-22 05:17
+// @return error - Prüfdatei nicht anlegbar oder verschwunden (dann nicht
+// verschieben)
+// @date   2026-10-26 21:15
 func (r *copyRun) sameEntry(srcPath, dstPath string) (bool, error) {
 	srcDir, dstDir := path.Dir(srcPath), path.Dir(dstPath)
 	key := srcDir + "\x00" + dstDir
 	if same, ok := r.sameDirs[key]; ok {
 		return same, nil
 	}
-	probe := tempCopyName(dstPath)
+	probe := tempProbeName(dstPath)
 	writer, err := r.req.dst.CreateExclusive(probe)
 	if err != nil {
 		return false, err
 	}
 	writer.Close()
 	_, statErr := r.req.src.Lstat(path.Join(srcDir, path.Base(probe)))
+	if statErr != nil {
+		// Existiert sie am Ziel noch, gab es sie auch während der Abfrage
+		// über die Quelle (zufälliger Name) - die Verzeichnisse sind verschieden
+		if _, err := r.req.dst.Lstat(probe); err != nil {
+			return false, errMoveCheckFailed
+		}
+	}
 	_ = r.req.dst.Remove(probe)
 	same := statErr == nil
 	r.sameDirs[key] = same

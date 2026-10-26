@@ -140,7 +140,7 @@ func (m AppModel) fmOpenCopyConfirm(move bool) (tea.Model, tea.Cmd) {
 //
 // @return tea.Model - Modell mit Fortschrittsdialog
 // @return tea.Cmd - wartet auf die erste Meldung
-// @date   2026-10-21 21:03
+// @date   2026-10-26 21:15
 func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 	src := m.fm.panels[m.fm.copy.source]
 	dst := m.fm.panels[1-m.fm.copy.source]
@@ -159,6 +159,10 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 		// nur Symlinks innerhalb des kopierten Verzeichnisses
 		markDownloads: fmShouldMarkDownloads(src.fs, dst.fs),
 		safeLinksOnly: fmUntrustedToLocal(src.fs, dst.fs),
+	}
+	// Entfernte liegen gebliebene Temp-Dateien ins Log (Build 82)
+	if m.sshManager != nil && m.sshManager.logger != nil {
+		req.logf = m.sshManager.logger.Info
 	}
 	go runCopy(ctx, req, m.fm.copy.events, m.fm.copy.answers)
 	m.fm.dialog = fmDialogCopying
@@ -259,7 +263,7 @@ func (m AppModel) fmFinishCopy(result copyResult) (tea.Model, tea.Cmd) {
 //
 // @param f - Fehler
 // @return string - Text (bereinigt, ohne Steuerzeichen)
-// @date   2026-10-24 20:29
+// @date   2026-10-26 21:15
 func (m AppModel) fmDescribeFailure(f copyFailure) string {
 	p := sanitizeFileName(f.path)
 	switch {
@@ -267,6 +271,8 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 		return fmt.Sprintf(m.tr(txtFMErrTargetType), p)
 	case errors.Is(f.err, errSameFile):
 		return fmt.Sprintf(m.tr(txtFMErrSameFile), p)
+	case errors.Is(f.err, errMoveCheckFailed):
+		return fmt.Sprintf(m.tr(txtFMErrMoveCheck), p)
 	case errors.Is(f.err, errUnsafeName):
 		return fmt.Sprintf(m.tr(txtFMErrUnsafeName), p)
 	case errors.Is(f.err, errCannotProtect):

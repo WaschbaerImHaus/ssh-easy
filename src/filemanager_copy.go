@@ -68,6 +68,10 @@ var errTargetTypeMismatch = errors.New("target exists with a different type")
 // Pfad); Kopieren würde die Quelle leeren.
 var errSameFile = errors.New("source and target are the same file")
 
+// errMoveCheckFailed - beim Verschieben ließ sich nicht sicher prüfen, ob
+// Quelle und Ziel dasselbe Verzeichnis sind (Prüfdatei verschwunden).
+var errMoveCheckFailed = errors.New("cannot tell whether source and target are the same directory")
+
 // errUnsafeName - Name aus einem Verzeichnis enthält "/" oder "\" oder
 // Steuerzeichen oder ist leer, "." bzw. "..". Ein bösartiger Server könnte
 // so aus dem Zielverzeichnis des anderen Servers hinausschreiben (Path
@@ -147,6 +151,11 @@ var (
 // einem Schritt auf den Zielnamen umbenannt.
 const copyTempPrefix = ".ssh-easy-copy-"
 
+// copyProbePrefix - Namensanfang der Prüfdatei beim Verschieben (sameEntry).
+// Bewusst anders als copyTempPrefix: Das Aufräumen alter Temp-Dateien
+// (auch einer zweiten Instanz) darf sie nie erfassen (Audit Build 82).
+const copyProbePrefix = ".ssh-easy-probe-"
+
 // copyRequest beschreibt einen Kopierauftrag.
 type copyRequest struct {
 	// Quelle und Ziel
@@ -163,6 +172,8 @@ type copyRequest struct {
 	markDownloads bool
 	// Keine Symlinks anlegen, sondern melden (Server -> PC)
 	safeLinksOnly bool
+	// Protokoll (z. B. entfernte Temp-Dateien; nil = nichts protokollieren)
+	logf func(format string, args ...interface{})
 }
 
 // copyConflictAnswer ist die Antwort auf "Ziel existiert schon".
@@ -281,6 +292,9 @@ type copyRun struct {
 	dirPending chan struct{}
 	// Grenze beim Erfassen erreicht (copyMaxEntries/copyMaxDepth)
 	limitHit bool
+	// Vorgemerkte liegen gebliebene Temp-Dateien (nur dispatch, gelöscht
+	// am Ende: removeStaleTemps)
+	staleTemps []staleTemp
 	// Verschieben: Quellverzeichnisse, die am Ende gelöscht werden, wenn
 	// sie leer sind (angelegt oder zusammengeführt, in Kopierreihenfolge)
 	movedDirs []copyNode
@@ -341,6 +355,7 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 	run.sendProgress(true)
 	run.copyAll(nodes)
 	run.finishDirs()
+	run.removeStaleTemps()
 	if req.move && !run.result.cancelled {
 		run.removeMovedDirs()
 	}
@@ -835,6 +850,18 @@ func (r *copyRun) copyData(srcPath, dstPath string, info os.FileInfo) (err error
 func fsAcceptsName(fsys remoteFS, name string) bool {
 	v, ok := fsys.(nameValidator)
 	return !ok || v.ValidName(name)
+}
+
+// tempProbeName liefert einen zufälligen Namen für die Prüfdatei beim
+// Verschieben (sameEntry) im Verzeichnis des Ziels.
+//
+// @param dstPath - Zielpfad
+// @return string - z. B. "/srv/b/.ssh-easy-probe-3f9a….tmp"
+// @date   2026-10-26 21:15
+func tempProbeName(dstPath string) string {
+	random := make([]byte, 8)
+	_, _ = rand.Read(random)
+	return path.Join(path.Dir(dstPath), copyProbePrefix+hex.EncodeToString(random)+".tmp")
 }
 
 // tempCopyName liefert einen zufälligen Temp-Namen im Verzeichnis des Ziels.

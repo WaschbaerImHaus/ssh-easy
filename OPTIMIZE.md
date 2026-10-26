@@ -20,7 +20,8 @@
 - ~~**Datei-Manager: Kopieren Datei für Datei**~~ (Build 57) – parallel seit Build 78 (8), 32 Dateien und parallele Verzeichnisse seit Build 81.
 - **Datei-Manager: Daten laufen über den lokalen Rechner** (Build 57): Bei zwei Servern im selben Rechenzentrum wäre eine direkte Übertragung (z. B. `scp`/`rsync` von Server zu Server per Agent-Forwarding) schneller, setzt aber Werkzeuge und gegenseitige Erreichbarkeit voraus. Bewusst nicht umgesetzt (Hoster-Einschränkungen).
 - ~~**Datei-Manager: keine Keepalives**~~ (Build 53) – Keepalive mit Timeout seit Build 81 (`watchConnection`). Offen: automatischer Reconnect des Dateifensters nach einem Abriss.
-- **Datei-Manager: Download mit Pause nach jedem Block** (Build 81): Beim Lesen vom Server wartet `sftp.File.Read` je 2-MiB-Block auf alle Antworten, wie beim Schreiben vor Build 81 (bei 120 ms Ping rund 27 statt 38 Mbit/s). Abhilfe wie `pipeCopyAt`: mehrere `ReadAt` gleichzeitig, Blöcke der Reihe nach weitergeben.
+- ~~**Datei-Manager: Download mit Pause nach jedem Block**~~ (Build 81) – seit Build 82 `readChunksAt` (bis zu 4 `ReadAt` gleichzeitig, langsamer Start für kleine Dateien).
+- **Datei-Manager: Zielverzeichnis nur zum Aufräumen gelesen** (Build 82): Auf dem lokalen PC und im Zweig mit Einzelprüfung wird ein vorhandenes Zielverzeichnis jetzt einmal ganz gelesen, nur um liegen gebliebene Temp-Dateien vorzumerken (bei 200.000 Einträgen spürbar). Möglich: nur Verzeichnisse lesen, die ohnehin gelesen werden, oder eine Obergrenze vor dem Lesen.
 - **Datei-Manager: Rundreisen pro Datei** (Build 81): Anlegen, chmod 0600, Schreiben, Schließen, Rechte+Zeit, Umbenennen = 5 Rundreisen nacheinander. pkg/sftp kann beim Anlegen (OPEN) und Mkdir keine Rechte mitsenden; mit einem eigenen Paket (ATTRS im OPEN) fiele chmod 0600 weg – dann aber ohne Rückfallprüfung `errCannotProtect`, falls der Server die Rechte ignoriert.
 
 - **Log-Rotation**: Automatische Rotation/Komprimierung der Log-Datei

@@ -70,7 +70,7 @@
 - [x] F7 Verzeichnis anlegen (Namensprüfung, Cursor auf dem neuen Verzeichnis) (Build 65)
 - [x] F8 Löschen rekursiv, Bestätigung nur mit j/y (Enter löscht nicht), Symlinks nie verfolgt, Esc bricht ab (Build 65)
 - [x] F3 Ansehen: Betrachter (max. 16 MiB), Text bereinigt, Umbruch F2, Hex F4 (automatisch bei Binärdaten) (Build 59)
-- [ ] Liegengebliebene Temp-Dateien (`.ssh-easy-copy-*.tmp`, z. B. nach Verbindungsabbruch) beim nächsten Kopieren in dasselbe Verzeichnis aufräumen (Vorschlag 2026-10-21)
+- [x] Liegengebliebene Temp-Dateien (`.ssh-easy-copy-*.tmp`, z. B. nach Verbindungsabbruch) beim nächsten Kopieren in dasselbe Verzeichnis aufräumen (Vorschlag 2026-10-21, Nutzerentscheidung 2026-10-24, Build 82: ab 24 h, auf Servern nur 0600, erst am Ende des Laufs, im Log)
 - [x] F6 Verschieben: Ziel ebenfalls über Temp-Datei + Umbenennen, bei Fehler Temp löschen (Nutzervorgabe 2026-10-21); Quelle erst nach erfolgreichem Umbenennen löschen (Build 65)
 - [x] Betrachter mit F-Tasten wie mcview: F1 Hilfe, F2 Umbruch, F3/F10 Beenden, F4 Hex, F5 Gehe zu, F6 Regex-Suche, F7 Suchen + n (Build 60)
 - [x] F9 im Betrachter: lokal mit dem Standardprogramm öffnen (Windows nach Endung, Linux xdg-open), ausführbare Typen gesperrt, Mark of the Web (Build 60)
@@ -80,7 +80,8 @@
 - [x] Letzter Pfad pro Verbindung (Nutzerwunsch 2026-10-23, Build 77): Der Datei-Manager startet je Verbindung (auch Lokaler PC) im zuletzt geöffneten Verzeichnis; fehlt es oder ist es nicht lesbar, im Home. Gespeichert in der Konfiguration, nicht im Export
 - [x] Schnelleres Kopieren/Verschieben vieler kleiner Dateien (Nutzerwunsch 2026-10-23, Build 78): 8 Dateien gleichzeitig, Angaben aus der Verzeichnisliste statt einzelner Abfragen (Quelle und Ziel), Lesen und Schreiben gleichzeitig mit 64 MB Lesevorlauf insgesamt, höchstens 16 MB pro Datei (1 GB erlaubt, bringt aber kein Tempo); Namen, die sich nur in Groß-/Kleinschreibung unterscheiden, und ungewöhnliche Namen werden am Ziel einzeln geprüft (keine stille Überschreibung). Beim Verschieben wird jede Quelldatei erst gelöscht, wenn sie am Ziel vollständig geschrieben und umbenannt ist
 - [x] Endungen für F9 als Liste (Nutzerwunsch 2026-10-23, Build 80): senkrecht scrollbar mit Cursor, alphanumerisch sortiert; Entf löscht nach Ja/Nein-Rückfrage (j/y), Tab/Einfg ins Hinzufügen-Feld, nur a–z und 0–9; riskante Endungen weiter mit kräftigem Hinweis; leere Liste = F9 öffnet nichts
-- [x] Datei-Manager: schnelles Kopieren über das Internet (Build 81) – große Dateien ohne Pause zwischen den Blöcken, 32 Dateien gleichzeitig, Verzeichnisse parallel, Verbindungsüberwachung mit Meldung „Verbindung unterbrochen“
+- [x] Datei-Manager: schnelles Kopieren über das Internet (Build 81) – große Dateien ohne Pause zwischen den Blöcken, 32 Dateien gleichzeitig, Verzeichnisse parallel, Verbindungsüberwachung mit Meldung „Verbindung unterbrochen“; Download ebenso ohne Pause (Build 82)
+- [x] „Datei-Manager (eine Verbindung)“ (Nutzerwunsch 2026-10-26, Build 82): eigener Listeneintrag über „zwei Verbindungen“, nur eine Verbindung (auch Lokaler PC, daher ohne gespeicherte Verbindung nutzbar), ein Fenster über die ganze Breite; Ansehen, Bearbeiten, F7, F8, lokal öffnen; Kopieren/Verschieben entfallen (F-Leiste ohne F5/F6, Menü ohne die Punkte, Hinweis beim Drücken), Menüs Fenster/Datei/Optionen
 ## Offen
 - [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
 - [ ] Suche/Filter in der Verbindungsliste

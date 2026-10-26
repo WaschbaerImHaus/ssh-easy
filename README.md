@@ -72,7 +72,8 @@ Start the program:
 | `u` | Toggle auto-update (shown in the last menu line) |
 | `E` | Export connections (all or a selection) |
 | `I` | Import connections from an export file |
-| `Enter` on *File manager* | Open the two-panel file manager (last list entry) |
+| `Enter` on *File manager (one connection)* | Open the single-panel file manager for viewing and editing (second to last entry) |
+| `Enter` on *File manager (two connections)* | Open the two-panel file manager (last list entry) |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
@@ -145,9 +146,17 @@ Press `I` (Shift+I) in the list — this also works with an empty list, e.g. on 
 
 The file is treated as untrusted: at most 1 MiB, every entry is validated (name, host, port, user, tunnels), entries with control characters (e.g. terminal escape sequences) are skipped, duplicate names inside the file are skipped, and key paths are never taken over. Only connections are imported — settings like language or auto-update stay as they are.
 
+### File manager (one connection)
+
+The second to last entry of the connection list asks for **one** connection only (also
+*Local PC*, so it works without any saved connection), opens just that one and shows a single
+full-width panel. Everything from the next section applies – view (`F3`), edit (`F4`), make
+directory (`F7`), delete (`F8`), open locally, menu (`F9`: *Panel*, *File*, *Options*) –
+except copy and move (`F5`/`F6`), which need a second panel as target. `Tab` does nothing here.
+
 ### File manager (two connections)
 
-The last entry of the connection list, separated by a blank line, opens a reduced
+The last entry of the connection list opens a reduced
 Midnight-Commander-style file manager for working with two SSH hosts side by side:
 
 1. Choose the connection for the **left** panel, then the one for the **right** panel.
@@ -193,7 +202,10 @@ are asked, with size and date of both files: `j`/`y` overwrite, `n` skip, `a` al
 computer, so the two servers do not need to reach each other. Every file is written
 under a temporary name with owner-only permissions and renamed when complete, so a
 private file is never readable by others on the target and an existing file is only
-replaced once the new one is complete.
+replaced once the new one is complete. If such a temporary file `.ssh-easy-copy-….tmp` is
+left behind by an interrupted copy (e.g. a lost connection), ssh-easy removes it the next
+time you copy into the same folder, once it has been unchanged for at least 24 hours (on
+servers only with mode 0600); every removal is written to the log.
 
 **Moving (`F6`)** works like copying; each file is deleted from the source only after
 its copy has arrived completely. Whatever failed or was skipped stays in the source and
@@ -220,8 +232,8 @@ unknown types are refused because opening them could run them. On Windows the co
 downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
 ssh-easy exits.
 
-The file manager needs at least one connection (the other side can be *Local PC*); until
-then its entry is greyed out. Files copied from a server to your PC are marked as
+The file manager with two connections needs at least one saved connection (the other side
+can be *Local PC*); until then its entry is greyed out. Files copied from a server to your PC are marked as
 downloaded (Windows SmartScreen warns before running them).
 
 **Options (`F9` → Options):** *Appearance* switches between the classic (mc), ssh-easy and

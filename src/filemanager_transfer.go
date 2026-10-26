@@ -24,8 +24,12 @@
 //   - copyParallel 32 statt 8: Eine kleine Datei braucht rund 5 Rundreisen;
 //     bei 40 ms Ping sind das 200 ms, in denen kaum Daten fließen.
 //
+// Download (Build 82): Dieselbe Pause gab es beim Lesen. readChunksAt liest
+// aus Quellen mit io.ReaderAt (*sftp.File, *os.File) mehrere Blöcke
+// gleichzeitig und gibt sie in der richtigen Reihenfolge weiter.
+//
 // @author Kurt Ingwer
-// @date   2026-10-24 20:10
+// @date   2026-10-24 21:49
 
 package main
 
@@ -50,8 +54,12 @@ const (
 	// schneller als die langsamere Seite geht es nie -, kostet aber RAM.
 	copyReadAheadBytes = 64 << 20
 	// copyPipeChunks - höchstens so viele Blöcke belegt eine einzelne
-	// Datei, damit eine große Datei kleine daneben nicht ausbremst
-	copyPipeChunks = 8
+	// Datei, damit eine große Datei kleine daneben nicht ausbremst. Platz
+	// für copyReadsInFlight + copyWritesInFlight + Warteschlange
+	copyPipeChunks = 10
+	// copyReadsInFlight - so viele Blöcke einer Datei liest readChunksAt
+	// gleichzeitig (gleiche Überlegung wie bei copyWritesInFlight)
+	copyReadsInFlight = 4
 	// copyWritesInFlight - so viele Blöcke einer Datei schreibt pipeCopyAt
 	// gleichzeitig. Ab 2 überlappt das Warten auf die letzten Antworten
 	// eines Blocks mit dem Senden des nächsten; 4 lässt Luft bei hoher
@@ -108,15 +116,18 @@ func newCopyBudget(total, chunk int) *copyBudget {
 //
 // @param ctx - Abbruch-Kontext
 // @param done - wird geschlossen, wenn der Schreiber aufgegeben hat
+// @param stop - wird geschlossen, wenn der Leser fertig ist (nil = nie)
 // @return bool - false bei Abbruch
-// @date   2026-10-23 09:40
-func (b *copyBudget) acquire(ctx context.Context, done <-chan struct{}) bool {
+// @date   2026-10-24 21:49
+func (b *copyBudget) acquire(ctx context.Context, done, stop <-chan struct{}) bool {
 	select {
 	case <-b.tokens:
 		return true
 	case <-ctx.Done():
 		return false
 	case <-done:
+		return false
+	case <-stop:
 		return false
 	}
 }
@@ -145,7 +156,8 @@ type copyChunk struct {
 
 // pipeCopy kopiert src nach dst und liest dabei vor: Ein Leser holt Blöcke,
 // solange das Budget Marken hat (pro Datei höchstens copyPipeChunks),
-// während der Aufrufer sie schreibt. So
+// während der Aufrufer sie schreibt (Quellen mit io.ReaderAt: mehrere
+// Blöcke gleichzeitig, siehe readChunksAt). So
 // laufen Lesen (Quelle) und Schreiben (Ziel) gleichzeitig. Bei einem Fehler
 // oder Abbruch wird der Leser beendet und jede Marke zurückgegeben.
 //
@@ -155,12 +167,11 @@ type copyChunk struct {
 // @param budget - Begrenzung des Vorlaufs
 // @return int64 - geschriebene Bytes
 // @return error - erster Lese-/Schreibfehler oder ctx.Err()
-// @date   2026-10-24 20:10
+// @date   2026-10-24 21:49
 func pipeCopy(ctx context.Context, dst io.Writer, src io.Reader, budget *copyBudget) (int64, error) {
-	// Pro Datei höchstens copyPipeChunks Blöcke: in der Warteschlange,
-	// beim Leser und beim Schreiber je einer
+	// Der Schreiber hält einen Block
 	done := make(chan struct{})
-	chunks := readChunks(ctx, src, budget, done, max(copyPipeChunks-2, 1))
+	chunks := readChunks(ctx, src, budget, done, 1)
 
 	var written int64
 	var err error
@@ -207,21 +218,29 @@ func pipeCopy(ctx context.Context, dst io.Writer, src io.Reader, budget *copyBud
 // einem Lesefehler (beide als letzter Block mit err) oder bei Abbruch.
 // Hat der Schreiber aufgegeben (done geschlossen), gibt der Leser seinen
 // Block selbst frei. Jeder empfangene Block muss vom Empfänger
-// freigegeben werden (pool.Put + release).
+// freigegeben werden (pool.Put + release). Quellen mit io.ReaderAt liest
+// readChunksAt (mehrere Blöcke gleichzeitig).
+//
+// Pro Datei belegen Leser, Warteschlange und Schreiber zusammen höchstens
+// copyPipeChunks Blöcke; die Warteschlange bekommt, was übrig bleibt.
 //
 // @param ctx - Abbruch-Kontext
 // @param src - Quelle
 // @param budget - Begrenzung des Vorlaufs
 // @param done - wird geschlossen, wenn der Schreiber aufgegeben hat
-// @param queue - Plätze in der Warteschlange
+// @param held - so viele Blöcke hält der Schreiber höchstens
 // @return <-chan copyChunk - gelesene Blöcke
-// @date   2026-10-24 20:10
-func readChunks(ctx context.Context, src io.Reader, budget *copyBudget, done <-chan struct{}, queue int) <-chan copyChunk {
-	chunks := make(chan copyChunk, queue)
+// @date   2026-10-24 21:49
+func readChunks(ctx context.Context, src io.Reader, budget *copyBudget, done <-chan struct{}, held int) <-chan copyChunk {
+	if at, ok := src.(io.ReaderAt); ok {
+		return readChunksAt(ctx, at, budget, done, max(copyPipeChunks-copyReadsInFlight-held, 1))
+	}
+	// Der Leser hält einen Block
+	chunks := make(chan copyChunk, max(copyPipeChunks-1-held, 1))
 	go func() {
 		defer close(chunks)
 		for {
-			if !budget.acquire(ctx, done) {
+			if !budget.acquire(ctx, done, nil) {
 				return
 			}
 			bufp := budget.pool.Get().(*[]byte)
@@ -245,6 +264,158 @@ func readChunks(ctx context.Context, src io.Reader, budget *copyBudget, done <-c
 	return chunks
 }
 
+// readChunksAt ist readChunks für Quellen mit io.ReaderAt: Bis zu
+// copyReadsInFlight Blöcke werden gleichzeitig gelesen, jeder an seiner
+// Stelle, und in der richtigen Reihenfolge weitergegeben. Mit nur einem
+// Read pro Block wartete jeder Block auf alle Antworten, bevor der nächste
+// startete - eine Pause von einer Rundreise pro Block (Download bremste
+// wie der Upload vor Build 81).
+//
+// Langsamer Start (Code-Review Build 82): Erst wenn der erste Block voll
+// zurückkommt, werden weitere gleichzeitig gelesen. Sonst kostete jede
+// kleine Datei copyReadsInFlight Lesevorgänge (hinter dem Dateiende) und
+// ebenso viele Marken des gemeinsamen Budgets - viele kleine Dateien
+// wurden dadurch langsamer statt schneller.
+//
+// Der Kanal wird erst geschlossen, wenn kein Lesevorgang mehr läuft: Danach
+// kann der Aufrufer die Quelle schließen, ohne dass noch ein Lesevorgang
+// unterwegs ist.
+//
+// @param ctx - Abbruch-Kontext
+// @param src - Quelle
+// @param budget - Begrenzung des Vorlaufs
+// @param done - wird geschlossen, wenn der Schreiber aufgegeben hat
+// @param queue - Plätze in der Warteschlange
+// @return <-chan copyChunk - gelesene Blöcke
+// @date   2026-10-24 21:49
+func readChunksAt(ctx context.Context, src io.ReaderAt, budget *copyBudget, done <-chan struct{}, queue int) <-chan copyChunk {
+	chunks := make(chan copyChunk, queue)
+	// Laufende Lesevorgänge in Dateireihenfolge; jeder belegt einen Platz in
+	// slots, bis sein Block weitergegeben (oder verworfen) ist
+	pending := make(chan chan copyChunk, copyReadsInFlight)
+	slots := make(chan struct{}, copyReadsInFlight)
+	// Wird geschlossen bei Dateiende, Lesefehler oder aufgegebenem
+	// Schreiber: keine neuen Lesevorgänge mehr
+	stop := make(chan struct{})
+	// Wird geschlossen, wenn der erste Block voll war: ab dann gleichzeitig
+	grow := make(chan struct{})
+	free := func(c copyChunk) {
+		budget.pool.Put(c.buf)
+		budget.release()
+	}
+
+	// Starter: vergibt die Lesevorgänge der Reihe nach
+	go func() {
+		defer close(pending)
+		for off := int64(0); ; off += int64(budget.chunk) {
+			if off == int64(budget.chunk) {
+				// Zweiter Block: erst wenn der erste voll war (große Datei)
+				select {
+				case <-grow:
+				case <-stop:
+					return
+				case <-ctx.Done():
+					return
+				case <-done:
+					return
+				}
+			}
+			// Schon beendet? Dann keinen weiteren Lesevorgang beginnen
+			// (select wählt sonst zufällig auch einen freien Platz)
+			select {
+			case <-stop:
+				return
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			default:
+			}
+			select {
+			case slots <- struct{}{}:
+			case <-stop:
+				return
+			case <-ctx.Done():
+				return
+			case <-done:
+				return
+			}
+			if !budget.acquire(ctx, done, stop) {
+				<-slots
+				return
+			}
+			bufp := budget.pool.Get().(*[]byte)
+			result := make(chan copyChunk, 1)
+			// Blockiert nie: slots begrenzt die offenen Einträge
+			pending <- result
+			go func(off int64) {
+				n, err := readFullAt(src, *bufp, off)
+				result <- copyChunk{buf: bufp, n: n, err: err}
+			}(off)
+		}
+	}()
+
+	// Weitergabe in Dateireihenfolge; wartet jeden Lesevorgang ab, auch
+	// nach dem Ende (dann wird der Block nur freigegeben)
+	go func() {
+		defer close(chunks)
+		ended := false
+		first := true
+		for result := range pending {
+			c := <-result
+			if first {
+				first = false
+				if c.err == nil && c.n == budget.chunk {
+					close(grow)
+				}
+			}
+			if ended {
+				free(c)
+			} else {
+				select {
+				case chunks <- c:
+					if c.err != nil {
+						ended = true
+						close(stop)
+					}
+				case <-done:
+					free(c)
+					ended = true
+					close(stop)
+				}
+			}
+			<-slots
+		}
+	}()
+	return chunks
+}
+
+// readFullAt liest b ab off vollständig wie io.ReadFull: Liefert die Quelle
+// weniger, ohne einen Fehler zu melden (bricht den io.ReaderAt-Vertrag),
+// wird der Rest nachgelesen; liefert sie gar nichts, ist das ein Fehler
+// statt einer Endlosschleife.
+//
+// @param src - Quelle
+// @param b - Puffer
+// @param off - Stelle in der Quelle
+// @return int - gelesene Bytes
+// @return error - io.EOF am Dateiende, sonst Lesefehler
+// @date   2026-10-24 21:49
+func readFullAt(src io.ReaderAt, b []byte, off int64) (int, error) {
+	n := 0
+	for n < len(b) {
+		m, err := src.ReadAt(b[n:], off+int64(n))
+		n += m
+		if err != nil {
+			return n, err
+		}
+		if m == 0 {
+			return n, io.ErrNoProgress
+		}
+	}
+	return n, nil
+}
+
 // pipeCopyAt kopiert src nach dst wie pipeCopy, schreibt aber bis zu
 // copyWritesInFlight Blöcke gleichzeitig, jeden an seine Stelle (WriteAt).
 // So entsteht keine Pause zwischen den Blöcken: Während ein Block auf
@@ -261,12 +432,12 @@ func readChunks(ctx context.Context, src io.Reader, budget *copyBudget, done <-c
 //
 // @return int64 - geschriebene Bytes
 // @return error - erster Lese-/Schreibfehler oder ctx.Err()
-// @date   2026-10-24 20:10
+// @date   2026-10-24 21:49
 func pipeCopyAt(ctx context.Context, dst io.WriterAt, src io.Reader, budget *copyBudget, written func(int)) (int64, error) {
-	// Pro Datei höchstens copyPipeChunks Blöcke: Warteschlange, Leser,
-	// ein wartender Block und die laufenden Schreibvorgänge
+	// Der Schreiber hält einen wartenden Block und die laufenden
+	// Schreibvorgänge
 	done := make(chan struct{})
-	chunks := readChunks(ctx, src, budget, done, max(copyPipeChunks-2-copyWritesInFlight, 1))
+	chunks := readChunks(ctx, src, budget, done, 1+copyWritesInFlight)
 	slots := make(chan struct{}, copyWritesInFlight)
 
 	var (
@@ -607,12 +778,16 @@ func (r *copyRun) setCancelled() {
 // liegen (untergeschobener Symlink/Junction), und Lstat würde durch ihn
 // hindurch einen Eintrag finden, der dann zusammengeführt würde.
 //
+// Beim ersten Blick in ein vorhandenes Zielverzeichnis merkt targetListing
+// liegen gebliebene Temp-Dateien vor (Build 82) - auch im Zweig mit
+// Einzelprüfung, aber erst nach der Prüfung des Elternverzeichnisses.
+//
 // @param rel - Pfad relativ zum Zielverzeichnis des Auftrags
 // @param dstPath - Zielpfad
 // @return os.FileInfo - vorhandener Eintrag
 // @return bool - existiert er?
 // @return bool - überspringen (Elternverzeichnis gescheitert)
-// @date   2026-10-24 20:29
+// @date   2026-10-24 21:49
 func (r *copyRun) targetInfo(rel, dstPath string) (os.FileInfo, bool, bool) {
 	key, simple := looseTargetKey(rel)
 	exact := !simple || r.assigned[key]
@@ -623,16 +798,13 @@ func (r *copyRun) targetInfo(rel, dstPath string) (os.FileInfo, bool, bool) {
 		if !r.dirJobs[path.Dir(rel)].wait() {
 			return nil, false, true
 		}
+		// Nur zum Vormerken alter Temp-Dateien (einmal pro Verzeichnis)
+		r.targetListing(path.Dir(dstPath))
 		info, err := r.req.dst.Lstat(dstPath)
 		return info, err == nil, false
 	}
 	dir, name := path.Dir(dstPath), path.Base(dstPath)
-	listing, known := r.dstDirs[dir]
-	if !known && !isLocalFS(r.req.dst) {
-		listing = r.listTarget(dir)
-		r.dstDirs[dir] = listing
-	}
-	if listing != nil {
+	if listing := r.targetListing(dir); listing != nil {
 		if info, ok := listing.exact[name]; ok {
 			return info, true, false
 		}
@@ -728,15 +900,36 @@ func newTargetListing(infos []os.FileInfo) *targetListing {
 	return l
 }
 
-// listTarget liest ein Zielverzeichnis für targetInfo. Fehler oder sehr
-// große Verzeichnisse ergeben nil (dann wird einzeln gefragt).
+// targetListing liefert die vorgehaltene Liste eines Zielverzeichnisses
+// und liest sie beim ersten Mal (listTarget). Nur aus dispatch.
+//
+// @param dir - Zielverzeichnis
+// @return *targetListing - Liste oder nil (einzeln fragen)
+// @date   2026-10-24 21:49
+func (r *copyRun) targetListing(dir string) *targetListing {
+	listing, known := r.dstDirs[dir]
+	if !known {
+		listing = r.listTarget(dir)
+		r.dstDirs[dir] = listing
+	}
+	return listing
+}
+
+// listTarget liest ein Zielverzeichnis für targetInfo und merkt dabei
+// liegen gebliebene Temp-Dateien vor (noteStaleTemps). Fehler, sehr
+// große Verzeichnisse und der lokale PC (keine Netzwerk-Rundreise, Lstat
+// ist verlässlicher) ergeben nil - dann wird einzeln gefragt.
 //
 // @param dir - Zielverzeichnis
 // @return *targetListing - Liste oder nil
-// @date   2026-10-23 09:40
+// @date   2026-10-24 21:49
 func (r *copyRun) listTarget(dir string) *targetListing {
 	infos, err := r.req.dst.ReadDir(dir)
-	if err != nil || len(infos) > copyMaxTargetListing {
+	if err != nil {
+		return nil
+	}
+	r.noteStaleTemps(dir, infos)
+	if len(infos) > copyMaxTargetListing || isLocalFS(r.req.dst) {
 		return nil
 	}
 	return newTargetListing(infos)

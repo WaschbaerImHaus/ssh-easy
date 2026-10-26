@@ -18,8 +18,13 @@
 // tui_filemanager_ops.go), Menüs (F9, tui_filemanager_menu.go) und Neu
 // einlesen (Strg+R) funktionieren; F1 und F2 sind nur optisch vorhanden.
 //
+// Build 82: Der Eintrag "Datei-Manager (eine Verbindung)" wählt und
+// verbindet nur eine Seite (fileManager.single) und zeigt ein Fenster über
+// die ganze Breite. Kopieren und Verschieben (F5/F6) entfallen dort - sie
+// brauchen eine zweite Verbindung -, alles andere bleibt gleich.
+//
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-10-26 21:04
 package main
 
 import (
@@ -63,6 +68,8 @@ const (
 type fileManager struct {
 	// Laufende Nummer der Sitzung: Ergebnisse älterer Sitzungen werden verworfen
 	session int
+	// Nur eine Verbindung (ein Fenster, kein Kopieren/Verschieben)
+	single bool
 	// Verbindungsauswahl: welche Seite wird gerade gewählt (0 links, 1 rechts)
 	pickSide int
 	// Verbindungsauswahl: Cursor und erste sichtbare Zeile
@@ -144,13 +151,15 @@ type fmDirLoadedMsg struct {
 }
 
 // openFileManager startet den Datei-Manager mit der Auswahl der linken
-// Verbindung. Der Farbmodus bleibt über Sitzungen hinweg erhalten.
+// (bzw. der einzigen) Verbindung. Der Farbmodus bleibt über Sitzungen
+// hinweg erhalten.
 //
+// @param single - nur eine Verbindung (ein Fenster, nur ansehen und bearbeiten)
 // @return tea.Model - Modell in ViewFMPick
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-10-21 19:45
-func (m AppModel) openFileManager() (tea.Model, tea.Cmd) {
-	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme}
+// @date   2026-10-26 21:04
+func (m AppModel) openFileManager(single bool) (tea.Model, tea.Cmd) {
+	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme, single: single}
 	m.state = ViewFMPick
 	m.errorMsg = ""
 	m.successMsg = ""
@@ -158,21 +167,25 @@ func (m AppModel) openFileManager() (tea.Model, tea.Cmd) {
 }
 
 // closeFileManager schließt alle Verbindungen des Datei-Managers und
-// kehrt zur Liste zurück (Cursor auf dem Datei-Manager-Eintrag).
-// Die Sitzungsnummer wird erhöht, damit noch laufende Hintergrund-
+// kehrt zur Liste zurück (Cursor auf dem Eintrag, über den er geöffnet
+// wurde). Die Sitzungsnummer wird erhöht, damit noch laufende Hintergrund-
 // ergebnisse verworfen werden.
 //
 // @return AppModel - Modell in ViewList
-// @date   2026-10-21 19:45
+// @date   2026-10-26 21:04
 func (m AppModel) closeFileManager() AppModel {
 	for i := range m.fm.panels {
 		if m.fm.panels[i].fs != nil {
 			m.fm.panels[i].fs.Close()
 		}
 	}
+	// Zeilen: … | eine Verbindung | zwei Verbindungen
+	m.cursor = len(m.listRows()) - 1
+	if m.fm.single {
+		m.cursor--
+	}
 	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme}
 	m.state = ViewList
-	m.cursor = len(m.listRows()) - 1
 	m.clampListCursor()
 	return m
 }
@@ -212,12 +225,13 @@ func (m AppModel) fmLocalConnection() Connection {
 // handleFMPickKeys verarbeitet Tasten in der Verbindungsauswahl.
 // Der Cursor startet auf dem Platzhalter "(nicht ausgewählt)"; Enter darauf
 // bewirkt nichts - so landet man nicht mit Enter-Enter versehentlich im
-// Datei-Manager, sondern muss beide Verbindungen bewusst wählen.
+// Datei-Manager, sondern muss beide Verbindungen bewusst wählen. Mit nur
+// einer Verbindung startet der Aufbau gleich nach der ersten Wahl.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der 2. Wahl)
-// @date   2026-10-21 20:03
+// @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der letzten Wahl)
+// @date   2026-10-26 21:04
 func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	conns := m.fmPickConnections()
 	// Zeilen: Platzhalter + Verbindungen
@@ -247,7 +261,7 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Eigene Verbindung ohne Tunnel (Kopie - die Liste bleibt unverändert)
 		conn.Tunnels = nil
 		m.fm.panels[m.fm.pickSide] = filePanel{conn: conn}
-		if m.fm.pickSide == 0 {
+		if m.fm.pickSide == 0 && !m.fm.single {
 			// Rechte Seite: wieder auf dem Platzhalter beginnen
 			m.fm.pickSide = 1
 			m.fm.pickCursor = 0
@@ -323,7 +337,7 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken)
-// @date   2026-10-23 19:37
+// @date   2026-10-26 21:04
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -382,7 +396,7 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	if msg.listErr == nil {
 		m.rememberFMPath(msg.side)
 	}
-	if msg.side == 0 {
+	if msg.side == 0 && !m.fm.single {
 		return m.startFMConnect(1, "")
 	}
 	m.state = ViewFileManager
@@ -550,12 +564,13 @@ func (m AppModel) fmScreenSize() (int, int) {
 	return width, height
 }
 
-// handleFileManagerKeys verarbeitet Tasten in der Zwei-Fenster-Ansicht.
+// handleFileManagerKeys verarbeitet Tasten in der Zwei-Fenster-Ansicht
+// (bzw. im einzigen Fenster: dort wirken Tab, F5 und F6 nicht).
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verzeichnis lesen)
-// @date   2026-10-22 00:52
+// @date   2026-10-26 21:04
 func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Betrachter bzw. offener Dialog bekommt alle Tasten (F10 schließt
 	// dann nur den Betrachter bzw. ruht im Dialog)
@@ -589,7 +604,9 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "f10":
 		return m.closeFileManager(), nil
 	case "tab":
-		m.fm.active = 1 - m.fm.active
+		if !m.fm.single {
+			m.fm.active = 1 - m.fm.active
+		}
 		return m, nil
 	case "up", "k":
 		panel.moveCursor(-1)
@@ -612,10 +629,13 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.fmOpenViewer()
 	case "f4":
 		return m.fmOpenEditor()
-	case "f5":
-		return m.fmOpenCopyConfirm(false)
-	case "f6":
-		return m.fmOpenCopyConfirm(true)
+	case "f5", "f6":
+		if m.fm.single {
+			// Kopieren/Verschieben braucht ein zweites Fenster als Ziel
+			m.fm.message = m.tr(txtFMSingleNoCopy)
+			return m, nil
+		}
+		return m.fmOpenCopyConfirm(msg.String() == "f6")
 	case "f7":
 		return m.fmOpenMkdir()
 	case "f8":
@@ -700,13 +720,17 @@ func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 
 // --- Darstellung ---
 
-// renderFMPick rendert die Verbindungsauswahl (linke bzw. rechte Seite).
+// renderFMPick rendert die Verbindungsauswahl (linke bzw. rechte Seite
+// oder die einzige Verbindung).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-21 20:03
+// @date   2026-10-26 21:04
 func (m AppModel) renderFMPick(s *strings.Builder) {
 	title := m.tr(txtFMPickLeft)
-	if m.fm.pickSide == 1 {
+	switch {
+	case m.fm.single:
+		title = m.tr(txtFMPickSingle)
+	case m.fm.pickSide == 1:
 		title = m.tr(txtFMPickRight)
 	}
 	s.WriteString(titleStyle.Render("  " + title))
@@ -774,11 +798,12 @@ func (m AppModel) renderFMPassword(s *strings.Builder) {
 	s.WriteString(helpStyle.Render(m.tr(txtFMPasswordHelp)))
 }
 
-// renderFileManager rendert die Zwei-Fenster-Ansicht bildschirmfüllend:
-// genau so viele Zeilen und Spalten wie das Terminal (sonst scrollt es).
+// renderFileManager rendert die Zwei-Fenster-Ansicht (bzw. das einzige
+// Fenster über die ganze Breite) bildschirmfüllend: genau so viele Zeilen
+// und Spalten wie das Terminal (sonst scrollt es).
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-22 00:52
+// @date   2026-10-26 21:04
 func (m AppModel) renderFileManager(s *strings.Builder) {
 	if m.fm.editing {
 		m.renderFMEditor(s)
@@ -798,11 +823,15 @@ func (m AppModel) renderFileManager(s *strings.Builder) {
 	if panelHeight < 0 {
 		panelHeight = 0
 	}
-	leftWidth := width / 2
-	left := m.renderFMPanel(0, st, leftWidth, panelHeight)
-	right := m.renderFMPanel(1, st, width-leftWidth, panelHeight)
-	for i := 0; i < panelHeight; i++ {
-		lines = append(lines, left[i]+right[i])
+	if m.fm.single {
+		lines = append(lines, m.renderFMPanel(0, st, width, panelHeight)...)
+	} else {
+		leftWidth := width / 2
+		left := m.renderFMPanel(0, st, leftWidth, panelHeight)
+		right := m.renderFMPanel(1, st, width-leftWidth, panelHeight)
+		for i := 0; i < panelHeight; i++ {
+			lines = append(lines, left[i]+right[i])
+		}
 	}
 	lines = append(lines, m.renderFMKeyBar(st, width))
 
@@ -825,14 +854,19 @@ func (m AppModel) renderFileManager(s *strings.Builder) {
 }
 
 // renderFMKeyBar rendert die F-Tasten-Leiste: zehn gleich breite Felder
-// mit Nummer und Beschriftung (das letzte Feld nimmt den Rest).
+// mit Nummer und Beschriftung (das letzte Feld nimmt den Rest). Mit nur
+// einer Verbindung bleiben F5 und F6 ohne Beschriftung (ohne Funktion).
 //
 // @param st - Stile des Farbmodus
 // @param width - Bildschirmbreite
 // @return string - Zeile
-// @date   2026-10-21 19:45
+// @date   2026-10-26 21:04
 func (m AppModel) renderFMKeyBar(st fmStyles, width int) string {
-	return renderKeyBar(st, width, strings.Split(m.tr(txtFMFKeys), "|"))
+	labels := strings.Split(m.tr(txtFMFKeys), "|")
+	if m.fm.single && len(labels) > 5 {
+		labels[4], labels[5] = "", ""
+	}
+	return renderKeyBar(st, width, labels)
 }
 
 // renderKeyBar rendert eine F-Tasten-Leiste wie im mc (Datei-Manager,
