@@ -83,5 +83,11 @@
 - Nutzerwunsch: "Datei-Manager (eine Verbindung)" (rowFileManagerSingle, fm.single): ein Fenster, F5/F6 entfallen, Menüs Fenster/Datei/Optionen; F7/F8 bleiben (Auslegung, Nutzer informiert)
 - Container-Neustart 2026-10-26 05:00 unterbrach die vorige Sitzung (kein Programmfehler); Sanitize-Lauf scheitert seit jeher mit "Not logged in" wegen --bare (sanitize.sh, Nutzer informiert)
 
+## Build 83 (2026-10-27) - Windows-Setup blieb still auf alter Version
+- Nutzer: "bleibt auf Build 81 hängen". Release v0.82 war korrekt; Setup: Delete der laufenden/gesperrten ssh-easy.exe scheiterte, File entpackte ssh-easy-windows-amd64.exe daneben, Rename still gescheitert, Exit 0 (typisch beim Auto-Update: Setup startet, während ssh-easy sich beendet)
+- Fix: RemoveOldBinary (Delete -> Rename .old/.oldN -> warten 30 s still / 3 s UI -> Rückfrage -> Abort, Exit 2) -> RunOldUninstaller (ExecWait mit _?=, erst nach der Prüfung) -> File /oname=ssh-easy.exe; DisplayVersion aus -DVERSION/-DBUILD (vorher immer "0.15.0 (Build 15)")
+- Prüfen: debugging/installer_wine_check.sh (wine + wine32:i386 im LXC installiert, 6 Fälle)
+- Nutzer strich die offenen Punkte (3 Features + Bug Taste g); "X während SSH-Sitzung" steht noch unter Offen (nachgefragt)
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

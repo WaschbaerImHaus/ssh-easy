@@ -83,6 +83,4 @@
 - [x] Datei-Manager: schnelles Kopieren über das Internet (Build 81) – große Dateien ohne Pause zwischen den Blöcken, 32 Dateien gleichzeitig, Verzeichnisse parallel, Verbindungsüberwachung mit Meldung „Verbindung unterbrochen“; Download ebenso ohne Pause (Build 82)
 - [x] „Datei-Manager (eine Verbindung)“ (Nutzerwunsch 2026-10-26, Build 82): eigener Listeneintrag über „zwei Verbindungen“, nur eine Verbindung (auch Lokaler PC, daher ohne gespeicherte Verbindung nutzbar), ein Fenster über die ganze Breite; Ansehen, Bearbeiten, F7, F8, lokal öffnen; Kopieren/Verschieben entfallen (F-Leiste ohne F5/F6, Menü ohne die Punkte, Hinweis beim Drücken), Menüs Fenster/Datei/Optionen
 ## Offen
-- [ ] Optional: Schalter in der Konfiguration, um OSC 52 zu deaktivieren
-- [ ] Suche/Filter in der Verbindungsliste
-- [ ] Unterschiedliche lokale und remote Ports bei Tunneln (aktuell gleich)
+- (keine – die drei früheren Punkte OSC-52-Schalter, Suche/Filter in der Liste und unterschiedliche Tunnel-Ports hat der Nutzer am 2026-10-27 gestrichen)
