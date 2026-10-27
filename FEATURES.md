@@ -83,7 +83,7 @@
 - [x] Datei-Manager: schnelles Kopieren über das Internet (Build 81) – große Dateien ohne Pause zwischen den Blöcken, 32 Dateien gleichzeitig, Verzeichnisse parallel, Verbindungsüberwachung mit Meldung „Verbindung unterbrochen“; Download ebenso ohne Pause (Build 82)
 - [x] „Datei-Manager (eine Verbindung)“ (Nutzerwunsch 2026-10-26, Build 82): eigener Listeneintrag über „zwei Verbindungen“, nur eine Verbindung (auch Lokaler PC, daher ohne gespeicherte Verbindung nutzbar), ein Fenster über die ganze Breite; Ansehen, Bearbeiten, F7, F8, lokal öffnen; Kopieren/Verschieben entfallen (F-Leiste ohne F5/F6, Menü ohne die Punkte, Hinweis beim Drücken), Menüs Fenster/Datei/Optionen
 - [x] Hauptmenü mit „m“ ein-/ausblenden (Nutzerwunsch 2026-10-27, Build 84): Standard aus, nur Hinweis „m:Menü“; alle Tasten wirken immer; Menü bleibt unten, Auto-Update-Schalter letzte Zeile; Meldungen der Update-Suche bleiben sichtbar
-- [x] „c“ Verbindung kopieren (Nutzerwunsch 2026-10-27, Build 84): wie „n“, übernimmt Name (+ „ #2“, hochzählend, erste freie Zahl), Port, Benutzer, Tunnel; Host leer und fokussiert, keine Schlüssel
+- [x] „c“ Verbindung kopieren (Nutzerwunsch 2026-10-27, Build 84): wie „n“, übernimmt Name (+ „ #2“, hochzählend, erste freie Zahl), Port, Benutzer, Tunnel; keine Schlüssel. Seit Build 85 auch der Host (Nutzerwunsch), Fokus auf dem Namen wie bei „n“
 - [x] „r“ Fenster- und Schriftgröße zurücksetzen (Nutzerwunsch 2026-10-27, Build 84): auf den Stand beim Programmstart (Systemstandard), gespeicherte Werte gelöscht
 - [x] Fenster- und Schriftgröße sofort speichern (Nutzerwunsch 2026-10-27, Build 84): in der Liste alle 2 s, während der SSH-Sitzung ebenfalls – nicht erst beim Beenden
 ## Offen

@@ -48,7 +48,7 @@ Programm starten:
 |-------|--------|
 | `m` | Menü (Tastenhilfe unten) ein-/ausblenden; alle Tasten wirken auch bei ausgeblendetem Menü |
 | `n` | Neue Verbindung anlegen |
-| `c` | Gewählte Verbindung als neue kopieren: Name (mit angehängtem `#2`, `#3` …), Port, Benutzer und Tunnel werden übernommen, Host und SSH-Schlüssel nicht |
+| `c` | Gewählte Verbindung als neue kopieren: Name (mit angehängtem `#2`, `#3` …), Host, Port, Benutzer und Tunnel werden übernommen, SSH-Schlüssel nicht |
 | `e` | Verbindung bearbeiten |
 | `d` | Verbindung loeschen |
 | `Enter` | Verbindung herstellen / Status anzeigen |

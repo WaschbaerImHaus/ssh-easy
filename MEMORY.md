@@ -91,7 +91,7 @@
 
 ## Build 84 (2026-10-27) - Hauptmenü m, Kopie c, Reset r, sofort speichern
 - m: showMenu (Standard aus, Hinweis "m:Menü", Update-Status bleibt sichtbar), listChromeLines 14
-- c: connection_copy.go nextCopyName (" #N", erste freie Zahl ab 2, vorhandenes " #N" ersetzt); Host leer + fokussiert, keine Schlüssel (Nutzer nannte nur Name, Port, User, Tunnel)
+- c: connection_copy.go nextCopyName (" #N", erste freie Zahl ab 2, vorhandenes " #N" ersetzt); keine Schlüssel. Build 85: Host wird mitkopiert (Nutzerwunsch), Fokus auf Name wie bei n
 - r: console_state.go, consoleDefaults = Stand beim Start vor applyStartup*; Standardwerte werden als 0 gespeichert
 - Sofort speichern: handleWindowPoll + consoleStateSaver im SSH-Terminal (alle 2 s); updateConfig mit configUpdateMu/configFileMu
 - Fable-Review: r in der Statusansicht (Schlüssel löschen) jetzt mit j/y-Rückfrage; WT-Schrift = nicht steuerbar

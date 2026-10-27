@@ -61,7 +61,7 @@ Start the program:
 |-----|--------|
 | `m` | Show / hide the menu (key help at the bottom; all keys work while it is hidden) |
 | `n` | Add new connection |
-| `c` | Copy the selected connection into a new one: name (with `#2`, `#3` … appended), port, user and tunnels are taken over, host and SSH keys are not |
+| `c` | Copy the selected connection into a new one: name (with `#2`, `#3` … appended), host, port, user and tunnels are taken over, SSH keys are not |
 | `e` | Edit connection |
 | `d` | Delete connection |
 | `Enter` | Connect / show status |

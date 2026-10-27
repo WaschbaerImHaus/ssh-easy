@@ -5,6 +5,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.85] – Build 85
+- **Changed** connection list: `c` (copy connection) now also takes over the host, so the copy can be saved right away. The cursor starts in the name field, as with `n`. SSH keys are still not taken over
+
 ## [v0.84] – Build 84
 - **Added** connection list: `m` shows or hides the menu (the key help at the bottom). It is hidden at start and only the hint `m:Menu` is shown; all keys work either way. The menu stays at the bottom, with the auto-update switch as its last line. Messages of the update check stay visible while the menu is hidden
 - **Added** connection list: `c` creates a new connection as a copy of the selected one. Name, port, user and tunnels are taken over, the host field is left empty (and focused) and no SSH key is taken over. The name gets ` #2` appended, or the next free number (` #3`, …); copying `web #2` gives `web #3`

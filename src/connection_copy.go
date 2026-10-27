@@ -1,13 +1,12 @@
 // Paket main - Verbindung als Vorlage kopieren (Taste c im Hauptmenü)
 //
-// Wie "n" (neu), aber das Formular übernimmt Name, Port, Benutzer und Tunnel
-// der gewählten Verbindung. Host und Schlüssel werden nicht übernommen: Die
-// Kopie ist für einen anderen Server gedacht, und ein Schlüssel gehört zu
-// genau einer Verbindung. Der Name bekommt einen hochzählenden Zusatz " #2",
-// " #3" ... - der erste freie Wert ab 2.
+// Wie "n" (neu), aber das Formular übernimmt Name, Host, Port, Benutzer und
+// Tunnel der gewählten Verbindung (Host seit Build 85). Schlüssel werden nicht
+// übernommen: Ein Schlüssel gehört zu genau einer Verbindung. Der Name bekommt
+// einen hochzählenden Zusatz " #2", " #3" ... - der erste freie Wert ab 2.
 //
 // @author Kurt Ingwer
-// @date   2026-10-27 17:15
+// @date   2026-10-27 19:30
 package main
 
 import (
@@ -49,12 +48,12 @@ func nextCopyName(name string, existing []Connection) string {
 }
 
 // startCopyConnection öffnet das Formular "Neue Verbindung", vorbelegt mit
-// der gewählten Verbindung (ohne Host und Schlüssel). Der Fokus steht auf
-// dem leeren Host-Feld. Auf Gruppen- und Datei-Manager-Zeilen passiert nichts.
+// der gewählten Verbindung (ohne Schlüssel). Der Fokus steht wie bei "n" auf
+// dem Namen. Auf Gruppen- und Datei-Manager-Zeilen passiert nichts.
 //
 // @return tea.Model - Modell im Formular oder unverändert
 // @return tea.Cmd - Cursor-Blinken oder nil
-// @date   2026-10-27 17:15
+// @date   2026-10-27 19:30
 func (m AppModel) startCopyConnection() (tea.Model, tea.Cmd) {
 	conn, ok := m.selectedConnection()
 	if !ok {
@@ -65,9 +64,8 @@ func (m AppModel) startCopyConnection() (tea.Model, tea.Cmd) {
 	m.inputs[fieldName].Placeholder = m.lang.PlaceholderName
 	m.fillFormFromConnection(conn)
 	m.inputs[fieldName].SetValue(nextCopyName(conn.Name, m.connections))
-	m.inputs[fieldHost].SetValue("")
-	m.focusedInput = fieldHost
-	m.inputs[fieldHost].Focus()
+	m.focusedInput = fieldName
+	m.inputs[fieldName].Focus()
 	m.errorMsg = ""
 	m.successMsg = ""
 	return m, textinput.Blink

@@ -88,7 +88,7 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case "c":
-		// Neue Verbindung als Kopie der gewählten (ohne Host und Schlüssel)
+		// Neue Verbindung als Kopie der gewählten (ohne Schlüssel)
 		return m.startCopyConnection()
 
 	case "r":

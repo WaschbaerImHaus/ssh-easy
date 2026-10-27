@@ -4,7 +4,8 @@
 //   - "m" blendet die Tastenhilfe unten ein und aus (Standard: aus); alle
 //     Tasten wirken auch bei ausgeblendetem Menü.
 //   - "c" legt eine neue Verbindung als Kopie der gewählten an: Name (mit
-//     hochzählendem "#2"), Port, Benutzer und Tunnel - kein Host, keine Keys.
+//     hochzählendem "#2"), Host, Port, Benutzer und Tunnel - keine Keys
+//     (Host seit Build 85).
 //   - "r" setzt Fenster- und Schriftgröße auf den Stand beim Programmstart
 //     (Systemstandard) zurück.
 //   - Fenster- und Schriftgröße werden bei der Änderung gespeichert, auch
@@ -187,9 +188,9 @@ func newCopySourceModel(t *testing.T) AppModel {
 }
 
 // TestCopyKeyPrefillsForm prüft das Formular nach c: Name mit #2, Port,
-// Benutzer und Tunnel übernommen, Host leer und fokussiert.
+// Host, Benutzer und Tunnel übernommen, Fokus wie bei n auf dem Namen.
 //
-// @date 2026-10-27 17:00
+// @date 2026-10-27 19:30
 func TestCopyKeyPrefillsForm(t *testing.T) {
 	m := press(t, newCopySourceModel(t), "c")
 	if m.state != ViewCreate {
@@ -197,7 +198,7 @@ func TestCopyKeyPrefillsForm(t *testing.T) {
 	}
 	want := map[int]string{
 		fieldName:    "web #2",
-		fieldHost:    "",
+		fieldHost:    "srv.example.org",
 		fieldPort:    "2222",
 		fieldUser:    "admin",
 		fieldTunnels: "8080,9090",
@@ -207,18 +208,21 @@ func TestCopyKeyPrefillsForm(t *testing.T) {
 			t.Errorf("Feld %d = %q, erwartet %q", field, got, value)
 		}
 	}
-	if m.focusedInput != fieldHost {
-		t.Errorf("Fokus auf Feld %d, erwartet Host (%d) - der muss eingetragen werden", m.focusedInput, fieldHost)
+	if m.focusedInput != fieldName {
+		t.Errorf("Fokus auf Feld %d, erwartet Name (%d) wie bei n", m.focusedInput, fieldName)
+	}
+	if !m.inputs[fieldName].Focused() || m.inputs[fieldHost].Focused() {
+		t.Error("nur das Namensfeld darf den Cursor haben")
 	}
 }
 
 // TestCopySavedAsNewConnection prüft das Speichern der Kopie: neue ID,
-// kein Schlüssel, Quelle unverändert.
+// gleicher Host, kein Schlüssel, Quelle unverändert. Gespeichert wird ohne
+// jede Eingabe - die Kopie ist sofort gültig.
 //
-// @date 2026-10-27 17:00
+// @date 2026-10-27 19:30
 func TestCopySavedAsNewConnection(t *testing.T) {
 	m := press(t, newCopySourceModel(t), "c")
-	m = typeText(t, m, "srv2.example.org")
 	for m.focusedInput != fieldCount-1 {
 		m = press(t, m, "tab")
 	}
@@ -247,7 +251,7 @@ func TestCopySavedAsNewConnection(t *testing.T) {
 	if src.Name != "web" || src.Host != "srv.example.org" || src.KeyPath == "" {
 		t.Errorf("Quelle verändert: %+v", *src)
 	}
-	if cpy.Name != "web #2" || cpy.Host != "srv2.example.org" || cpy.Port != 2222 || cpy.User != "admin" {
+	if cpy.Name != "web #2" || cpy.Host != "srv.example.org" || cpy.Port != 2222 || cpy.User != "admin" {
 		t.Errorf("Kopie falsch: %+v", *cpy)
 	}
 	if len(cpy.Tunnels) != 2 || cpy.Tunnels[0].LocalPort != 8080 || cpy.Tunnels[1].LocalPort != 9090 {
