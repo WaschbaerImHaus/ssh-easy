@@ -4,7 +4,7 @@
 // Verwendet atomares Schreiben (Temp-Datei + Rename) um Datenverlust zu vermeiden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 10:36
+// @date   2026-10-27 18:10
 package main
 
 import (
@@ -17,6 +17,39 @@ import (
 	"sync"
 	"time"
 )
+
+var (
+	// configUpdateMu serialisiert Lesen-Ändern-Schreiben der Konfiguration
+	// (updateConfig, Add/Delete/UpdateConnection). Nötig, weil auch
+	// Goroutinen schreiben: der Größen-Watcher der SSH-Sitzung und die
+	// Schlüssel-Befehle nach der Anmeldung. Ohne Sperre konnte eine
+	// Änderung die andere überschreiben (Review-Fund Build 84).
+	configUpdateMu sync.Mutex
+	// configFileMu: Lesen und Umbenennen der Datei nie gleichzeitig - unter
+	// Windows scheitert das Umbenennen, solange ein anderer Lesezugriff die
+	// Datei offen hat.
+	configFileMu sync.Mutex
+)
+
+// updateConfig lädt die Konfiguration, lässt fn sie ändern und speichert sie,
+// wenn fn true liefert - alles unter configUpdateMu.
+//
+// @param path - Pfad zur Konfigurationsdatei
+// @param fn - Änderung; Rückgabe true = speichern
+// @return error - Fehler beim Laden oder Speichern
+// @date   2026-10-27 18:10
+func updateConfig(path string, fn func(cfg *AppConfig) bool) error {
+	configUpdateMu.Lock()
+	defer configUpdateMu.Unlock()
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		return err
+	}
+	if !fn(cfg) {
+		return nil
+	}
+	return SaveConfig(path, cfg)
+}
 
 // ConfigCache implementiert Lazy-Loading der Konfiguration.
 // Lädt die Datei nur neu wenn sie sich geändert hat (Timestamp-basiert).
@@ -149,8 +182,10 @@ func EnsureConfigDir() error {
 // @return error - Fehler beim Lesen oder Parsen
 // @date   2026-03-07 18:15
 func LoadConfig(path string) (*AppConfig, error) {
-	// Datei lesen
+	// Datei lesen (nie gleichzeitig mit dem Umbenennen in SaveConfig)
+	configFileMu.Lock()
 	data, err := os.ReadFile(path)
+	configFileMu.Unlock()
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Datei existiert nicht - leere Konfiguration zurückgeben
@@ -236,8 +271,11 @@ func SaveConfig(path string, cfg *AppConfig) error {
 		return fmt.Errorf("Berechtigung konnte nicht gesetzt werden: %w", err)
 	}
 
-	// Atomarer Rename: Temp-Datei -> Zieldatei
-	if err := os.Rename(tmpPath, path); err != nil {
+	// Atomarer Rename: Temp-Datei -> Zieldatei (nie während eines Lesens)
+	configFileMu.Lock()
+	err = os.Rename(tmpPath, path)
+	configFileMu.Unlock()
+	if err != nil {
 		return fmt.Errorf("Konfiguration konnte nicht gespeichert werden: %w", err)
 	}
 
@@ -251,6 +289,8 @@ func SaveConfig(path string, cfg *AppConfig) error {
 // @return error - Fehler beim Speichern
 // @date   2026-03-07 18:15
 func AddConnection(path string, conn Connection) error {
+	configUpdateMu.Lock()
+	defer configUpdateMu.Unlock()
 	cfg, err := LoadConfig(path)
 	if err != nil {
 		return err
@@ -266,6 +306,8 @@ func AddConnection(path string, conn Connection) error {
 // @return error - Fehler beim Speichern
 // @date   2026-03-07 18:15
 func DeleteConnection(path string, id string) error {
+	configUpdateMu.Lock()
+	defer configUpdateMu.Unlock()
 	cfg, err := LoadConfig(path)
 	if err != nil {
 		return err
@@ -297,6 +339,8 @@ func DeleteConnection(path string, id string) error {
 // @return error - Fehler beim Speichern
 // @date   2026-03-07 18:15
 func UpdateConnection(path string, conn Connection) error {
+	configUpdateMu.Lock()
+	defer configUpdateMu.Unlock()
 	cfg, err := LoadConfig(path)
 	if err != nil {
 		return err

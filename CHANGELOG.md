@@ -5,6 +5,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.84] – Build 84
+- **Added** connection list: `m` shows or hides the menu (the key help at the bottom). It is hidden at start and only the hint `m:Menu` is shown; all keys work either way. The menu stays at the bottom, with the auto-update switch as its last line. Messages of the update check stay visible while the menu is hidden
+- **Added** connection list: `c` creates a new connection as a copy of the selected one. Name, port, user and tunnels are taken over, the host field is left empty (and focused) and no SSH key is taken over. The name gets ` #2` appended, or the next free number (` #3`, …); copying `web #2` gives `web #3`
+- **Added** connection list: `r` resets window and font size to the size the console had at start (the system default) and removes the saved values. Without a controllable console (Linux, Windows Terminal) a short note is shown
+- **Changed** window and font size are now saved as soon as they change – in the list every 2 seconds and during an SSH session as well – instead of partly only when quitting. Closing the window with X during an SSH session no longer loses them
+- **Removed** README: the `g` key (generate SSH key) was documented but has not worked for a long time; the description was removed
+- **Changed** status view: `r` (remove SSH key from the server and from this PC) now asks first; only `j`/`y` removes the key, any other key cancels. Before, a single key press removed it – and `r` now means "reset" in the connection list
+- **Fixed** settings could be lost when two things saved at the same moment (for example the window size during an SSH session and the SSH key right after a password login); saving is now serialized
+- **Fixed** Windows Terminal: the font size is not controllable there; it is no longer read, saved or "reset" (it could overwrite the font size of the normal console window)
+- **Changed** a window or font size equal to the system default is saved as "default" (0) instead of as fixed numbers, so `r` stays effective and later changes of the console defaults apply
+
 ## [v0.83] – Build 83
 - **Fixed** Windows setup: updating could leave the old version installed while reporting success (for example Build 81 stayed after installing Build 82). This happened whenever the old `ssh-easy.exe` was still running or still closing during the installation – which is the normal case for the automatic update, because ssh-easy starts the setup while it exits. The setup now writes the program directly as `ssh-easy.exe`, moves a running old version aside (`ssh-easy.exe.old`, removed later), waits up to 30 seconds for a locked file (3 seconds and then a *Retry/Cancel* question when run with its window), and fails with an error code instead of reporting success if it still cannot replace the file. Leftovers of earlier failed installations are removed
 - **Fixed** Windows setup: the old uninstaller is now really waited for; before, it could run in parallel and delete files of the version that was just being installed. It now also runs only after the setup knows it can replace the program, so cancelling (or a file that stays locked) leaves the old installation fully intact, including Start menu entry and *Apps & Features* entry

@@ -20,6 +20,7 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
@@ -44,6 +45,10 @@ type sshTerminalCmd struct {
 	width int
 	// Terminalhöhe in Zeilen (aus letztem WindowSizeMsg)
 	height int
+	// Speichert Fenster- und Schriftgröße während der Sitzung (nil = nicht).
+	// Sonst gingen Änderungen verloren, wenn das Fenster per X geschlossen
+	// wird - Windows beendet den Prozess dann nach ca. 5 s.
+	saveConsoleState func()
 }
 
 // SetStdin wird von tea.Exec aufgerufen – wir speichern ihn, nutzen aber os.Stdin direkt.
@@ -202,7 +207,7 @@ func (t *sshTerminalCmd) Run() error {
 	go func() {
 		defer resizeWg.Done()
 		// stdoutFd übergeben – Größenabfrage muss auf Output-Handle erfolgen (Windows!)
-		watchTerminalResize(session, stdoutFd, width, height, stopResize)
+		watchTerminalResize(session, stdoutFd, width, height, stopResize, newConsoleStateSaver(t.saveConsoleState))
 	}()
 
 	// Warten bis der Nutzer die Session beendet (z.B. mit "exit" oder Ctrl+D)
@@ -240,8 +245,9 @@ func (t *sshTerminalCmd) Run() error {
 // @param initialWidth - Startbreite
 // @param initialHeight - Starthöhe
 // @param stop - Kanal zum Beenden der Goroutine
-// @date   2026-10-23 19:33
-func watchTerminalResize(session *ssh.Session, fd, initialWidth, initialHeight int, stop <-chan struct{}) {
+// @param saver - speichert Fenster- und Schriftgröße höchstens alle 2 s
+// @date   2026-10-27 17:20
+func watchTerminalResize(session *ssh.Session, fd, initialWidth, initialHeight int, stop <-chan struct{}, saver *consoleStateSaver) {
 	lastW, lastH := initialWidth, initialHeight
 
 	for {
@@ -260,6 +266,8 @@ func watchTerminalResize(session *ssh.Session, fd, initialWidth, initialHeight i
 				_ = session.WindowChange(h, w)
 				lastW, lastH = w, h
 			}
+			// Fenster- und Schriftgröße sofort sichern (nicht erst beim Beenden)
+			saver.tick(time.Now())
 			// Kurze Pause um CPU-Auslastung zu begrenzen
 			waitForResizeSignal(stop)
 		}

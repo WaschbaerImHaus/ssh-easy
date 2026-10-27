@@ -89,5 +89,13 @@
 - Prüfen: debugging/installer_wine_check.sh (wine + wine32:i386 im LXC installiert, 6 Fälle)
 - Nutzer strich die offenen Punkte (3 Features + Bug Taste g); "X während SSH-Sitzung" steht noch unter Offen (nachgefragt)
 
+## Build 84 (2026-10-27) - Hauptmenü m, Kopie c, Reset r, sofort speichern
+- m: showMenu (Standard aus, Hinweis "m:Menü", Update-Status bleibt sichtbar), listChromeLines 14
+- c: connection_copy.go nextCopyName (" #N", erste freie Zahl ab 2, vorhandenes " #N" ersetzt); Host leer + fokussiert, keine Schlüssel (Nutzer nannte nur Name, Port, User, Tunnel)
+- r: console_state.go, consoleDefaults = Stand beim Start vor applyStartup*; Standardwerte werden als 0 gespeichert
+- Sofort speichern: handleWindowPoll + consoleStateSaver im SSH-Terminal (alle 2 s); updateConfig mit configUpdateMu/configFileMu
+- Fable-Review: r in der Statusansicht (Schlüssel löschen) jetzt mit j/y-Rückfrage; WT-Schrift = nicht steuerbar
+- README: g-Taste entfernt (funktionierte seit langem nicht)
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

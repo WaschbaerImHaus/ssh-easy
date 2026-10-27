@@ -46,12 +46,13 @@ Programm starten:
 
 | Taste | Aktion |
 |-------|--------|
+| `m` | Menü (Tastenhilfe unten) ein-/ausblenden; alle Tasten wirken auch bei ausgeblendetem Menü |
 | `n` | Neue Verbindung anlegen |
+| `c` | Gewählte Verbindung als neue kopieren: Name (mit angehängtem `#2`, `#3` …), Port, Benutzer und Tunnel werden übernommen, Host und SSH-Schlüssel nicht |
 | `e` | Verbindung bearbeiten |
 | `d` | Verbindung loeschen |
 | `Enter` | Verbindung herstellen / Status anzeigen |
 | `x` | Verbindung trennen |
-| `g` | SSH-Key generieren (Ed25519) |
 | `j/k` oder Pfeiltasten | Navigation |
 | `→` / `Enter` auf einer Gruppe | Gruppe aufklappen |
 | `←` | Gruppe zuklappen (auch von einem Gruppeneintrag aus) |
@@ -63,7 +64,8 @@ Programm starten:
 | `Enter` auf *Datei-Manager (zwei Verbindungen)* | Zwei-Fenster-Datei-Manager öffnen (letzter Listeneintrag) |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
-| `Strg+Hoch` / `Strg+Runter` | Schriftgroesse aendern (Windows, wird gespeichert; Strg+Mausrad geht auch) |
+| `Strg+Hoch` / `Strg+Runter` | Schriftgröße ändern (Windows; Strg+Mausrad geht auch) |
+| `r` | Fenster- und Schriftgröße auf den Systemstandard zurücksetzen (Windows-Konsole) |
 | `Esc` | Zurueck / Abbrechen |
 | `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session) |
 
@@ -96,14 +98,6 @@ Tunnel-Ports werden als kommagetrennte Liste angegeben. Jeder Port wird als Loca
 localhost:3306 -> remote:3306
 localhost:8080 -> remote:8080
 ```
-
-### SSH-Key generieren
-
-1. `g` druecken
-2. **Dateipfad** eingeben (z.B. `~/.ssh/id_ed25519_myserver`)
-3. Optional eine **Passphrase** eingeben
-4. `Enter` zum Generieren
-5. Der Public Key wird angezeigt und kann auf dem Zielserver in `~/.ssh/authorized_keys` eingetragen werden
 
 ### Gruppen
 
@@ -243,7 +237,7 @@ Schlägt die automatische Anmeldung fehl, fragt ssh-easy nach dem Passwort und z
 
 ### Auto-Update
 
-Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; installiert wird beim Beenden:
+Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile, die `m` einblendet, und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; installiert wird beim Beenden:
 
 - Linux oder Windows mit Schreibrecht im Programmordner: Die Programmdatei wird ersetzt
 - Windows-Installation unter *Programme*: Das Setup läuft still mit Administratorrechten (Windows fragt per Benutzerkontensteuerung); die Desktop-Verknüpfung bleibt erhalten

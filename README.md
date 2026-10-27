@@ -59,12 +59,13 @@ Start the program:
 
 | Key | Action |
 |-----|--------|
+| `m` | Show / hide the menu (key help at the bottom; all keys work while it is hidden) |
 | `n` | Add new connection |
+| `c` | Copy the selected connection into a new one: name (with `#2`, `#3` … appended), port, user and tunnels are taken over, host and SSH keys are not |
 | `e` | Edit connection |
 | `d` | Delete connection |
 | `Enter` | Connect / show status |
 | `x` | Disconnect |
-| `g` | Generate SSH key (Ed25519) |
 | `j/k` or arrow keys | Navigate |
 | `→` / `Enter` on a group | Expand group |
 | `←` | Collapse group (also from a group member) |
@@ -76,7 +77,8 @@ Start the program:
 | `Enter` on *File manager (two connections)* | Open the two-panel file manager (last list entry) |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
-| `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows, persisted; Ctrl+MouseWheel works too) |
+| `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows; Ctrl+MouseWheel works too) |
+| `r` | Reset window and font size to the system default (Windows console) |
 | `Esc` | Back / Cancel |
 | `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
 
@@ -109,14 +111,6 @@ Tunnel ports are specified as a comma-separated list. Each port is set up as a l
 localhost:3306 -> remote:3306
 localhost:8080 -> remote:8080
 ```
-
-### Generating an SSH Key
-
-1. Press `g`
-2. Enter a **file path** (e.g. `~/.ssh/id_ed25519_myserver`)
-3. Optionally enter a **passphrase**
-4. Press `Enter` to generate
-5. The public key is displayed and can be added to `~/.ssh/authorized_keys` on the target server
 
 ### Groups
 
@@ -251,7 +245,7 @@ If automatic authentication fails, ssh-easy asks for the password and shows the 
 
 ### Auto-Update
 
-Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit:
+Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line, shown with `m`, and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit:
 
 - Linux, or Windows with write access to the program folder: the binary is replaced
 - Windows installed in *Program Files*: the setup runs silently with administrator rights (Windows asks via UAC); the desktop shortcut is kept

@@ -439,6 +439,8 @@ func TestImportGroupToggle(t *testing.T) {
 // TestListHelpMentionsImport prüft den Hinweis in der Listenhilfe.
 func TestListHelpMentionsImport(t *testing.T) {
 	m := newListTestModel(t, "A")
+	// Tastenhilfe steht im Hauptmenü, das erst m einblendet (Build 84)
+	m = press(t, m, "m")
 	if !strings.Contains(stripANSI(renderListText(m)), "I:") {
 		t.Error("Listenhilfe nennt die Import-Taste nicht")
 	}

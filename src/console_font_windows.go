@@ -44,10 +44,17 @@ type consoleFontInfoEx struct {
 }
 
 // getConsoleFontSize liefert die aktuelle Fonthöhe der Konsole in Pixeln.
+// In Windows Terminal (ConPTY) steuert die Pseudo-Konsole die Schrift nicht:
+// Dann 0 ("nicht steuerbar") - sonst würde das sofortige Speichern einen
+// Scheinwert über die Schriftgröße des normalen Konsolenfensters schreiben
+// und "r" Erfolg melden, ohne etwas zu ändern (Review-Fund Build 84).
 //
-// @return int - Fonthöhe oder 0 bei Fehler
-// @date   2026-07-03 19:40
+// @return int - Fonthöhe oder 0 bei Fehler bzw. Pseudo-Konsole
+// @date   2026-10-27 18:20
 func getConsoleFontSize() int {
+	if isPseudoConsoleHost() {
+		return 0
+	}
 	handle := windows.Handle(getStdoutHandle())
 	if handle == windows.InvalidHandle || handle == 0 {
 		return 0

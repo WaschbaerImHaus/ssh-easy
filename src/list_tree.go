@@ -27,8 +27,10 @@ const minVisibleListRows = 3
 
 // listChromeLines - Zeilen, die außer der Liste selbst auf dem Bildschirm
 // stehen (Titel, Bildlauf-Hinweise, Meldungen, Hilfe, Export-Hinweis,
-// Auto-Update-Zeile, Leerzeile vor dem Datei-Manager-Eintrag).
-const listChromeLines = 13
+// Auto-Update-Zeile, Leerzeile vor dem Datei-Manager-Eintrag). Gerechnet
+// mit eingeblendetem Hauptmenü inkl. Zusatzzeile c/r/m (Build 84);
+// ausgeblendet braucht die Liste weniger.
+const listChromeLines = 14
 
 // listRowKind unterscheidet die Zeilentypen der Liste.
 type listRowKind int

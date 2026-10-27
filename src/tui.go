@@ -246,6 +246,12 @@ type AppModel struct {
 	updateStatus string
 	// Laufende Nummer der letzten Fenstergrößen-Änderung (Entprellen)
 	windowSaveSeq int
+	// Hauptmenü (Tastenhilfe unten) eingeblendet? Taste m, Standard: aus
+	showMenu bool
+	// Schrift- und Fenstergröße beim Programmstart (Ziel von Taste r)
+	consoleDefaults consoleDefaults
+	// Statusansicht: offene Rückfrage "Schlüssel entfernen?" (Taste r, j/y)
+	confirmKeyRemove bool
 	// Export: Auswahlliste der Verbindungen
 	exportList connChecklist
 	// Export: Dateinamenfeld und ob es den Fokus hat
@@ -478,7 +484,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sshManager.DisconnectAll()
 			return m, tea.Quit
 		}
-		// Interaktive Terminal-Session beendet, zurück zur Statusansicht
+		// Interaktive Terminal-Session beendet, zurück zur Statusansicht.
+		// Während der Sitzung wurde ggf. Fenster-/Schriftgröße gespeichert.
+		m.configCache.Invalidate()
 		if msg.err != nil {
 			m.errorMsg = m.lang.ErrTerminal + msg.err.Error()
 		} else {

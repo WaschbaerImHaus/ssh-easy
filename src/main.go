@@ -61,6 +61,8 @@ func main() {
 	// Windows wirksam). Muss vor dem TUI-Start passieren, damit Bubbletea
 	// gleich mit der korrekten Fenstergröße rendert. Reihenfolge: erst
 	// Schrift, dann Fenster (die maximale Fenstergröße hängt von der Schrift ab).
+	// Vorher den Systemstandard festhalten - Ziel von "r" (zurücksetzen)
+	defaults := captureConsoleDefaults()
 	if cfg, cfgErr := LoadConfig(configPath); cfgErr == nil {
 		applyStartupFontSize(cfg.FontSize)
 		applyStartupWindowSize(cfg.WindowCols, cfg.WindowRows)
@@ -79,6 +81,7 @@ func main() {
 	// TUI-Modell erstellen und Programm starten
 	model := NewAppModel(configPath, buildNumber, sshManager)
 	model.SetUpdater(updater)
+	model.SetConsoleDefaults(defaults)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	finalModel, err := p.Run()
@@ -97,11 +100,9 @@ func main() {
 	// Aktuelle Schriftgröße persistieren (nur Windows liefert > 0).
 	// Deckt auch den nativen conhost-Zoom per Strg+Mausrad ab, der an der
 	// Anwendung vorbeiläuft und sonst beim nächsten Start verloren wäre.
-	persistFontSize(configPath, getConsoleFontSize())
-
-	// Letzte Fenstergröße merken (nur wenn nicht maximiert/Vollbild)
-	cols, rows, normal := queryWindowState()
-	persistWindowSize(configPath, cols, rows, normal)
+	// Fenstergröße nur, wenn nicht maximiert/Vollbild. Werte gleich dem
+	// Systemstandard werden als 0 gespeichert (siehe persistConsoleState).
+	persistConsoleState(configPath, defaults)
 
 	// Heruntergeladenes Update beim Beenden installieren - nur wenn
 	// Auto-Update beim Beenden noch eingeschaltet ist

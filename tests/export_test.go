@@ -378,6 +378,8 @@ func TestExportScrollsLongList(t *testing.T) {
 // TestListHelpMentionsExport prüft den Hinweis in der Listenhilfe.
 func TestListHelpMentionsExport(t *testing.T) {
 	m := newListTestModel(t, "A")
+	// Tastenhilfe steht im Hauptmenü, das erst m einblendet (Build 84)
+	m = press(t, m, "m")
 	if !strings.Contains(stripANSI(renderListText(m)), "E:") {
 		t.Error("Listenhilfe nennt die Export-Taste nicht")
 	}

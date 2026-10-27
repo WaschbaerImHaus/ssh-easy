@@ -4,7 +4,7 @@
 // Ermöglicht über 't' das Öffnen einer interaktiven Remote-Shell.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-27 18:15
 package main
 
 import (
@@ -24,6 +24,17 @@ import (
 // @return tea.Cmd - Folgekommando
 // @date   2026-03-23 11:00
 func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Offene Rückfrage "Schlüssel entfernen?": nur j/y bestätigt, jede
+	// andere Taste (auch Enter) bricht ab
+	if m.confirmKeyRemove {
+		m.confirmKeyRemove = false
+		switch msg.String() {
+		case "j", "y":
+			return m.removeKeyCmd()
+		}
+		return m, nil
+	}
+
 	switch msg.String() {
 	case "q":
 		// Zurück zur Liste ohne zu trennen
@@ -34,7 +45,7 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		status, _ := m.sshManager.GetStatus(m.activeID)
 		if status != nil && status.Connected && status.SSHClient != nil {
 			// TUI pausieren, SSH-PTY-Session starten, danach TUI wiederherstellen
-			cmd := newSSHTerminalCmd(status.SSHClient, m.termWidth, m.termHeight)
+			cmd := m.newTerminalCmd(status.SSHClient)
 			return m, tea.Exec(cmd, func(err error) tea.Msg {
 				return terminalDoneMsg{err: err}
 			})
@@ -42,34 +53,18 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.errorMsg = m.lang.NoActiveConn
 
 	case "r":
-		// SSH-Key vollständig entfernen: vom Server (authorized_keys),
-		// lokal (Datei löschen), Config zurücksetzen, Verbindung trennen.
-		var conn *Connection
-		for i := range m.connections {
-			if m.connections[i].ID == m.activeID {
-				conn = &m.connections[i]
-				break
-			}
-		}
+		// SSH-Key vollständig entfernen - erst nach Rückfrage (j/y). Vorher
+		// genügte ein Tastendruck; seit Build 84 heißt r in der Liste
+		// "zurücksetzen", ein Versehen hätte den Schlüssel gelöscht.
+		conn := m.activeConnection()
 		if conn == nil || conn.KeyPath == "" {
 			// Keine Key-Auth konfiguriert – nichts zu entfernen
 			m.errorMsg = m.lang.NoKeyMsg
 			return m, nil
 		}
-		// SSH-Client aus aktiver Verbindung holen
-		status, _ := m.sshManager.GetStatus(m.activeID)
-		var sshClient *cryptossh.Client
-		if status != nil {
-			sshClient = status.SSHClient
-		}
-		// Async ausführen – SSH-Befehl kann kurz dauern
-		connCopy := *conn
-		client := sshClient
-		configPath := m.configPath
-		return m, func() tea.Msg {
-			err := RemoveDeployedKey(connCopy, client, configPath)
-			return sshKeyRemovedMsg{connID: connCopy.ID, err: err}
-		}
+		m.confirmKeyRemove = true
+		m.errorMsg = ""
+		m.successMsg = ""
 
 	case "x":
 		// Verbindung trennen und zur Liste zurück
@@ -79,6 +74,48 @@ func (m AppModel) handleStatusKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// activeConnection liefert die Verbindung der Statusansicht (nil = keine).
+//
+// @return *Connection - Verbindung zu m.activeID
+// @date   2026-10-27 18:15
+func (m AppModel) activeConnection() *Connection {
+	for i := range m.connections {
+		if m.connections[i].ID == m.activeID {
+			return &m.connections[i]
+		}
+	}
+	return nil
+}
+
+// removeKeyCmd entfernt den Schlüssel der aktiven Verbindung im Hintergrund:
+// vom Server (authorized_keys), lokal (Datei löschen), Config zurücksetzen,
+// Verbindung trennen. Nur nach bestätigter Rückfrage aufrufen.
+//
+// @return tea.Model - Modell
+// @return tea.Cmd - Hintergrund-Befehl oder nil
+// @date   2026-10-27 18:15
+func (m AppModel) removeKeyCmd() (tea.Model, tea.Cmd) {
+	conn := m.activeConnection()
+	if conn == nil || conn.KeyPath == "" {
+		m.errorMsg = m.lang.NoKeyMsg
+		return m, nil
+	}
+	// SSH-Client aus aktiver Verbindung holen
+	status, _ := m.sshManager.GetStatus(m.activeID)
+	var sshClient *cryptossh.Client
+	if status != nil {
+		sshClient = status.SSHClient
+	}
+	// Async ausführen – SSH-Befehl kann kurz dauern
+	connCopy := *conn
+	client := sshClient
+	configPath := m.configPath
+	return m, func() tea.Msg {
+		err := RemoveDeployedKey(connCopy, client, configPath)
+		return sshKeyRemovedMsg{connID: connCopy.ID, err: err}
+	}
 }
 
 // renderStatus rendert die Statusanzeige einer aktiven Verbindung.
@@ -146,6 +183,11 @@ func (m AppModel) renderStatus(s *strings.Builder) {
 
 	s.WriteString(infoBoxStyle.Render(info.String()))
 
+	if m.confirmKeyRemove {
+		// Rückfrage statt Tastenhilfe: nur j/y entfernt den Schlüssel
+		s.WriteString("\n\n" + errorStyle.Render("  "+fmt.Sprintf(m.tr(txtConfirmKeyRemove), conn.KeyPath)))
+		return
+	}
 	s.WriteString(helpStyle.Render("\n\n" + m.lang.StatusHelp))
 }
 

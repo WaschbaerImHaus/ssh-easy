@@ -562,6 +562,8 @@ func TestCleanupUpdateLeftovers(t *testing.T) {
 // TestAutoUpdateDefaultOff prüft den Standard (aus) und die Anzeige ganz unten.
 func TestAutoUpdateDefaultOff(t *testing.T) {
 	m := newListTestModel(t, "A")
+	// Tastenhilfe steht im Hauptmenü, das erst m einblendet (Build 84)
+	m = press(t, m, "m")
 	if m.autoUpdate {
 		t.Error("Auto-Update muss standardmäßig aus sein")
 	}

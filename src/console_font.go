@@ -93,12 +93,16 @@ func persistFontSize(configPath string, size int) bool {
 	if size <= 0 {
 		return false
 	}
-	cfg, err := LoadConfig(configPath)
-	if err != nil || cfg.FontSize == size {
-		return false
-	}
-	cfg.FontSize = size
-	return SaveConfig(configPath, cfg) == nil
+	saved := false
+	err := updateConfig(configPath, func(cfg *AppConfig) bool {
+		if cfg.FontSize == size {
+			return false
+		}
+		cfg.FontSize = size
+		saved = true
+		return true
+	})
+	return saved && err == nil
 }
 
 // changeFontSize ändert die Konsolen-Schriftgröße um delta Pixel und

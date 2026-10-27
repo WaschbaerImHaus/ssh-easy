@@ -25,7 +25,7 @@ import (
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-26 21:04
+// @date   2026-10-27 17:20
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.listRows()
 	limit := visibleRowLimit(m.termHeight)
@@ -86,6 +86,18 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.errorMsg = ""
 		m.successMsg = ""
 		return m, textinput.Blink
+
+	case "c":
+		// Neue Verbindung als Kopie der gewählten (ohne Host und Schlüssel)
+		return m.startCopyConnection()
+
+	case "r":
+		// Fenster- und Schriftgröße auf den Stand beim Start zurücksetzen
+		return m.resetConsoleSize()
+
+	case "m":
+		// Hauptmenü (Tastenhilfe unten) ein-/ausblenden - die Tasten wirken immer
+		m.showMenu = !m.showMenu
 
 	case "e":
 		// Verbindung bearbeiten (nicht auf Gruppenzeilen)
@@ -362,8 +374,27 @@ func (m AppModel) renderList(s *strings.Builder) {
 		s.WriteString("\n" + successStyle.Render("  "+m.successMsg))
 	}
 
-	// Hilfe
+	m.renderListMenu(s, hasGroups)
+}
+
+// renderListMenu rendert das Hauptmenü unten: eingeblendet (Taste m) die
+// Tastenhilfe mit dem Auto-Update-Schalter als letzter Zeile, sonst nur den
+// Hinweis auf m. Eine Meldung der Update-Suche bleibt auch ohne Menü
+// sichtbar - ausgeblendet wird nur die Tastenhilfe.
+//
+// @param s - String-Builder für die Ausgabe
+// @param hasGroups - true wenn die Liste Gruppen enthält (Gruppenhilfe)
+// @date   2026-10-27 17:20
+func (m AppModel) renderListMenu(s *strings.Builder, hasGroups bool) {
+	if !m.showMenu {
+		if m.autoUpdate && m.updateStatus != "" {
+			s.WriteString("\n" + m.renderAutoUpdateLine())
+		}
+		s.WriteString(helpStyle.Render("\n" + m.tr(txtMenuHint)))
+		return
+	}
 	s.WriteString(helpStyle.Render("\n" + m.lang.HelpList))
+	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtHelpMenuMore)))
 	if hasGroups {
 		s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtGroupHelp)))
 	}

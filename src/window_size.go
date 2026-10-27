@@ -169,13 +169,17 @@ func persistWindowSize(configPath string, cols, rows int, normal bool) bool {
 	if !normal || !validWindowSize(cols, rows) {
 		return false
 	}
-	cfg, err := LoadConfig(configPath)
-	if err != nil || (cfg.WindowCols == cols && cfg.WindowRows == rows) {
-		return false
-	}
-	cfg.WindowCols = cols
-	cfg.WindowRows = rows
-	return SaveConfig(configPath, cfg) == nil
+	saved := false
+	err := updateConfig(configPath, func(cfg *AppConfig) bool {
+		if cfg.WindowCols == cols && cfg.WindowRows == rows {
+			return false
+		}
+		cfg.WindowCols = cols
+		cfg.WindowRows = rows
+		saved = true
+		return true
+	})
+	return saved && err == nil
 }
 
 // applyStartupWindowSize stellt die gespeicherte Fenstergröße beim Start
@@ -235,19 +239,18 @@ func windowPollCmd() tea.Cmd {
 }
 
 // handleWindowPoll entfernt einen waagrechten Bildlauf, speichert die
-// aktuelle Fenstergröße (nur wenn normal und geändert) und plant die nächste
-// Abfrage. Unter Unix liefert
-// queryWindowState immer "nicht normal" - dann passiert nichts außer dem
-// nächsten Tick.
+// aktuelle Fenstergröße (nur wenn normal und geändert) und die Schriftgröße
+// (auch nach Strg+Mausrad, das an der Anwendung vorbeiläuft) und plant die
+// nächste Abfrage. Unter Unix liefern beide Abfragen "unbekannt" - dann
+// passiert nichts außer dem nächsten Tick.
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Nächste Abfrage
-// @date   2026-10-23 19:33
+// @date   2026-10-27 17:20
 func (m AppModel) handleWindowPoll() (tea.Model, tea.Cmd) {
 	// Waagrechten Bildlauf (Balken verdeckt die letzte Zeile) sofort beheben
 	fixHorizontalScroll()
-	cols, rows, normal := queryWindowState()
-	if persistWindowSize(m.configPath, cols, rows, normal) {
+	if persistConsoleState(m.configPath, m.consoleDefaults) {
 		m.configCache.Invalidate()
 	}
 	return m, windowPollCmd()
