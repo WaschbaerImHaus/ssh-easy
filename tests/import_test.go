@@ -7,7 +7,7 @@
 // Vorhandene Namen werden erkannt und nur auf ausdrücklichen Wunsch ersetzt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 23:40
+// @date   2026-10-30 16:22
 package main
 
 import (
@@ -472,5 +472,76 @@ func TestConnChecklistToggle(t *testing.T) {
 	list.handleKey("down", 15)
 	if list.cursor != 3 {
 		t.Errorf("Cursor über das Ende hinaus: %d", list.cursor)
+	}
+}
+
+// --- Merken und aussetzen: AutoKeyOff / AutoKeyFailures (Nutzerentscheidung Build 86) ---
+
+// TestReadImportFileIgnoresAutoKeyState: Bringt eine Importdatei AutoKeyOff
+// und AutoKeyFailures mit (präparierte oder fremde Datei), werden beide
+// ignoriert: Nach dem Lesen stehen sie auf false und 0. Sonst könnte eine
+// Datei die automatische Vergabe für Verbindungen dauerhaft abschalten. Die
+// Prüfung der Datei selbst stellt sicher, dass die Felder wirklich darin
+// stehen. Auch bei einem unsinnigen Zähler (negativ).
+//
+// @date 2026-10-28 14:00
+func TestReadImportFileIgnoresAutoKeyState(t *testing.T) {
+	dir := t.TempDir()
+	a := importConn("A", "a.lan")
+	a.AutoKeyOff = true
+	a.AutoKeyFailures = 7
+	b := importConn("B", "b.lan")
+	b.AutoKeyFailures = -4
+	path := writeImportFixture(t, dir, "x.json", a, b)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "auto_key_off") || !strings.Contains(string(raw), "auto_key_failures") {
+		t.Fatalf("Testaufbau: Felder fehlen in der Importdatei:\n%s", raw)
+	}
+
+	conns, skipped, err := readImportFile(path)
+	if err != nil || skipped != 0 || len(conns) != 2 {
+		t.Fatalf("conns=%d skipped=%d err=%v", len(conns), skipped, err)
+	}
+	for _, c := range conns {
+		if c.AutoKeyOff || c.AutoKeyFailures != 0 {
+			t.Errorf("%s: AutoKeyOff=%v AutoKeyFailures=%d, erwartet false und 0", c.Name, c.AutoKeyOff, c.AutoKeyFailures)
+		}
+	}
+}
+
+// TestMergeImportKeepsLocalAutoKeyState (Auslegung, bitte prüfen): Ersetzt
+// ein Import eine vorhandene Verbindung gleichen Namens, bleibt deren lokaler
+// Zustand der automatischen Vergabe erhalten wie ID, Erstellzeit und lokaler
+// Schlüssel; der Import setzt ihn nicht zurück. Neu hinzugefügte Verbindungen
+// starten mit false und 0. Rot (nach Einführung der Felder) ohne diese
+// Übernahme: Die Datei-Verbindung mit Nullwerten ersetzt die lokale, und die
+// ausgesetzte Vergabe liefe nach einem Import wieder an.
+//
+// @date 2026-10-28 14:00
+func TestMergeImportKeepsLocalAutoKeyState(t *testing.T) {
+	local := NewConnection("Server", "alt.lan", 22, "root", AuthPassword)
+	local.ID = "local-id"
+	local.AutoKeyOff = true
+	local.AutoKeyFailures = 2
+	fromFile, _ := sanitizeImportedConnection(importConn("server", "neu.lan"))
+	fromFile.ID = "file-id"
+	added, _ := sanitizeImportedConnection(importConn("Neu", "neu2.lan"))
+	added.ID = "file-id-2"
+
+	merged, res := mergeImport([]Connection{local}, []Connection{fromFile, added}, map[string]bool{"file-id": true, "file-id-2": true})
+	if res.replaced != 1 || res.added != 1 || len(merged) != 2 {
+		t.Fatalf("Ergebnis %+v, %d Verbindungen", res, len(merged))
+	}
+	if merged[0].ID != "local-id" || merged[0].Host != "neu.lan" {
+		t.Fatalf("Ersetzen nicht wie erwartet: %+v", merged[0])
+	}
+	if !merged[0].AutoKeyOff || merged[0].AutoKeyFailures != 2 {
+		t.Errorf("ersetzte Verbindung: AutoKeyOff=%v AutoKeyFailures=%d, erwartet true und 2", merged[0].AutoKeyOff, merged[0].AutoKeyFailures)
+	}
+	if merged[1].AutoKeyOff || merged[1].AutoKeyFailures != 0 {
+		t.Errorf("neue Verbindung: AutoKeyOff=%v AutoKeyFailures=%d, erwartet false und 0", merged[1].AutoKeyOff, merged[1].AutoKeyFailures)
 	}
 }

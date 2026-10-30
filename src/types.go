@@ -4,7 +4,7 @@
 // und Anwendungskonfiguration.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 10:36
+// @date   2026-10-30 16:21
 package main
 
 import (
@@ -28,6 +28,13 @@ const (
 	AuthAgent AuthMethod = "agent"
 )
 
+// autoKeyMaxFailures - Nach so vielen gescheiterten Versuchen gibt es für die
+// Verbindung keine automatische Schlüsselvergabe mehr (Connection.AutoKeyOff).
+// Eine Passwort-Anmeldung versucht es weiter.
+//
+// @date   2026-10-28 13:25
+const autoKeyMaxFailures = 2
+
 // TunnelConfig repräsentiert einen einzelnen Port-Forward-Tunnel.
 // Lokaler Port wird immer auf 127.0.0.1 gebunden.
 type TunnelConfig struct {
@@ -41,6 +48,8 @@ type TunnelConfig struct {
 
 // Connection repräsentiert eine gespeicherte SSH-Verbindung
 // mit allen Konfigurationsdetails.
+//
+// @date   2026-10-30 16:21
 type Connection struct {
 	// Eindeutige ID der Verbindung (UUID-Format)
 	ID string `json:"id"`
@@ -56,6 +65,13 @@ type Connection struct {
 	AuthType AuthMethod `json:"auth_type"`
 	// Pfad zum SSH-Schlüssel (nur bei AuthKey)
 	KeyPath string `json:"key_path,omitempty"`
+	// Automatische Schlüsselvergabe für diese Verbindung ausgesetzt (Nutzer hat
+	// den Schlüssel entfernt oder sie scheiterte autoKeyMaxFailures-mal).
+	// Gehört zu diesem Rechner: wird weder exportiert noch importiert.
+	AutoKeyOff bool `json:"auto_key_off,omitempty"`
+	// Zähler gescheiterter automatischer Schlüsselvergaben (0 = keine).
+	// Gehört zu diesem Rechner: wird weder exportiert noch importiert.
+	AutoKeyFailures int `json:"auto_key_failures,omitempty"`
 	// Liste der Port-Forward-Tunnel
 	Tunnels []TunnelConfig `json:"tunnels"`
 	// Erstellungszeitpunkt

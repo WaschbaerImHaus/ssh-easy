@@ -1,10 +1,12 @@
 // Tests fuer die Datentypen und Validierung
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 10:36
+// @date   2026-10-30 16:22
 package main
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -163,5 +165,50 @@ func TestValidatePortBoundary(t *testing.T) {
 	conn2 := NewConnection("Test", "10.0.0.1", 65535, "admin", AuthPassword)
 	if err := conn2.Validate(); err != nil {
 		t.Errorf("Port 65535 sollte gueltig sein: %v", err)
+	}
+}
+
+// TestConnectionAutoKeyJSONFields prueft die Felder des Merkens und
+// Aussetzens der automatischen Schluesselvergabe (Build 86): Namen im JSON
+// "auto_key_off" und "auto_key_failures", beide mit omitempty. Nullwerte
+// fehlen in der Datei (alte Konfigurationen bleiben unveraendert), gesetzte
+// Werte kommen beim Laden zurueck, und eine alte Datei ohne die Felder ergibt
+// false und 0.
+//
+// @date 2026-10-28 14:00
+func TestConnectionAutoKeyJSONFields(t *testing.T) {
+	plain := NewConnection("A", "h", 22, "u", AuthPassword)
+	data, err := json.Marshal(plain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "auto_key") {
+		t.Errorf("Nullwerte stehen in der Datei: %s", data)
+	}
+
+	set := plain
+	set.AutoKeyOff = true
+	set.AutoKeyFailures = 2
+	data, err = json.Marshal(set)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"auto_key_off":true`) || !strings.Contains(string(data), `"auto_key_failures":2`) {
+		t.Errorf("JSON ohne die erwarteten Felder: %s", data)
+	}
+	var back Connection
+	if err := json.Unmarshal(data, &back); err != nil {
+		t.Fatal(err)
+	}
+	if !back.AutoKeyOff || back.AutoKeyFailures != 2 {
+		t.Errorf("Rueckweg: AutoKeyOff=%v AutoKeyFailures=%d", back.AutoKeyOff, back.AutoKeyFailures)
+	}
+
+	var old Connection
+	if err := json.Unmarshal([]byte(`{"id":"1","name":"alt","host":"h","port":22,"user":"u","auth_type":"password"}`), &old); err != nil {
+		t.Fatal(err)
+	}
+	if old.AutoKeyOff || old.AutoKeyFailures != 0 {
+		t.Errorf("alte Datei: AutoKeyOff=%v AutoKeyFailures=%d, erwartet false und 0", old.AutoKeyOff, old.AutoKeyFailures)
 	}
 }

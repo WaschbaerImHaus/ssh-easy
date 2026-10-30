@@ -5,6 +5,24 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.86] – Build 86
+- **Changed** automatic SSH key: after EVERY successful login, a connection that has no key of its own now gets one without asking – also after a login through the SSH agent or with another key from `~/.ssh`, in the main flow and in the file manager (user decision). Before, this only happened after typing a password, so many connections stayed on "password". The new file `~/.ssh/id_ed25519_<host>_<user>` (`_2`, `_3` … if the name is taken) has **no passphrase**
+- **Added** "remember and pause": after you remove the key in the status view (`r`, then `j`/`y`) and after 2 failed attempts, that connection gets no automatic key any more. A login with a typed password tries again and turns the automatic key back on. The two new fields (`AutoKeyOff`, `AutoKeyFailures`) are not part of the export, and an import that replaces a connection keeps the local values
+- **Changed** every connection gets its own key file (`_2`, `_3` …). A key that another connection still uses is not deleted from the PC when you remove it, and – with the same host and user – not from the server either
+- **Changed** the own key is tried before the SSH agent. After a new key was deployed, the remembered old login method is forgotten
+- **Changed** connection list: after `c` the cursor stands at the end of every field, and long names are shortened so that " #N" fits into the 50 characters
+- **Fixed** `c` and `e` changed tunnels silently: a tunnel 8080→80 became 8080→8080, and switched-off tunnels were on again. Target port and on/off state are kept now
+- **Fixed** `e` and saving lost the SSH key; key, login method and creation date are kept now
+- **Fixed** removing the key failed (error, key stayed) when it was the only entry in the server's `authorized_keys`
+- **Fixed** `authorized_keys`: no duplicate entries any more; a missing line break at the end of the file no longer glues the new key to a foreign line; permissions are set to 700 (`~/.ssh`) and 600 (file)
+- **Fixed** saving the configuration now runs under a lock and writes only its own fields, so nothing is overwritten by a parallel save – including the remembered last path of the file manager
+- **Fixed** file manager: messages no longer overwrite each other and are not lost when the file manager is closed
+- **Fixed** "remember and pause" did not take effect during the running session: after a failed attempt the list is now reloaded, and before every automatic key deployment the connection is checked afresh against the saved configuration. Before, an edit with `e` also reset the failure counter
+- **Fixed** `authorized_keys`: a commented-out key (`# ssh-ed25519 …`) no longer counts as present; the deployment then appends an active line
+- **Fixed** removing a key: an old temporary file can no longer overwrite `authorized_keys` (for example when `/bin/sh` is bash)
+- **Fixed** removing a key on BusyBox servers (routers, NAS, Alpine) with a full disk could empty or truncate `authorized_keys`, because BusyBox `grep` hides write errors. The lines are now compared before the file is replaced; on a mismatch it aborts and leaves the file unchanged. This bug existed before Build 86
+- **Fixed** the error message no longer shows "failed" twice
+
 ## [v0.85] – Build 85
 - **Changed** connection list: `c` (copy connection) now also takes over the host, so the copy can be saved right away. The cursor starts in the name field, as with `n`. SSH keys are still not taken over
 

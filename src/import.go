@@ -20,7 +20,7 @@
 //     Programmeinstellungen wie Sprache oder Auto-Update)
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 23:40
+// @date   2026-10-30 16:21
 package main
 
 import (
@@ -128,12 +128,13 @@ func readImportFile(path string) ([]Connection, int, error) {
 }
 
 // sanitizeImportedConnection prüft einen Eintrag der Importdatei und
-// entfernt Schlüsselbezüge.
+// entfernt Schlüsselbezüge sowie den Zustand der automatischen
+// Schlüsselvergabe (AutoKeyOff, AutoKeyFailures).
 //
 // @param conn - Eintrag aus der Datei
 // @return Connection - Bereinigte Verbindung
 // @return bool - false wenn der Eintrag ungültig ist
-// @date   2026-10-17 23:40
+// @date   2026-10-28 13:27
 func sanitizeImportedConnection(conn Connection) (Connection, bool) {
 	for _, field := range []string{conn.Name, conn.Host, conn.User} {
 		if !safeImportText(field) {
@@ -145,6 +146,10 @@ func sanitizeImportedConnection(conn Connection) (Connection, bool) {
 	if conn.AuthType == AuthKey {
 		conn.AuthType = AuthPassword
 	}
+	// Zustand der Schlüsselvergabe nie aus der Datei übernehmen (auch nicht
+	// Werte wie 7 oder -4): er gehört zum lokalen Rechner
+	conn.AutoKeyOff = false
+	conn.AutoKeyFailures = 0
 	conn.Tunnels = append([]TunnelConfig{}, conn.Tunnels...)
 	if conn.Validate() != nil || !validGroupName(conn.Name) {
 		return Connection{}, false
@@ -190,14 +195,15 @@ func existingNames(conns []Connection) map[string]bool {
 // mergeImport übernimmt die gewählten Verbindungen in die vorhandene Liste.
 // Gleicher Name (Groß-/Kleinschreibung egal) = ersetzen: Host, Port,
 // Benutzer, Tunnel und Name kommen aus der Datei; ID, Erstellzeit und eine
-// lokale Schlüssel-Anmeldung bleiben erhalten.
+// lokale Schlüssel-Anmeldung sowie der lokale Zustand der automatischen
+// Schlüsselvergabe (AutoKeyOff, AutoKeyFailures) bleiben erhalten.
 //
 // @param existing - Vorhandene Verbindungen
 // @param imported - Verbindungen aus der Datei
 // @param selected - Gewählte IDs (der importierten Verbindungen)
 // @return []Connection - Neue Gesamtliste
 // @return importResult - Zähler und erste übernommene ID
-// @date   2026-10-17 23:40
+// @date   2026-10-28 13:27
 func mergeImport(existing, imported []Connection, selected map[string]bool) ([]Connection, importResult) {
 	merged := append([]Connection{}, existing...)
 	index := make(map[string]int, len(merged))
@@ -218,6 +224,10 @@ func mergeImport(existing, imported []Connection, selected map[string]bool) ([]C
 				conn.AuthType = AuthKey
 				conn.KeyPath = local.KeyPath
 			}
+			// Ausgesetzte Schlüsselvergabe bleibt lokal erhalten, sonst würde
+			// ein Import sie still wieder einschalten
+			conn.AutoKeyOff = local.AutoKeyOff
+			conn.AutoKeyFailures = local.AutoKeyFailures
 			conn.UpdatedAt = now
 			merged[i] = conn
 			res.replaced++

@@ -13,7 +13,7 @@
 // Rest mitten in einem Block).
 //
 // @author Kurt Ingwer
-// @date   2026-10-24 20:29
+// @date   2026-10-27 19:31
 package main
 
 import (
@@ -64,6 +64,16 @@ type sftpFS struct {
 // @date   2026-10-24 20:29
 func (s *sftpFS) connectionLost() bool {
 	return s.lost != nil && s.lost.Load()
+}
+
+// sshConnection liefert die SSH-Verbindung unter dem SFTP-Client. Die
+// Schlüsselvergabe nach einer Passwort-Anmeldung (fmDeployKey) braucht sie,
+// um den öffentlichen Schlüssel auf dem Server einzutragen.
+//
+// @return *ssh.Client - SSH-Verbindung (nil, wenn keine vorhanden)
+// @date   2026-10-27 19:31
+func (s *sftpFS) sshConnection() *ssh.Client {
+	return s.sshClient
 }
 
 // OpenRead öffnet eine Datei zum Lesen. Die *sftp.File liest beim Kopieren

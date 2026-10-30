@@ -23,8 +23,12 @@
 // die ganze Breite. Kopieren und Verschieben (F5/F6) entfallen dort - sie
 // brauchen eine zweite Verbindung -, alles andere bleibt gleich.
 //
+// Build 86: Nach einer erfolgreichen Anmeldung mit Passwort - oder wenn
+// die Verbindung noch keinen eigenen Schlüssel hat - wird ungefragt ein
+// Schlüssel vergeben (tui_filemanager_keydeploy.go).
+//
 // @author Kurt Ingwer
-// @date   2026-10-26 21:04
+// @date   2026-10-30 16:13
 package main
 
 import (
@@ -83,6 +87,15 @@ type fileManager struct {
 	theme int
 	// Meldung (verschwindet beim nächsten Tastendruck)
 	message string
+	// Ergebnisse von Schlüsselvergaben, die während des Verbindungsaufbaus
+	// bzw. der Passwortabfrage eintrafen (tui_filemanager_keydeploy.go):
+	// keyNotice alle in Ankunftsfolge (erscheint beim Wechsel in die
+	// Fensteransicht), keyNoticeOK/keyNoticeErr getrennt nach Erfolg und
+	// Fehler (erscheinen in der Liste, wenn der Datei-Manager vorher
+	// geschlossen wird)
+	keyNotice    string
+	keyNoticeOK  string
+	keyNoticeErr string
 	// Seite, deren Verbindung gerade aufgebaut wird bzw. ein Passwort braucht
 	connectSide  int
 	passwordSide int
@@ -169,10 +182,12 @@ func (m AppModel) openFileManager(single bool) (tea.Model, tea.Cmd) {
 // closeFileManager schließt alle Verbindungen des Datei-Managers und
 // kehrt zur Liste zurück (Cursor auf dem Eintrag, über den er geöffnet
 // wurde). Die Sitzungsnummer wird erhöht, damit noch laufende Hintergrund-
-// ergebnisse verworfen werden.
+// ergebnisse verworfen werden. Noch nicht gezeigte Meldungen der
+// Schlüsselvergabe (fm.keyNotice) gehen nicht verloren, sondern erscheinen
+// in der Liste: Erfolg in successMsg, Fehler in errorMsg.
 //
 // @return AppModel - Modell in ViewList
-// @date   2026-10-26 21:04
+// @date   2026-10-28 13:16
 func (m AppModel) closeFileManager() AppModel {
 	for i := range m.fm.panels {
 		if m.fm.panels[i].fs != nil {
@@ -184,6 +199,8 @@ func (m AppModel) closeFileManager() AppModel {
 	if m.fm.single {
 		m.cursor--
 	}
+	m.successMsg = joinFMNotice(m.successMsg, m.fm.keyNoticeOK)
+	m.errorMsg = joinFMNotice(m.errorMsg, m.fm.keyNoticeErr)
 	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme}
 	m.state = ViewList
 	m.clampListCursor()
@@ -332,12 +349,14 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // Auth-Fehler führen zur Passwortabfrage; Netzwerk-, Host-Key- und
 // SFTP-Fehler beenden den Datei-Manager mit Meldung in der Liste.
 // Fehlertexte können Text vom Server enthalten und werden deshalb von
-// Steuerzeichen bereinigt.
+// Steuerzeichen bereinigt. Nach einer erfolgreichen Anmeldung startet bei
+// Bedarf die Schlüsselvergabe im Hintergrund (fmNeedsKeyDeploy).
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken)
-// @date   2026-10-26 21:04
+// @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken,
+// Schlüsselvergabe)
+// @date   2026-10-28 13:16
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -348,24 +367,27 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	}
 	conn := m.fm.panels[msg.side].conn
 	if msg.err != nil {
+		// Nach closeFileManager steht in m.errorMsg höchstens eine
+		// gescheiterte Schlüsselvergabe; der Verbindungsfehler kommt davor
+		// (joinFMNotice), damit keine der beiden Meldungen verloren geht.
 		var sftpErr *fmSFTPError
 		switch {
 		case conn.ID == fmLocalConnID:
 			// Lokaler PC: es gibt kein Passwort, das helfen könnte
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error()))
+			m.errorMsg = joinFMNotice(fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error())), m.errorMsg)
 			return m, nil
 		case IsHostKeyChangedError(msg.err):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrHostKey), sanitizeFileName(parseHostKeyChangedHostname(msg.err)))
+			m.errorMsg = joinFMNotice(fmt.Sprintf(m.tr(txtFMErrHostKey), sanitizeFileName(parseHostKeyChangedHostname(msg.err))), m.errorMsg)
 			return m, nil
 		case errors.As(msg.err, &sftpErr):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrSFTP), conn.Name, sanitizeFileName(sftpErr.err.Error()))
+			m.errorMsg = joinFMNotice(fmt.Sprintf(m.tr(txtFMErrSFTP), conn.Name, sanitizeFileName(sftpErr.err.Error())), m.errorMsg)
 			return m, nil
 		case IsNetworkError(msg.err):
 			m = m.closeFileManager()
-			m.errorMsg = fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error()))
+			m.errorMsg = joinFMNotice(fmt.Sprintf(m.tr(txtFMErrConnect), conn.Name, sanitizeFileName(msg.err.Error())), m.errorMsg)
 			return m, nil
 		}
 		// Anmeldung fehlgeschlagen: Passwort abfragen
@@ -396,12 +418,22 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	if msg.listErr == nil {
 		m.rememberFMPath(msg.side)
 	}
+	// Noch kein eigener Schlüssel bzw. Passwort benutzt: ungefragt einen
+	// vergeben, im Hintergrund (tui_filemanager_keydeploy.go)
+	var deployCmd tea.Cmd
+	if fmNeedsKeyDeploy(m.fmCurrentConnection(msg.side), msg.withPassword) {
+		deployCmd = m.fmDeployKeyCmd(msg.side, msg.fs, msg.withPassword)
+	}
 	if msg.side == 0 && !m.fm.single {
-		return m.startFMConnect(1, "")
+		next, connectCmd := m.startFMConnect(1, "")
+		return next, tea.Batch(deployCmd, connectCmd)
 	}
 	m.state = ViewFileManager
 	m.fm.active = 0
-	return m, nil
+	// Unterwegs eingetroffene Meldung der Schlüsselvergabe zeigen
+	m.fm.message = joinFMNotice(m.fm.message, m.fm.keyNotice)
+	m.fm.keyNotice, m.fm.keyNoticeOK, m.fm.keyNoticeErr = "", "", ""
+	return m, deployCmd
 }
 
 // fmLastPathKey liefert den Schlüssel einer Verbindung für die gemerkten
@@ -451,33 +483,40 @@ func (m AppModel) fmRememberedPath(connID string) string {
 // Verbindungen werden dabei entfernt.
 //
 // @param side - Seite (0 links, 1 rechts)
-// @date   2026-10-23 19:37
+// @date   2026-10-30 16:13
 func (m AppModel) rememberFMPath(side int) {
 	panel := m.fm.panels[side]
 	if panel.path == "" || panel.conn.ID == "" {
 		return
 	}
-	cfg, err := LoadConfig(m.configPath)
-	if err != nil {
-		return
-	}
+	// updateConfig (unter configUpdateMu) statt LoadConfig + SaveConfig:
+	// Die Schlüsselvergabe schreibt im Hintergrund gleichzeitig (KeyPath,
+	// AuthKey bzw. Fehlerzähler über updateKeyFields, ebenfalls unter
+	// configUpdateMu). Ohne Sperre konnte dieses Speichern deren eben
+	// geschriebene Felder mit dem alten Stand überschreiben - dann läge der
+	// Schlüssel auf dem Server, die Konfiguration kennte ihn nicht.
 	key := fmLastPathKey(panel.conn.ID)
-	if cfg.FileManagerLastPaths[key] == panel.path {
-		return
-	}
-	known := map[string]bool{fmLastPathKey(fmLocalConnID): true}
-	for _, conn := range cfg.Connections {
-		known[conn.ID] = true
-	}
-	paths := map[string]string{}
-	for k, v := range cfg.FileManagerLastPaths {
-		if known[k] {
-			paths[k] = v
+	saved := false
+	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		if cfg.FileManagerLastPaths[key] == panel.path {
+			return false
 		}
-	}
-	paths[key] = panel.path
-	cfg.FileManagerLastPaths = paths
-	if SaveConfig(m.configPath, cfg) == nil {
+		known := map[string]bool{fmLastPathKey(fmLocalConnID): true}
+		for _, conn := range cfg.Connections {
+			known[conn.ID] = true
+		}
+		paths := map[string]string{}
+		for k, v := range cfg.FileManagerLastPaths {
+			if known[k] {
+				paths[k] = v
+			}
+		}
+		paths[key] = panel.path
+		cfg.FileManagerLastPaths = paths
+		saved = true
+		return true
+	})
+	if err == nil && saved {
 		m.configCache.Invalidate()
 	}
 }

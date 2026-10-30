@@ -6,7 +6,7 @@
 // anderen Rechner als Konfiguration verwendet werden.
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 23:10
+// @date   2026-10-30 16:22
 package main
 
 import (
@@ -382,5 +382,42 @@ func TestListHelpMentionsExport(t *testing.T) {
 	m = press(t, m, "m")
 	if !strings.Contains(stripANSI(renderListText(m)), "E:") {
 		t.Error("Listenhilfe nennt die Export-Taste nicht")
+	}
+}
+
+// --- Merken und aussetzen: AutoKeyOff / AutoKeyFailures (Nutzerentscheidung Build 86) ---
+
+// TestExportDropsAutoKeyState: Der Export lässt AutoKeyOff und
+// AutoKeyFailures weg - der Zustand gehört zu diesem Rechner (dort wurde ein
+// Schlüssel entfernt oder ein Server lehnte die Vergabe ab) und hilft einem
+// anderen Rechner nicht. Geprüft: Werte in der exportierten Verbindung null,
+// die Originale unverändert, und in der geschriebenen JSON-Datei kommt weder
+// "auto_key_off" noch "auto_key_failures" vor.
+//
+// @date 2026-10-28 14:00
+func TestExportDropsAutoKeyState(t *testing.T) {
+	conn := NewConnection("Server", "s.lan", 22, "root", AuthPassword)
+	conn.ID = "k"
+	conn.AutoKeyOff = true
+	conn.AutoKeyFailures = 3
+	original := []Connection{conn}
+
+	cfg := buildExportConfig(original, map[string]bool{"k": true})
+	if got := cfg.Connections[0]; got.AutoKeyOff || got.AutoKeyFailures != 0 {
+		t.Errorf("exportiert: AutoKeyOff=%v AutoKeyFailures=%d, erwartet false und 0", got.AutoKeyOff, got.AutoKeyFailures)
+	}
+	if !original[0].AutoKeyOff || original[0].AutoKeyFailures != 3 {
+		t.Error("Export hat die Original-Verbindung verändert")
+	}
+	path, err := writeExportFile("e.json", cfg, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "auto_key") {
+		t.Errorf("Zustand der automatischen Vergabe im Export:\n%s", data)
 	}
 }

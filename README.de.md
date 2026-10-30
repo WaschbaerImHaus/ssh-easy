@@ -7,7 +7,7 @@ Ein einfacher SSH-Verbindungsmanager mit Terminal-UI (TUI) zum Verwalten und Auf
 - SSH-Verbindungen speichern und verwalten (Name, Host, Port, User)
 - Automatische Authentifizierung: SSH-Agent, alle Keys in `~/.ssh/`, Passwort-Fallback
 - Local Port Forwarding (localhost:port -> remote:port)
-- SSH-Key-Generierung (Ed25519) direkt aus der TUI
+- Automatischer Ed25519-Schlüssel je Verbindung nach erfolgreicher Anmeldung (ohne Passphrase, siehe *Automatischer SSH-Schlüssel*)
 - Automatischer Reconnect bei Verbindungsabbruch (max. 5 Versuche)
 - SSH-Keepalive (alle 30 Sekunden)
 - Farbige TUI mit Statusanzeige
@@ -48,7 +48,7 @@ Programm starten:
 |-------|--------|
 | `m` | Menü (Tastenhilfe unten) ein-/ausblenden; alle Tasten wirken auch bei ausgeblendetem Menü |
 | `n` | Neue Verbindung anlegen |
-| `c` | Gewählte Verbindung als neue kopieren: Name (mit angehängtem `#2`, `#3` …), Host, Port, Benutzer und Tunnel werden übernommen, SSH-Schlüssel nicht |
+| `c` | Gewählte Verbindung als neue kopieren: Name (mit angehängtem `#2`, `#3` …; lange Namen werden auf 50 Zeichen gekürzt), Host, Port, Benutzer und Tunnel (Zielport und Ein/Aus) werden übernommen, SSH-Schlüssel nicht. Der Cursor steht am Feldende |
 | `e` | Verbindung bearbeiten |
 | `d` | Verbindung loeschen |
 | `Enter` | Verbindung herstellen / Status anzeigen |
@@ -65,7 +65,7 @@ Programm starten:
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
 | `Strg+Hoch` / `Strg+Runter` | Schriftgröße ändern (Windows; Strg+Mausrad geht auch) |
-| `r` | Fenster- und Schriftgröße auf den Systemstandard zurücksetzen (Windows-Konsole) |
+| `r` | Fenster- und Schriftgröße auf den Systemstandard zurücksetzen (Windows-Konsole); in der Statusansicht: SSH-Schlüssel entfernen (fragt zuerst, `j`/`y` bestätigt) |
 | `Esc` | Zurueck / Abbrechen |
 | `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session) |
 
@@ -88,7 +88,17 @@ Die Authentifizierung laeuft vollautomatisch – keine manuelle Auswahl noetig:
 2. **SSH-Keys** – alle Keys in `~/.ssh/` werden automatisch ausprobiert
 3. **Passwort** – wird als Fallback abgefragt, falls alles andere scheitert (nie gespeichert)
 
-Nach einem erfolgreichen Passwort-Login kann ssh-easy automatisch einen Ed25519-Key generieren und deployen, damit zukuenftige Logins passwortlos funktionieren.
+### Automatischer SSH-Schlüssel
+
+Nach **jeder** erfolgreichen Anmeldung – per Passwort, über den SSH-Agent oder mit einem anderen Schlüssel aus `~/.ssh/` – bekommt eine Verbindung ohne eigenen Schlüssel ungefragt einen, in der Verbindungsliste und im Datei-Manager. Künftige Anmeldungen laufen dann ohne Passwort:
+
+- ssh-easy erzeugt einen neuen Ed25519-Schlüssel `~/.ssh/id_ed25519_<Host>_<Benutzer>` (`_2`, `_3` …, falls der Name schon von einer anderen Verbindung belegt ist) und trägt ihn auf dem Server in `~/.ssh/authorized_keys` ein (keine doppelten Einträge; die Rechte 700 für `~/.ssh` und 600 für die Datei werden gesetzt).
+- **Der Schlüssel hat keine Passphrase.** Wer die Datei lesen kann, kann sich damit am Server anmelden. Das gilt auch dann, wenn die auslösende Anmeldung über den SSH-Agent lief.
+- Jede Verbindung bekommt eine eigene Schlüsseldatei. Der eigene Schlüssel wird vor dem SSH-Agent probiert.
+- Verbindungen, die auf SSH-Agent stehen oder schon einen Schlüssel haben, bleiben unberührt.
+- **Merken und aussetzen:** Entfernst du den Schlüssel in der Statusansicht (`r`, dann `j`/`y`) oder sind 2 Versuche gescheitert, bekommt diese Verbindung keinen automatischen Schlüssel mehr. Eine Anmeldung mit eingetipptem Passwort versucht es wieder und schaltet die automatische Vergabe erneut ein.
+- Entfernen löscht den Schlüssel auf dem Server und auf diesem PC – nicht aber, solange eine andere Verbindung dieselbe Schlüsseldatei nutzt, und bei gleichem Host und Benutzer auch nicht auf dem Server.
+- Die Einstellungen dafür gehören nicht zum Export.
 
 ### Tunnel
 

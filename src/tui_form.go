@@ -6,7 +6,7 @@
 // generiert und auf dem Remote-Server deployed.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-10-30 16:20
 package main
 
 import (
@@ -21,11 +21,12 @@ import (
 )
 
 // handleFormKeys verarbeitet Tasten im Formular (Erstellen/Bearbeiten).
+// Beim Bearbeiten bleiben AuthType, KeyPath und CreatedAt erhalten.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-03-07 21:00
+// @date   2026-10-30 16:20
 func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Einfügen aus der Zwischenablage ins fokussierte Feld (Strg+V / Shift+Einf)
 	if isPasteKey(msg) {
@@ -86,9 +87,14 @@ func (m AppModel) handleFormKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.state == ViewCreate {
+			// Neu (n) und Kopie (c): ohne Schlüssel, eigene Erstellzeit
 			err = AddConnection(m.configPath, conn)
 		} else {
 			conn.ID = m.activeID
+			// Das Formular kennt weder Authentifizierung noch Schlüssel.
+			// Diese Felder und die Erstellzeit von der gespeicherten
+			// Verbindung übernehmen, sonst gingen sie beim Bearbeiten verloren.
+			m.keepStoredConnectionFields(&conn)
 			err = UpdateConnection(m.configPath, conn)
 		}
 
@@ -262,9 +268,13 @@ func (m AppModel) renderConnect(s *strings.Builder) {
 }
 
 // fillFormFromConnection befüllt die Formularfelder mit Daten einer Verbindung.
+// Die Tunnel merkt sich das Modell zusätzlich als Kopie (formTunnelTemplate),
+// damit Remote-Port und Enabled-Flag beim Speichern erhalten bleiben.
+// Danach steht in jedem Feld der Cursor am Ende: SetValue lässt einen Cursor
+// ungleich 0 stehen (Port-Feld mit "22": bei "2222" sonst auf Position 2).
 //
 // @param conn - Die Verbindung deren Daten eingetragen werden
-// @date   2026-03-07 21:00
+// @date   2026-10-30 16:20
 func (m *AppModel) fillFormFromConnection(conn Connection) {
 	m.inputs[fieldName].SetValue(conn.Name)
 	m.inputs[fieldHost].SetValue(conn.Host)
@@ -276,13 +286,74 @@ func (m *AppModel) fillFormFromConnection(conn Connection) {
 		ports = append(ports, strconv.Itoa(t.LocalPort))
 	}
 	m.inputs[fieldTunnels].SetValue(strings.Join(ports, ","))
+
+	// Eigene Kopie: spätere Änderungen an conn wirken nicht zurück
+	m.formTunnelTemplate = append([]TunnelConfig(nil), conn.Tunnels...)
+
+	for i := range m.inputs {
+		m.inputs[i].CursorEnd()
+	}
+}
+
+// keepStoredConnectionFields übernimmt beim Bearbeiten (ViewEdit) die Felder,
+// die das Formular nicht kennt, von der gespeicherten Verbindung m.activeID:
+// AuthType, KeyPath, CreatedAt sowie AutoKeyOff und AutoKeyFailures. Ohne sie
+// bliebe ein Schlüssel nach dem Speichern verwaist, die Verbindung fiele auf
+// AuthPassword zurück, und eine ausgesetzte Schlüsselvergabe liefe wieder an.
+// Neu (n) und Kopie (c) rufen diese Funktion nicht auf und starten ohne diese
+// Felder. Gibt es die Verbindung nicht (mehr), bleibt conn unverändert; das
+// Speichern meldet dann ohnehin "nicht gefunden".
+//
+// @param conn - aus dem Formular gebaute Verbindung, wird ergänzt
+// @date   2026-10-30 16:20
+func (m AppModel) keepStoredConnectionFields(conn *Connection) {
+	for _, stored := range m.connections {
+		if stored.ID == m.activeID {
+			conn.AuthType = stored.AuthType
+			conn.KeyPath = stored.KeyPath
+			conn.CreatedAt = stored.CreatedAt
+			// Merker der automatischen Schlüsselvergabe (ausgesetzt, Fehlversuche)
+			conn.AutoKeyOff = stored.AutoKeyOff
+			conn.AutoKeyFailures = stored.AutoKeyFailures
+			return
+		}
+	}
+}
+
+// formTunnels baut aus den lokalen Ports des Formulars die Tunnel-Liste.
+// Gibt es im Template einen Eintrag mit gleichem LocalPort, wird er komplett
+// übernommen (Remote-Port, Enabled); sonst gilt Port -> Port und aktiv.
+// Die Reihenfolge der Eingabe bleibt erhalten, doppelte Ports bleiben doppelt
+// (die Validierung meldet sie). Das Template wird nicht verändert, und das
+// Ergebnis teilt keinen Speicher mit ihm.
+//
+// @param ports - lokale Ports in der Reihenfolge der Eingabe
+// @param template - Tunnel der Vorlage (nil = keine)
+// @return []TunnelConfig - neue Tunnel-Liste (nil bei leeren Ports)
+// @date   2026-10-30 16:20
+func formTunnels(ports []int, template []TunnelConfig) []TunnelConfig {
+	var tunnels []TunnelConfig
+	for _, port := range ports {
+		tunnel := TunnelConfig{LocalPort: port, RemotePort: port, Enabled: true}
+		for _, candidate := range template {
+			if candidate.LocalPort == port {
+				// Wertkopie der Struktur, kein gemeinsamer Speicher
+				tunnel = candidate
+				break
+			}
+		}
+		tunnels = append(tunnels, tunnel)
+	}
+	return tunnels
 }
 
 // buildConnectionFromForm erstellt eine Connection aus den Formularfeldern.
+// Tunnel entstehen über formTunnels aus den lokalen Ports und dem Template
+// der Vorlage (e und c), damit Remote-Port und Enabled-Flag erhalten bleiben.
 //
 // @return Connection - Erstellte Verbindung
 // @return error - Validierungsfehler
-// @date   2026-03-07 21:00
+// @date   2026-10-30 16:20
 func (m AppModel) buildConnectionFromForm() (Connection, error) {
 	name := strings.TrimSpace(m.inputs[fieldName].Value())
 	host := strings.TrimSpace(m.inputs[fieldHost].Value())
@@ -302,7 +373,8 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 	// Authentifizierung erfolgt automatisch (Agent → Keys → Passwort)
 	conn := NewConnection(name, host, port, user, AuthPassword)
 
-	// Tunnel-Ports parsen
+	// Tunnel-Ports parsen (nur lokale Ports, Details aus dem Template)
+	var tunnelPorts []int
 	if tunnelStr != "" {
 		parts := strings.Split(tunnelStr, ",")
 		for _, p := range parts {
@@ -314,12 +386,12 @@ func (m AppModel) buildConnectionFromForm() (Connection, error) {
 			if err != nil {
 				return Connection{}, fmt.Errorf(m.lang.ErrTunnelPort, p)
 			}
-			conn.Tunnels = append(conn.Tunnels, TunnelConfig{
-				LocalPort:  tunnelPort,
-				RemotePort: tunnelPort,
-				Enabled:    true,
-			})
+			tunnelPorts = append(tunnelPorts, tunnelPort)
 		}
+	}
+	// Ohne Ports bleibt die leere Liste von NewConnection stehen
+	if tunnels := formTunnels(tunnelPorts, m.formTunnelTemplate); len(tunnels) > 0 {
+		conn.Tunnels = tunnels
 	}
 
 	if err := conn.Validate(); err != nil {

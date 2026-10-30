@@ -5,7 +5,7 @@
 // Auto-Connect (Agent + alle verfügbaren Keys) ohne Nutzerabfrage.
 //
 // @author Kurt Ingwer
-// @date   2026-10-26 21:04
+// @date   2026-10-30 16:21
 package main
 
 import (
@@ -25,7 +25,7 @@ import (
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-27 17:20
+// @date   2026-10-30 16:21
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.listRows()
 	limit := visibleRowLimit(m.termHeight)
@@ -81,6 +81,8 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state = ViewCreate
 		m.inputs = createFormInputs()
 		m.inputs[fieldName].Placeholder = m.lang.PlaceholderName
+		// Keine Tunnel-Vorlage aus einem vorherigen e/c übernehmen
+		m.formTunnelTemplate = nil
 		m.focusedInput = 0
 		m.inputs[0].Focus()
 		m.errorMsg = ""

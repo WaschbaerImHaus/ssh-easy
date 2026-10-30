@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:53
+// @date   2026-10-30 16:20
 package main
 
 import (
@@ -83,13 +83,82 @@ const (
 // --- Bubbletea Messages ---
 
 // sshConnectedMsg wird gesendet wenn eine SSH-Verbindung erfolgreich ist.
-// wasPassword=true bedeutet: Key wurde per Passwort authentifiziert ->
-// automatisch einen SSH-Key generieren und deployen.
+// Danach wird automatisch ein eigener SSH-Key erzeugt und eingespielt, wenn
+// wasPassword=true ist (Login per Passwort) ODER die gespeicherte Verbindung
+// noch keinen eigenen Schlüssel hat (connectionNeedsOwnKey) - auch dann, wenn
+// der Auto-Login über den Agent oder einen Schlüssel aus ~/.ssh klappte.
+// Die Verbindungsdaten holt Update aus m.connections (id); conn ist beim
+// Auto-Login leer und wird dafür nicht mehr gebraucht.
+//
+// @date   2026-10-27 19:36
 type sshConnectedMsg struct {
 	id          string
 	status      *ConnectionStatus
-	wasPassword bool       // War es Passwort-Auth? Dann Key automatisch deployen
-	conn        Connection // Verbindungsdaten für Key-Deployment
+	wasPassword bool       // War es Passwort-Auth? Dann Key immer automatisch deployen
+	conn        Connection // Verbindungsdaten des Absenders (beim Auto-Login leer)
+}
+
+// autoDeployKeyFunc ist die Naht für AutoDeployKey: Tests ersetzen sie durch
+// einen Fake, damit kein echter Schlüssel erzeugt und kein Server gebraucht wird.
+//
+// @date   2026-10-28 13:17
+var autoDeployKeyFunc = AutoDeployKey
+
+// autoDeployKeyCmd startet die Schlüsselvergabe des Hauptablaufs im
+// Hintergrund. Unter fmDeployMu (dieselbe Sperre wie im Datei-Manager, erste
+// Stufe der Sperr-Reihenfolge fmDeployMu -> autoDeployMu -> ...) liest das
+// Kommando den AKTUELLEN Eintrag aus der Konfiguration. Nach einem Auto-Login
+// (wasPassword=false) prüft es connectionNeedsOwnKey dort erneut: m.connections
+// ist nur der Stand beim Anmelden. Zwei Anmeldungen kurz hintereinander, eine
+// parallele Vergabe im Datei-Manager oder ein inzwischen gezählter Fehlversuch
+// führen so nicht zu einer zweiten Vergabe. Ist der Eintrag weg, die Datei
+// unlesbar oder kein Bedarf mehr, kommt ein Ergebnis mit skipped=true.
+// Nach einem Passwort-Login wird immer vergeben (wie bisher, auch bei
+// AutoKeyOff); AutoDeployKey prüft die ID dort selbst.
+// AutoDeployKey nutzt aus conn nur ID, Name, Host und User und schreibt nur
+// die Schlüsselfelder des gespeicherten Eintrags; ein älterer Stand von conn
+// schadet also nicht.
+//
+// @param conn - Verbindung aus m.connections
+// @param status - Status der Anmeldung (SSH-Client)
+// @param configPath - Pfad zur Konfiguration
+// @param wasPassword - true nach Anmeldung per Passwort
+// @return tea.Cmd - Kommando, liefert sshKeyDeployedMsg
+// @date   2026-10-30 16:20
+func autoDeployKeyCmd(conn Connection, status *ConnectionStatus, configPath string, wasPassword bool) tea.Cmd {
+	return func() tea.Msg {
+		result := sshKeyDeployedMsg{connID: conn.ID}
+		fmDeployMu.Lock()
+		defer fmDeployMu.Unlock()
+		if !wasPassword {
+			fresh, ok := fmFreshConnection(configPath, conn.ID)
+			if !ok || !connectionNeedsOwnKey(fresh) {
+				result.skipped = true
+				return result
+			}
+		}
+		result.keyPath, result.err = autoDeployKeyFunc(conn, status.SSHClient, configPath)
+		return result
+	}
+}
+
+// connectionNeedsOwnKey entscheidet, ob eine Verbindung nach erfolgreichem
+// Auto-Login (Agent oder Schlüssel aus ~/.ssh) ungefragt einen eigenen
+// Schlüssel bekommen soll: nur bei "password" ohne Schlüsselpfad, solange die
+// automatische Vergabe nicht ausgesetzt ist (AutoKeyOff) und noch keine
+// autoKeyMaxFailures Versuche gescheitert sind. Agent (bewusste Wahl),
+// vorhandener KeyPath und ein leerer AuthType aus alten Konfigurationen ergeben
+// false - im Zweifel lieber keinen Schlüssel erzeugen. Die Anmeldung per
+// Passwort (wasPassword) fragt diese Regel nicht und vergibt immer; sie bleibt
+// so der Weg, die Vergabe wieder einzuschalten. Wird auch vom Datei-Manager
+// genutzt.
+//
+// @param conn - gespeicherte Verbindung
+// @return bool - true, wenn ein eigener Schlüssel eingespielt werden soll
+// @date   2026-10-28 13:24
+func connectionNeedsOwnKey(conn Connection) bool {
+	return conn.KeyPath == "" && conn.AuthType == AuthPassword &&
+		!conn.AutoKeyOff && conn.AutoKeyFailures < autoKeyMaxFailures
 }
 
 // sshNeedPasswordMsg wird gesendet wenn Auto-Auth (Agent+Keys) fehlgeschlagen ist.
@@ -99,10 +168,16 @@ type sshNeedPasswordMsg struct {
 }
 
 // sshKeyDeployedMsg wird gesendet wenn der automatische Key-Deployment abgeschlossen ist.
+// skipped=true: Die frische Prüfung im Kommando hat die Vergabe übergangen
+// (Verbindung weg, Konfiguration unlesbar oder kein Bedarf mehr); dann gibt
+// es weder Erfolgs- noch Fehlermeldung.
+//
+// @date   2026-10-30 16:20
 type sshKeyDeployedMsg struct {
 	connID  string
 	keyPath string
 	err     error
+	skipped bool
 }
 
 // sshHostKeyChangedMsg wird gesendet wenn sich der Host-Key geändert hat.
@@ -198,6 +273,10 @@ type AppModel struct {
 	inputs []textinput.Model
 	// Index des aktuell fokussierten Eingabefelds
 	focusedInput int
+	// Tunnel der Verbindung, mit der das Formular vorbelegt wurde (e und c).
+	// Das Formular zeigt nur lokale Ports; Remote-Port und Enabled-Flag
+	// kommen beim Speichern aus dieser Kopie (formTunnels). nil bei "n".
+	formTunnelTemplate []TunnelConfig
 	// Aktuelle Fehlermeldung
 	errorMsg string
 	// Aktuelle Erfolgsmeldung
@@ -349,16 +428,23 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 	return m
 }
 
+// connectionNameLimit ist die höchste Länge eines Verbindungsnamens in Runen.
+// Das Namensfeld des Formulars und nextCopyName (Taste c) nutzen denselben Wert.
+//
+// @date   2026-10-28 13:17
+const connectionNameLimit = 50
+
 // createFormInputs erstellt die Eingabefelder für das Verbindungsformular.
 // Auth-Typ und Key-Pfad entfernt – Authentifizierung erfolgt automatisch.
+// Das Namensfeld ist auf connectionNameLimit Zeichen begrenzt.
 //
 // @return []textinput.Model - Liste der Eingabefelder
-// @date   2026-03-08 00:00
+// @date   2026-10-27 18:05
 func createFormInputs() []textinput.Model {
 	inputs := make([]textinput.Model, fieldCount)
 
 	inputs[fieldName] = textinput.New()
-	inputs[fieldName].CharLimit = 50
+	inputs[fieldName].CharLimit = connectionNameLimit
 
 	inputs[fieldHost] = textinput.New()
 	inputs[fieldHost].Placeholder = "192.168.1.100"
@@ -428,7 +514,7 @@ func (m AppModel) Init() tea.Cmd {
 // @param msg - Eingehende Nachricht
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-10-21 19:53
+// @date   2026-10-28 13:17
 func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -478,6 +564,9 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fmMkdirDoneMsg:
 		return m.handleFMMkdirDone(msg)
 
+	case fmKeyDeployedMsg:
+		return m.handleFMKeyDeployed(msg)
+
 	case terminalDoneMsg:
 		// Alt+F4 in der SSH-Session: gesamtes Programm sauber beenden (wie PuTTY)
 		if msg.err != nil && errors.Is(msg.err, errAltF4Quit) {
@@ -515,15 +604,24 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Direkt zur Statusansicht – Nutzer kann sofort 't' für Terminal drücken
 		m.activeID = msg.id
 		m.state = ViewStatus
-		// Bei Passwort-Auth: automatisch SSH-Key generieren und deployen
-		if msg.wasPassword {
-			connCopy := msg.conn
-			status := msg.status
-			configPath := m.configPath
-			return m, func() tea.Msg {
-				keyPath, err := AutoDeployKey(connCopy, status.SSHClient, configPath)
-				return sshKeyDeployedMsg{connID: msg.id, keyPath: keyPath, err: err}
+		// Eigenen SSH-Key generieren und deployen: nach Passwort-Login immer,
+		// nach Auto-Login (Agent/~/.ssh) nur, wenn die Verbindung noch auf
+		// "password" ohne Schlüssel steht. Die Daten kommen aus der Liste,
+		// weil msg.conn beim Auto-Login leer ist.
+		var conn Connection
+		found := false
+		for _, c := range m.connections {
+			if c.ID == msg.id {
+				conn, found = c, true
+				break
 			}
+		}
+		// Unbekannte ID (z. B. inzwischen gelöscht) oder kein Status: kein Einsatz
+		if !found || msg.status == nil {
+			return m, nil
+		}
+		if msg.wasPassword || connectionNeedsOwnKey(conn) {
+			return m, autoDeployKeyCmd(conn, msg.status, m.configPath, msg.wasPassword)
 		}
 		return m, nil
 
@@ -549,14 +647,31 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case sshKeyDeployedMsg:
-		// Key-Deployment abgeschlossen
+		// Key-Deployment abgeschlossen. In JEDEM Fall die Liste neu laden:
+		//   - Erfolg: neuer KeyPath und AuthKey,
+		//   - Fehler: AutoDeployKey hat AutoKeyFailures hochgezählt. Ohne
+		//     Neuladen bliebe m.connections bei 0; jeder Auto-Login vergäbe
+		//     erneut, und "e" schriebe die 0 zurück (Review H1),
+		//   - übergangen: jemand anderes hat den Eintrag geändert.
+		// Neu laden VOR dem Setzen der Meldung, damit ein Ladefehler die
+		// Meldung zur Schlüsselvergabe nicht überschreibt.
+		m.configCache.Invalidate()
+		m.reloadConfig()
+		if msg.skipped {
+			// Frische Prüfung hat die Vergabe übergangen: keine Meldung
+			return m, nil
+		}
 		if msg.err != nil {
+			// Auth-Cache bleibt stehen: Es gibt keinen neuen Schlüssel
 			m.errorMsg = m.lang.KeyDeployFailed + sanitizeFileName(msg.err.Error())
 		} else {
 			m.successMsg = fmt.Sprintf(m.lang.KeyDeployedMsg, msg.keyPath)
-			// Konfiguration neu laden (Key-Pfad wurde gespeichert)
-			m.configCache.Invalidate()
-			m.reloadConfig()
+			// Gemerkte Anmeldemethode NUR dieser Verbindung vergessen: Sonst
+			// meldet sie sich weiter per Agent bzw. fremdem Schlüssel an statt
+			// mit dem neuen eigenen. Bei einem Fehler bleibt der Cache stehen.
+			if m.sshManager != nil {
+				m.sshManager.ClearAuthCache(msg.connID)
+			}
 		}
 		return m, nil
 

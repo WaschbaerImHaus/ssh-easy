@@ -11,7 +11,7 @@
 //   - Darstellung: Bildschirm exakt so hoch/breit wie das Terminal
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:53
+// @date   2026-10-30 16:22
 package main
 
 import (
@@ -216,7 +216,7 @@ func runCmd(t *testing.T, m AppModel, cmd tea.Cmd) AppModel {
 func isFileManagerMsg(msg tea.Msg) bool {
 	switch msg.(type) {
 	case fmConnectedMsg, fmDirLoadedMsg, fmCopyEventMsg, fmViewLoadedMsg, fmOpenExternalMsg, fmEditLoadedMsg, fmEditSavedMsg,
-		fmDeleteEventMsg, fmMkdirDoneMsg:
+		fmDeleteEventMsg, fmMkdirDoneMsg, fmKeyDeployedMsg:
 		return true
 	}
 	return false

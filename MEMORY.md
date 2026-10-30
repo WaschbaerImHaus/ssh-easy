@@ -97,5 +97,16 @@
 - Fable-Review: r in der Statusansicht (Schlüssel löschen) jetzt mit j/y-Rückfrage; WT-Schrift = nicht steuerbar
 - README: g-Taste entfernt (funktionierte seit langem nicht)
 
+## Build 86 (2026-10-30) - Schlüssel nach jeder Anmeldung, Merken und aussetzen
+- Nutzerentscheidung: JEDE erfolgreiche Anmeldung (Passwort, Agent, anderer Schlüssel aus ~/.ssh; Hauptablauf und Datei-Manager) vergibt einer Verbindung ohne eigenen Schlüssel ungefragt einen - bewusst auch nach Agent-Login. Datei ~/.ssh/id_ed25519_<Host>_<Benutzer>[_N], OHNE Passphrase (muss im README stehen). Vorher nur nach Passwort-Eingabe, Verbindungen blieben auf "password"
+- Nutzerentscheidung "Merken und aussetzen": nach Entfernen des Schlüssels (Statusansicht r, j) und nach 2 gescheiterten Versuchen (autoKeyMaxFailures) keine Vergabe mehr für diese Verbindung (AutoKeyOff/AutoKeyFailures, nicht im Export); Passwort-Anmeldung versucht es wieder und schaltet ein
+- Code: connectionNeedsOwnKey + autoDeployKeyFunc (tui.go, Naht für Tests), autoAuthOrder (eigener Schlüssel vor Agent), autoKeyName (_2, _3 je Verbindung), updateKeyFields (schreibt nur eigene Felder), autoDeployMu; Sperr-Reihenfolge fmDeployMu -> autoDeployMu -> configUpdateMu -> configFileMu; tui_filemanager_keydeploy.go für den Datei-Manager
+- c/e: Tunnel behalten Zielport und Ein/Aus (vorher 8080->80 still zu 8080->8080), e behält Schlüssel/Anmeldeart/Erstelldatum, c: Cursor am Feldende, lange Namen gekürzt (" #N" in 50 Zeichen)
+- authorized_keys: keine Doppelten, fehlender Zeilenumbruch, Rechte 700/600, Entfernen auch als einziger Eintrag; geteilte Schlüssel werden nicht gelöscht
+- Datei-Manager-Meldungen überschreiben sich nicht mehr
+- Fable-Review Runde 2/3: Liste nach gescheitertem Versuch neu laden und vor jeder Vergabe frisch aus der Konfiguration prüfen (Aussetzen greift in der Sitzung, e setzt Zähler nicht zurück); auskommentierter Schlüssel zählt nicht als vorhanden; alte Temp-Datei kann authorized_keys nicht überschreiben; BusyBox-grep verschweigt Schreibfehler -> Zeilenabgleich vor dem Ersetzen (Fehler gab es schon vor Build 86)
+- Bewusst offen: aktive Zeile mit from=/restrict,command= gilt als "schon vorhanden" (BUGS.md Offen); OPTIMIZE.md: fish/csh ungeprüft, neutraler Name für fmDeployMu/fmFreshConnection, 3 gofmt-Abweichungen in ssh_manager.go
+- 823 Tests in 49 Dateien
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

@@ -18,7 +18,7 @@
 //   - Enter: exportieren, Esc: abbrechen
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 23:40
+// @date   2026-10-30 16:21
 package main
 
 import (
@@ -43,13 +43,14 @@ var errExportEmptyPath = errors.New("export path empty")
 // --- Fachlogik ---
 
 // buildExportConfig erzeugt den Exportinhalt aus den gewählten Verbindungen.
-// Reihenfolge wie in der Liste; Schlüsselbezüge werden entfernt, die
+// Reihenfolge wie in der Liste; Schlüsselbezüge und der Zustand der
+// automatischen Schlüsselvergabe (AutoKeyOff, AutoKeyFailures) werden entfernt, die
 // Originale bleiben unverändert (Tunnel werden kopiert).
 //
 // @param conns - Alle Verbindungen (sortiert)
 // @param selected - Gewählte Verbindungs-IDs
 // @return AppConfig - Exportinhalt (nur Version und Verbindungen)
-// @date   2026-10-17 23:10
+// @date   2026-10-28 13:27
 func buildExportConfig(conns []Connection, selected map[string]bool) AppConfig {
 	cfg := NewAppConfig()
 	for _, conn := range conns {
@@ -63,6 +64,9 @@ func buildExportConfig(conns []Connection, selected map[string]bool) AppConfig {
 		if exported.AuthType == AuthKey {
 			exported.AuthType = AuthPassword
 		}
+		// Der Zustand "Schlüsselvergabe ausgesetzt" gehört zu diesem Rechner
+		exported.AutoKeyOff = false
+		exported.AutoKeyFailures = 0
 		cfg.Connections = append(cfg.Connections, exported)
 	}
 	return cfg

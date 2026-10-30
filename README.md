@@ -9,7 +9,7 @@ A simple SSH connection manager with Terminal UI (TUI) for managing and establis
 - Save and manage SSH connections (name, host, port, user)
 - Automatic authentication: SSH agent, all keys in `~/.ssh/`, password fallback
 - Local port forwarding (localhost:port -> remote:port)
-- SSH key generation (Ed25519) directly from the TUI
+- Automatic Ed25519 key per connection after a successful login (no passphrase, see *Automatic SSH key*)
 - Automatic reconnect on connection loss (max. 5 attempts)
 - SSH keepalive (every 30 seconds)
 - Colored TUI with status display
@@ -61,7 +61,7 @@ Start the program:
 |-----|--------|
 | `m` | Show / hide the menu (key help at the bottom; all keys work while it is hidden) |
 | `n` | Add new connection |
-| `c` | Copy the selected connection into a new one: name (with `#2`, `#3` … appended), host, port, user and tunnels are taken over, SSH keys are not |
+| `c` | Copy the selected connection into a new one: name (with `#2`, `#3` … appended; long names are shortened to fit 50 characters), host, port, user and tunnels (target port and on/off state) are taken over, SSH keys are not. The cursor stands at the end of the field |
 | `e` | Edit connection |
 | `d` | Delete connection |
 | `Enter` | Connect / show status |
@@ -78,7 +78,7 @@ Start the program:
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows; Ctrl+MouseWheel works too) |
-| `r` | Reset window and font size to the system default (Windows console) |
+| `r` | Reset window and font size to the system default (Windows console); in the status view: remove the SSH key (asks first, `j`/`y` confirms) |
 | `Esc` | Back / Cancel |
 | `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
 
@@ -101,7 +101,17 @@ Authentication is fully automatic — no need to choose a method:
 2. **SSH keys** — all keys in `~/.ssh/` are tried automatically
 3. **Password** — requested as a fallback if the above fail (never stored)
 
-After a successful password login, ssh-easy can automatically generate and deploy an Ed25519 key so future logins are passwordless.
+### Automatic SSH key
+
+After **every** successful login – with a password, through the SSH agent or with another key from `~/.ssh/` – a connection that has no key of its own gets one without asking, in the connection list and in the file manager. Future logins are then passwordless:
+
+- ssh-easy creates a new Ed25519 key `~/.ssh/id_ed25519_<host>_<user>` (`_2`, `_3` … if the name is already used by another connection) and adds it to `~/.ssh/authorized_keys` on the server (no duplicates; permissions 700 for `~/.ssh` and 600 for the file are set).
+- **The key has no passphrase.** Anyone who can read the file can log in to the server with it. This also applies when the login that triggered it was made through the SSH agent.
+- Every connection gets its own key file. The own key is tried before the SSH agent.
+- Connections that are set to the SSH agent or already have a key are left alone.
+- **Remembering and pausing:** if you remove the key in the status view (`r`, then `j`/`y`) or if 2 attempts failed, that connection gets no automatic key any more. A login with a typed password tries again and turns the automatic key back on.
+- Removing a key deletes it from the server and from this PC – but not while another connection still uses the same key file, and – with the same host and user – not from the server either.
+- The settings for this are not part of the export.
 
 ### Tunnels
 

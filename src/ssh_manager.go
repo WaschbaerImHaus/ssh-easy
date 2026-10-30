@@ -6,7 +6,7 @@
 // ausprobiert, ohne den Benutzer nach der Methode zu fragen.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-30 16:13
 package main
 
 import (
@@ -220,73 +220,122 @@ func (m *SSHManager) ConnectStandalone(conn Connection, password string) (*ssh.C
 	return status.SSHClient, nil
 }
 
-// connectAutoDiscover probiert Auth-Methoden einzeln durch (Agent → konfigurierter Key
-// → alle Keys aus ~/.ssh/) und gibt die erste erfolgreiche zurück.
+// normalizeKeyPath macht aus einem gespeicherten Schlüsselpfad den Pfad, unter
+// dem er geladen und im Auth-Cache geführt wird: Tilde auflösen, absolute
+// Pfade normalisieren ("~/.ssh/./x" = "/home/u/.ssh/x"). Relative Pfade und
+// von expandTilde abgewiesene Pfade ("~/../etc/x") bleiben unverändert;
+// filepath.Clean machte aus Letzteren sonst einen Pfad relativ zum
+// Arbeitsverzeichnis.
+//
+// @param path - Gespeicherter Pfad (Tilde-Form, absolut oder relativ)
+// @return string - Pfad für Laden und Cache-Schlüssel
+// @date   2026-10-28 13:16
+func normalizeKeyPath(path string) string {
+	expanded := expandTilde(path)
+	if filepath.IsAbs(expanded) {
+		return filepath.Clean(expanded)
+	}
+	return expanded
+}
+
+// autoAuthOrder legt die Reihenfolge fest, in der connectAutoDiscover die
+// Anmeldearten probiert (Build 86, F5a). Rückgabe sind Cache-Schlüssel:
+//  1. "key:" + konfigurierter KeyPath (aufgelöst), falls gesetzt
+//  2. "agent", falls ein SSH-Agent läuft
+//  3. die übrigen keyFiles als "key:<Pfad>" in der gegebenen Reihenfolge
+//
+// Der konfigurierte Schlüssel steht VOR dem Agent: Sonst gewinnt nach einer
+// Schlüsselvergabe weiter der Agent, und der neue Schlüssel wird nie benutzt.
+// Ohne KeyPath bleibt alles wie bisher (Agent, dann ~/.ssh).
+// Einträge aus keyFiles, die laut sameKeyPath der KeyPath sind, fallen weg
+// (sonst würde er zweimal probiert). keyFiles selbst wird nicht verändert.
+// Reine Funktion ohne Netz und ohne Dateizugriff, damit testbar.
+//
+// @param conn           - Verbindung (nur KeyPath wird gelesen)
+// @param agentAvailable - Läuft ein erreichbarer SSH-Agent?
+// @param keyFiles       - Weitere Schlüsseldateien (aus discoverSSHKeys)
+// @return []string - Cache-Schlüssel in Probierreihenfolge (nil = nichts)
+// @date   2026-10-28 13:16
+func autoAuthOrder(conn Connection, agentAvailable bool, keyFiles []string) []string {
+	var order []string
+	if conn.KeyPath != "" {
+		order = append(order, authCacheKeyPrefix+normalizeKeyPath(conn.KeyPath))
+	}
+	if agentAvailable {
+		order = append(order, authCacheMethodAgent)
+	}
+	for _, file := range keyFiles {
+		if file == "" || sameKeyPath(conn.KeyPath, file) {
+			continue
+		}
+		order = append(order, authCacheKeyPrefix+normalizeKeyPath(file))
+	}
+	return order
+}
+
+// connectAutoDiscover probiert Auth-Methoden einzeln in der Reihenfolge von
+// autoAuthOrder durch (konfigurierter Key -> Agent -> alle Keys aus ~/.ssh/)
+// und gibt die erste erfolgreiche zurück.
 // Liefert auch den Cache-Schlüssel der erfolgreichen Methode.
+// Ein Netzwerkfehler (Ziel nicht erreichbar) bricht sofort ab, statt jede
+// weitere Methode mit eigenem Timeout zu probieren.
 //
 // @param conn - Verbindungskonfiguration
 // @return context.Context - Kontext der neuen Verbindung
 // @return *ConnectionStatus - Verbindungsstatus
 // @return string - Cache-Schlüssel der erfolgreichen Methode
 // @return error - Fehler wenn keine Methode funktioniert
-// @date   2026-10-16 10:00
+// @date   2026-10-28 13:16
 func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *ConnectionStatus, string, error) {
 	// Wurde mindestens ein Verbindungsversuch unternommen?
 	attempted := false
 
-	// 1. SSH-Agent versuchen
-	if agentAuth, err := m.getAgentAuth(); err == nil {
-		attempted = true
-		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{agentAuth}, InitialConnectTimeout)
-		if err == nil {
-			m.logger.Info("SSH-Agent erfolgreich für %s", conn.Name)
-			return ctx, status, authCacheMethodAgent, nil
-		}
-		m.logger.Info("SSH-Agent fehlgeschlagen: %v", err)
-		if IsNetworkError(err) {
-			return nil, nil, "", err
-		}
-	}
-
-	// 2. Explizit konfigurierten Key zuerst probieren
-	if conn.KeyPath != "" {
-		absPath := expandTilde(conn.KeyPath)
-		if signers := m.loadKeysFromPaths([]string{absPath}); len(signers) > 0 {
-			attempted = true
-			ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)}, InitialConnectTimeout)
-			if err == nil {
-				m.logger.Info("Konfigurierter Key %s erfolgreich für %s", conn.KeyPath, conn.Name)
-				return ctx, status, authCacheKeyPrefix + absPath, nil
-			}
-			m.logger.Info("Konfigurierter Key %s fehlgeschlagen: %v", conn.KeyPath, err)
-			if IsNetworkError(err) {
-				return nil, nil, "", err
-			}
-		}
-	}
-
-	// 3. Alle anderen Keys aus ~/.ssh/ einzeln durchprobieren
+	// Agent nur einmal öffnen; die Reihenfolge bestimmt autoAuthOrder
+	agentAuth, agentErr := m.getAgentAuth()
 	absExclude := ""
 	if conn.KeyPath != "" {
 		absExclude = expandTilde(conn.KeyPath)
 	}
-	for _, absPath := range discoverSSHKeys(absExclude, m.logger) {
-		signers := m.loadKeysFromPaths([]string{absPath})
-		if len(signers) == 0 {
-			continue
+	order := autoAuthOrder(conn, agentErr == nil, discoverSSHKeys(absExclude, m.logger))
+	configuredKey := ""
+	if conn.KeyPath != "" {
+		configuredKey = authCacheKeyPrefix + normalizeKeyPath(conn.KeyPath)
+	}
+
+	for _, method := range order {
+		var auth ssh.AuthMethod
+		label := ""
+		if method == authCacheMethodAgent {
+			auth = agentAuth
+			label = "SSH-Agent"
+		} else {
+			absPath := strings.TrimPrefix(method, authCacheKeyPrefix)
+			signers := m.loadKeysFromPaths([]string{absPath})
+			if len(signers) == 0 {
+				// Nicht ladbar (fehlt, Passphrase, kaputt): kein Versuch
+				continue
+			}
+			auth = ssh.PublicKeys(signers...)
+			label = "Key " + absPath
+			if method == configuredKey {
+				label = "Konfigurierter Key " + conn.KeyPath
+			}
 		}
 		attempted = true
-		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{ssh.PublicKeys(signers...)}, InitialConnectTimeout)
+		ctx, status, err := m.dialSSH(conn, []ssh.AuthMethod{auth}, InitialConnectTimeout)
 		if err == nil {
-			m.logger.Info("Key %s erfolgreich für %s", absPath, conn.Name)
-			return ctx, status, authCacheKeyPrefix + absPath, nil
+			m.logger.Info("%s erfolgreich für %s", label, conn.Name)
+			return ctx, status, method, nil
 		}
-		m.logger.Info("Key %s fehlgeschlagen: %v", absPath, err)
-		// Ziel nicht erreichbar (z.B. PC ausgeschaltet): nicht jeden weiteren
-		// Schlüssel mit eigenem Timeout probieren, sondern sofort abbrechen
+		m.logger.Info("%s fehlgeschlagen: %v", label, err)
+		// Ziel nicht erreichbar (z.B. PC ausgeschaltet): nicht jede weitere
+		// Methode mit eigenem Timeout probieren, sondern sofort abbrechen
 		if IsNetworkError(err) {
 			return nil, nil, "", err
 		}
+	}
+	if agentErr != nil {
+		m.logger.Info("SSH-Agent nicht verfügbar: %v", agentErr)
 	}
 
 	// Kein einziger Verbindungsversuch möglich (kein Agent, keine Schlüssel)?
