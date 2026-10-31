@@ -8,11 +8,13 @@
 //     mit dem eingebetteten Ed25519-Schlüssel geprüft. Danach wird die
 //     passende Datei im Hintergrund heruntergeladen und geprüft:
 //     SHA-256 (aus der signierten Liste), Größe, Dateiformat (ELF bzw. PE)
-//  3. Beim Beenden wird installiert:
+//  3. Beim Beenden wird installiert (Taste q, Schließkreuz, Alt+F4, SIGHUP):
 //     - Programmverzeichnis beschreibbar: Binary ersetzen
 //     (Linux: atomarer Rename; Windows: laufende EXE -> .old umbenennen)
 //     - Windows ohne Schreibrecht (Programme-Ordner): Setup still (/S) mit
-//     Administratorrechten starten
+//     Administratorrechten starten - über einen abgekoppelten Helfer-Prozess
+//     (updater_helper.go), weil die UAC-Bestätigung länger dauern kann, als
+//     Windows dem schließenden Programm Zeit lässt (ca. 5 s)
 //
 // Sicherheit: Es wird nur von der Release-Adresse dieses Repositorys geladen
 // (allowedURLPrefix), die signierte Prüfsumme ist Pflicht, Antworten sind
@@ -21,7 +23,7 @@
 // (nur auf dem Build-Rechner) entsteht keine gültige Signatur.
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 22:40
+// @date   2026-10-31 02:30
 package main
 
 import (
@@ -42,6 +44,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -148,6 +151,17 @@ type Updater struct {
 	mu sync.Mutex
 	// Heruntergeladenes Update, das beim Beenden installiert wird
 	pending *pendingUpdate
+	// applyMu hält das GANZE Apply (Prüfung und Installation). Ein zweiter,
+	// gleichzeitiger Aufruf (Normalweg und Notfallweg beim Schließen) wartet,
+	// bis der erste fertig ist, und findet dann pending == nil.
+	applyMu sync.Mutex
+	// installOnExit: Update beim Beenden installieren (Spiegel des Schalters
+	// "Auto-Update"). Atomar, weil der Signal-Watcher ihn aus einer eigenen
+	// Goroutine liest, während die Oberfläche ihn setzt.
+	installOnExit atomic.Bool
+	// startSetup startet das Windows-Setup (Naht, austauschbar für Tests).
+	// Standard: defaultSetupStarter der Plattform.
+	startSetup func(path, sha string) error
 }
 
 // NewUpdater erstellt einen Updater für die laufende Binary.
@@ -195,7 +209,31 @@ func NewUpdater(currentBuild string) *Updater {
 		downloadDir:      downloadDir,
 		canWriteDir:      dirWritable,
 		signingKey:       releaseSigningKey(),
+		startSetup:       defaultSetupStarter,
 	}
+}
+
+// SetInstallOnExit schaltet ein, ob ein heruntergeladenes Update beim
+// Beenden installiert wird. Atomar und nil-sicher.
+//
+// @param on - true = beim Beenden installieren
+// @date   2026-10-31 02:30
+func (u *Updater) SetInstallOnExit(on bool) {
+	if u == nil {
+		return
+	}
+	u.installOnExit.Store(on)
+}
+
+// InstallOnExit liefert, ob beim Beenden installiert wird. Atomar, nil-sicher.
+//
+// @return bool - true wenn ein Update beim Beenden installiert wird
+// @date   2026-10-31 02:30
+func (u *Updater) InstallOnExit() bool {
+	if u == nil {
+		return false
+	}
+	return u.installOnExit.Load()
 }
 
 // parseReleaseBuild liest die Build-Nummer aus einem Tag "v0.<Build>".
@@ -613,14 +651,51 @@ func (h *headCapture) Write(p []byte) (int, error) {
 }
 
 // Apply installiert ein heruntergeladenes Update. Wird beim Beenden
-// aufgerufen; ohne Update passiert nichts.
+// aufgerufen; ohne Update passiert nichts. Hält applyMu über die gesamte
+// Installation: Ein gleichzeitiger zweiter Aufruf wartet und findet danach
+// kein Update mehr.
 //
 // @return error - Fehler bei der Installation
-// @date   2026-10-16 10:00
+// @date   2026-10-31 02:30
 func (u *Updater) Apply() error {
 	if u == nil {
 		return nil
 	}
+	u.applyMu.Lock()
+	defer u.applyMu.Unlock()
+	return u.applyLocked()
+}
+
+// ApplyOnExit installiert ein heruntergeladenes Update beim Beenden, wenn
+// "Auto-Update" eingeschaltet ist, und protokolliert das Ergebnis. Läuft im
+// Normalweg (nach p.Run) und im Notfallweg (Schließkreuz, SIGHUP); applyMu
+// wird über Prüfung UND Installation gehalten, damit ein zweiter Aufruf nicht
+// vorzeitig zurückkehrt, während das Setup noch gestartet wird.
+//
+// @param logger - Protokoll (darf nil sein)
+// @date   2026-10-31 02:30
+func (u *Updater) ApplyOnExit(logger *Logger) {
+	if u == nil || !u.InstallOnExit() {
+		return
+	}
+	u.applyMu.Lock()
+	defer u.applyMu.Unlock()
+	pending := u.Pending()
+	if pending == nil {
+		return
+	}
+	if err := u.applyLocked(); err != nil {
+		logger.Error("Update auf v0.%d fehlgeschlagen: %v", pending.build, err)
+		return
+	}
+	logger.Info("Update auf v0.%d installiert", pending.build)
+}
+
+// applyLocked installiert das Update; der Aufrufer hält applyMu.
+//
+// @return error - Fehler bei der Installation
+// @date   2026-10-31 02:30
+func (u *Updater) applyLocked() error {
 	u.mu.Lock()
 	pending := u.pending
 	u.pending = nil
@@ -632,11 +707,16 @@ func (u *Updater) Apply() error {
 	// Download (Start) und Installation (Beenden) könnte die Datei ersetzt
 	// worden sein. Beim Windows-Setup (Adminrechte!) geschieht die Prüfung
 	// über einen gesperrten Datei-Handle, der bis nach dem Start offen bleibt
-	// (runVerifiedSetupInstaller) - so bleibt kein Zeitfenster zum Austausch.
+	// (runVerifiedSetupInstaller, im abgekoppelten Helfer) - so bleibt kein
+	// Zeitfenster zum Austausch.
 	var err error
 	switch pending.kind {
 	case updateRunSetup:
-		err = runVerifiedSetupInstaller(pending.path, pending.sha256)
+		start := u.startSetup
+		if start == nil {
+			start = defaultSetupStarter
+		}
+		err = start(pending.path, pending.sha256)
 	default:
 		if err = verifyFileSHA256(pending.path, pending.sha256); err == nil {
 			err = replaceExecutable(u.exePath, pending.path, u.goos == "windows")
@@ -644,6 +724,10 @@ func (u *Updater) Apply() error {
 	}
 	if err != nil {
 		_ = os.Remove(pending.path)
+		if pending.kind == updateRunSetup {
+			// Eigener Unterordner pro Setup: leer entfernen (kein RemoveAll)
+			_ = os.Remove(filepath.Dir(pending.path))
+		}
 	}
 	return err
 }
@@ -714,14 +798,23 @@ func replaceExecutable(exePath, newPath string, keepOld bool) error {
 	return nil
 }
 
+// setupLeftoverMinAge - Mindestalter eines setup-*-Ordners, ab dem der Start
+// ihn aufräumt. Der abgekoppelte Helfer wartet evtl. noch auf die UAC-
+// Bestätigung, wenn ssh-easy schon wieder gestartet wurde.
+const setupLeftoverMinAge = 10 * time.Minute
+
 // cleanupUpdateLeftovers entfernt Reste früherer Updates beim Start:
 // exe.old (Windows-Austausch), exe.new (abgebrochener Download) und
-// heruntergeladene Setups.
+// heruntergeladene Setups. exe.old, exe.new und Setups im alten Ablageformat
+// fallen immer; setup-*-Ordner erst ab minAge (Änderungszeit). Eine
+// Änderungszeit in der Zukunft (Uhrensprung) lässt den Ordner stehen.
+// Symlinks werden nie verfolgt oder gelöscht.
 //
 // @param exePath - Pfad der laufenden Binary
 // @param downloadDir - Ablage der Setups
-// @date   2026-10-16 10:00
-func cleanupUpdateLeftovers(exePath, downloadDir string) {
+// @param minAge - Mindestalter eines setup-*-Ordners
+// @date   2026-10-31 02:30
+func cleanupUpdateLeftovers(exePath, downloadDir string, minAge time.Duration) {
 	if exePath != "" {
 		_ = os.Remove(exePath + ".old")
 		_ = os.Remove(exePath + ".new")
@@ -740,8 +833,15 @@ func cleanupUpdateLeftovers(exePath, downloadDir string) {
 			// Altes Ablageformat (Setup direkt im Update-Ordner)
 			_ = os.Remove(path)
 		case e.IsDir() && strings.HasPrefix(e.Name(), "setup-"):
-			// Unterordner eines früheren Setups (seit Build 49)
-			_ = os.RemoveAll(path)
+			// Unterordner eines früheren Setups (seit Build 49): nur alte
+			// (e.IsDir ist für Symlinks false, sie bleiben unberührt)
+			info, ierr := e.Info()
+			if ierr != nil || !info.IsDir() {
+				continue
+			}
+			if age := time.Since(info.ModTime()); age >= minAge && age >= 0 {
+				_ = os.RemoveAll(path)
+			}
 		}
 	}
 }
@@ -776,10 +876,14 @@ func checkSetupDirectoryClean(setupPath string) error {
 // SetUpdater verbindet den Updater mit dem Modell. Ist Auto-Update
 // eingeschaltet, wird die Suche beim Start (Init) ausgelöst.
 //
-// @param u - Updater
-// @date   2026-10-16 10:00
+// @param u - Updater (darf nil sein)
+// @date   2026-10-31 02:30
 func (m *AppModel) SetUpdater(u *Updater) {
 	m.updater = u
+	// Der Schalter stammt aus der Konfiguration (NewAppModel lädt ihn) und
+	// wird atomar in den Updater gespiegelt: Der Signal-Watcher darf das
+	// Modell nicht lesen
+	u.SetInstallOnExit(m.autoUpdate)
 	m.updateChecking = m.autoUpdate && u != nil
 	if m.updateChecking {
 		m.updateStatus = m.tr(txtUpdateChecking)
@@ -828,20 +932,22 @@ func (m AppModel) handleUpdateResult(msg updateResultMsg) (tea.Model, tea.Cmd) {
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Update-Suche oder nil
-// @date   2026-10-16 10:00
+// @date   2026-10-31 02:30
 func (m AppModel) toggleAutoUpdate() (tea.Model, tea.Cmd) {
-	cfg, err := LoadConfig(m.configPath)
-	if err != nil {
-		m.errorMsg = err.Error()
-		return m, nil
-	}
-	cfg.AutoUpdate = !m.autoUpdate
-	if err := SaveConfig(m.configPath, cfg); err != nil {
+	newValue := !m.autoUpdate
+	// Unter configUpdateMu schreiben: Eine gleichzeitige Änderung anderer
+	// Felder (Schrift, Sprache, Fenster) darf nicht überschrieben werden
+	if err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		cfg.AutoUpdate = newValue
+		return true
+	}); err != nil {
 		m.errorMsg = err.Error()
 		return m, nil
 	}
 	m.configCache.Invalidate()
-	m.autoUpdate = cfg.AutoUpdate
+	m.autoUpdate = newValue
+	// Schalter auch im Updater führen (Schließkreuz/SIGHUP lesen ihn dort)
+	m.updater.SetInstallOnExit(newValue)
 	m.errorMsg = ""
 
 	if !m.autoUpdate {

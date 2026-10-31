@@ -420,28 +420,29 @@ func openLocalManager(t *testing.T, remote *memFS) (AppModel, *localFS, string) 
 }
 
 // TestFileManagerEnabledWithOneConnection - mit "Lokaler PC" genügt eine
-// Verbindung; ohne Verbindung ausgegraut mit Hinweis.
+// Verbindung; ohne Verbindung gibt es den Eintrag nicht (Build 87: nicht
+// mehr ausgegraut, sondern unsichtbar) und Enter öffnet nichts.
 func TestFileManagerEnabledWithOneConnection(t *testing.T) {
 	m := newListTestModel(t, "Server")
 	text := stripANSI(renderListText(m))
-	if strings.Contains(text, m.tr(txtFMNeedConnection)) {
-		t.Errorf("Hinweis trotz Verbindung:\n%s", text)
+	if !strings.Contains(text, m.tr(txtFMEntry)) {
+		t.Errorf("Eintrag fehlt trotz Verbindung:\n%s", text)
 	}
 	m = press(t, m, "end", "enter")
 	if m.state != ViewFMPick {
 		t.Errorf("state %v, erwartet ViewFMPick", m.state)
 	}
 	m = newListTestModel(t)
-	if text := stripANSI(renderListText(m)); !strings.Contains(text, m.tr(txtFMNeedConnection)) {
-		t.Errorf("Hinweis fehlt ohne Verbindung:\n%s", text)
+	if text := stripANSI(renderListText(m)); strings.Contains(text, m.tr(txtFMEntry)) {
+		t.Errorf("Eintrag sichtbar ohne Verbindung:\n%s", text)
 	}
 	if m = press(t, m, "end", "enter"); m.state != ViewList {
 		t.Errorf("ohne Verbindung geöffnet (state %v)", m.state)
 	}
 }
 
-// TestFileManagerPickOffersLocalPC - "Lokaler PC" steht direkt nach dem
-// Platzhalter; links gewählt, fehlt er rechts.
+// TestFileManagerPickOffersLocalPC - "Lokaler PC" steht links ganz oben
+// (Zeile 0, dort startet der Cursor); links gewählt, fehlt er rechts.
 func TestFileManagerPickOffersLocalPC(t *testing.T) {
 	m := newListTestModel(t, "A", "B")
 	m = openPick(t, m)
@@ -450,12 +451,15 @@ func TestFileManagerPickOffersLocalPC(t *testing.T) {
 		t.Fatalf("Auswahl = %v", conns)
 	}
 	if m.fm.pickCursor != 0 {
-		t.Error("Cursor startet nicht auf dem Platzhalter")
+		t.Error("Cursor startet nicht auf der ersten Zeile (Lokaler PC)")
 	}
 	if text := stripANSI(m.View()); !strings.Contains(text, m.tr(txtFMLocalPC)) {
 		t.Errorf("Lokaler PC fehlt in der Anzeige:\n%s", text)
 	}
-	m = press(t, m, "down", "enter")
+	m = press(t, m, "enter")
+	if m.fm.pickSide != 1 || m.fm.panels[0].conn.ID != fmLocalConnID {
+		t.Fatalf("Enter auf Zeile 0: Seite %d, links %q, erwartet rechts mit Lokalem PC links", m.fm.pickSide, m.fm.panels[0].conn.ID)
+	}
 	for _, conn := range m.fmPickConnections() {
 		if conn.ID == fmLocalConnID {
 			t.Error("Lokaler PC rechts noch einmal wählbar")

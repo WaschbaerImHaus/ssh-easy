@@ -2,11 +2,12 @@
 //
 // Enthält die plattformunabhängigen Teile der Schriftgrößen-Steuerung:
 // Grenzwerte und Clamping. Die eigentliche Font-API ist plattformspezifisch:
-//   console_font_windows.go - SetCurrentConsoleFontEx (wirksam)
-//   console_font_unix.go    - No-Op (Terminal-Emulator bestimmt die Schrift)
+//
+//	console_font_windows.go - SetCurrentConsoleFontEx (wirksam)
+//	console_font_unix.go    - No-Op (Terminal-Emulator bestimmt die Schrift)
 //
 // @author Kurt Ingwer
-// @date   2026-07-03 19:40
+// @date   2026-10-31 14:40
 package main
 
 import (
@@ -112,7 +113,7 @@ func persistFontSize(configPath string, size int) bool {
 // @param delta - Änderung in Pixeln (+FontSizeStep / -FontSizeStep)
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Immer nil
-// @date   2026-10-23 19:33
+// @date   2026-10-31 14:40
 func (m AppModel) changeFontSize(delta int) (tea.Model, tea.Cmd) {
 	current := getConsoleFontSize()
 	if current <= 0 {
@@ -137,12 +138,11 @@ func (m AppModel) changeFontSize(delta int) (tea.Model, tea.Cmd) {
 	m.successMsg = fmt.Sprintf(m.lang.fontSizeChangedText(), newSize)
 	m.errorMsg = ""
 
-	// Neuen Wert persistieren, damit er beim nächsten Start angewendet wird
-	if cfg, err := LoadConfig(m.configPath); err == nil {
-		cfg.FontSize = newSize
-		if err := SaveConfig(m.configPath, cfg); err == nil {
-			m.configCache.Invalidate()
-		}
+	// Neuen Wert persistieren, damit er beim nächsten Start angewendet wird.
+	// Über persistFontSize (updateConfig mit Sperre): Hintergrundbefehle
+	// können gleichzeitig schreiben, ohne Sperre ginge eine Änderung verloren.
+	if persistFontSize(m.configPath, newSize) {
+		m.configCache.Invalidate()
 	}
 
 	return m, nil

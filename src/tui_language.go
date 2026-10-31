@@ -66,18 +66,18 @@ func (m AppModel) handleLanguageKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // persistLanguage speichert die gewählte Sprache dauerhaft in der JSON-Konfiguration.
+// Das Schreiben läuft über updateConfig (unter configUpdateMu), damit eine
+// gleichzeitige Änderung einer anderen Goroutine nicht überschrieben wird.
 // Bei einem Fehler wird dieser still ignoriert (nicht kritisch für den Betrieb).
 //
 // @param lang - Zu speichernder Sprachcode
-// @date   2026-03-14
+// @date   2026-10-31 02:30
 func (m *AppModel) persistLanguage(lang Language) {
-	cfg, err := LoadConfig(m.configPath)
-	if err != nil {
-		return
-	}
-	cfg.Language = lang
 	// Fehler beim Speichern ignorieren – nächster Start zeigt wieder Auswahl
-	_ = SaveConfig(m.configPath, cfg)
+	_ = updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		cfg.Language = lang
+		return true
+	})
 	m.configCache.Invalidate()
 }
 
@@ -86,8 +86,9 @@ const langPageSize = 8
 
 // renderLanguage rendert die Sprachauswahl-Ansicht.
 // Zeigt genau langPageSize Einträge als zweispaltige Tabelle mit Scroll-Pfeilen:
-//   ↑  – es gibt weitere Einträge oberhalb des sichtbaren Bereichs
-//   ↓  – es gibt weitere Einträge unterhalb des sichtbaren Bereichs
+//
+//	↑  – es gibt weitere Einträge oberhalb des sichtbaren Bereichs
+//	↓  – es gibt weitere Einträge unterhalb des sichtbaren Bereichs
 //
 // Das sichtbare Fenster scrollt automatisch mit dem Cursor mit.
 //

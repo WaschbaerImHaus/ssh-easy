@@ -18,7 +18,7 @@
 // genügt nicht). Beim Öffnen einer solchen Datei fragt F9 noch einmal.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 07:50
+// @date   2026-10-31 07:01
 package main
 
 import (
@@ -66,12 +66,13 @@ type fmMenu struct {
 // fmExtMaxLength - Höchstlänge einer Endung (ohne Punkt)
 const fmExtMaxLength = 16
 
-// fmMenus liefert die Menüs in der Reihenfolge der Leiste. Mit nur einer
-// Verbindung gibt es ein Fenster-Menü statt Links/Rechts und im
-// Datei-Menü weder Kopieren noch Verschieben.
+// fmMenus liefert die Menüs in der Reihenfolge der Leiste. Im
+// Ein-Fenster-Modus (rechts "(keine)" gewählt, fm.single) gibt es ein
+// Fenster-Menü statt Links/Rechts und im Datei-Menü weder Kopieren noch
+// Verschieben.
 //
 // @return []fmMenu - Links, Datei, Optionen, Rechts (bzw. Fenster, Datei, Optionen)
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) fmMenus() []fmMenu {
 	titles := strings.Split(m.tr(txtFMMenuBar), "|")
 	for len(titles) < 4 {
@@ -258,17 +259,23 @@ func (m *AppModel) applyFMSettings(cfg *AppConfig) {
 }
 
 // persistFMSettings speichert Farbmodus und Endungen in der Konfiguration.
+// Geschrieben wird über updateConfig (unter configUpdateMu): Laden, Ändern
+// und Speichern geschehen in einem Schritt. Mit LoadConfig + SaveConfig
+// konnte eine gleichzeitige Änderung aus einer Goroutine - etwa die
+// Schlüsselvergabe (KeyPath) oder die Fenstergröße - verloren gehen
+// (Lost Update). Geändert werden nur die beiden eigenen Felder.
 //
 // @return error - Fehler beim Laden/Speichern
-// @date   2026-10-22 07:50
+// @date   2026-10-31 07:01
 func (m *AppModel) persistFMSettings() error {
-	cfg, err := LoadConfig(m.configPath)
+	theme := fmThemes[fmThemeIndexValid(m.fm.theme)].name
+	extensions := m.fmOpenExtensions
+	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		cfg.FileManagerTheme = theme
+		cfg.FileManagerOpenExtensions = extensions
+		return true
+	})
 	if err != nil {
-		return err
-	}
-	cfg.FileManagerTheme = fmThemes[fmThemeIndexValid(m.fm.theme)].name
-	cfg.FileManagerOpenExtensions = m.fmOpenExtensions
-	if err := SaveConfig(m.configPath, cfg); err != nil {
 		return err
 	}
 	m.configCache.Invalidate()

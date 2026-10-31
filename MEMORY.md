@@ -108,5 +108,16 @@
 - Bewusst offen: aktive Zeile mit from=/restrict,command= gilt als "schon vorhanden" (BUGS.md Offen); OPTIMIZE.md: fish/csh ungeprüft, neutraler Name für fmDeployMu/fmFreshConnection, 3 gofmt-Abweichungen in ssh_manager.go
 - 823 Tests in 49 Dateien
 
+## Build 87 (2026-10-31) - Verbindung merken, ein Datei-Manager, Update beim Schließen
+- Nutzerentscheidung: Schalter v „Verbindung merken“ im Menü (m), Standard AUS. Nur wenn an, werden die zuletzt mit Enter gewählte Verbindung und die letzte Wahl links/rechts im Datei-Manager sofort gespeichert und beim Start vorausgewählt. Ausschalten löscht die Werte; gelöschte Verbindung in der Vorauswahl wird ignoriert; nicht im Export (AppConfig: RememberSelection, LastConnectionID, FileManagerLastLeft/-Right; rememberLocalPC = "local-pc", rememberNone = "none")
+- Nutzerentscheidung: KEIN Platzhalter "(nicht ausgewählt)" mehr in der Datei-Manager-Auswahl (links wie rechts); Cursor auf dem ersten Eintrag bzw. der gemerkten Wahl
+- Nutzerentscheidung: nur noch EIN Eintrag "Datei-Manager", nur ab 1 Verbindung; rein lokaler Datei-Manager ohne Verbindung entfällt; rechts "(keine)" = ein Fenster (ersetzt den Eintrag "eine Verbindung")
+- Nutzerentscheidung: bei genau einer Verbindung wird rechts TROTZDEM gefragt (sonst kein Kopieren Server <-> PC)
+- r löscht jetzt IMMER auch die gemerkte Auswahl; ohne steuerbare Konsole nur die Auswahl, mit Hinweis (txtSelectionResetOnly)
+- Bugfix (Nutzerwunsch): Update wird auch beim Schließkreuz/Alt+F4 installiert, auch in der SSH-Sitzung. Ursachen: SIGHUP unter Linux unbehandelt; Windows CTRL_CLOSE_EVENT + 5-s-Grenze + UAC-Dialog blockiert; Bubbletea verwirft Signale während tea.Exec und ruft nach Run() signal.Stop. Fix: exit_signals*.go (closeSignals, exitTasks, watchCloseSignals, exitCodeFor), Updater: installOnExit/ApplyOnExit/applyMu, Windows-Helfer `--install-update` (updater_helper.go), icon_windows.go init() überspringt den Helfer. Grenze: Abmelden/Herunterfahren gibt Windows keine Gelegenheit. Unter Windows vom Nutzer noch zu bestätigen
+- Speichern von Auto-Update-Schalter, Sprache, Datei-Manager-Optionen und Schriftgröße läuft über updateConfig (gesperrt)
+- 7 neue Texte (txtFMEntry, txtFMNone, txtRememberOn/Off, txtHelpMenuExtra, txtConsoleResetAll, txtSelectionResetOnly), alte entfernt, alle 41 Sprachen
+- 899 Tests in 54 Dateien
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

@@ -71,16 +71,16 @@ Start the program:
 | `←` | Collapse group (also from a group member) |
 | `PgUp` / `PgDn` / `Home` / `End` | Page through long lists |
 | `u` | Toggle auto-update (shown in the last menu line) |
+| `v` | Toggle *Remember connection* (off by default, shown in the menu; see *Remembered selection*) |
 | `E` | Export connections (all or a selection) |
 | `I` | Import connections from an export file |
-| `Enter` on *File manager (one connection)* | Open the single-panel file manager for viewing and editing (second to last entry) |
-| `Enter` on *File manager (two connections)* | Open the two-panel file manager (last list entry) |
+| `Enter` on *File manager* | Open the file manager (last list entry, only shown when at least one connection exists) |
 | `Tab` | Next form field |
 | `Ctrl+V` / `Shift+Insert` | Paste clipboard into form field and password prompt (also on Windows) |
 | `Ctrl+Up` / `Ctrl+Down` | Increase / decrease font size (Windows; Ctrl+MouseWheel works too) |
-| `r` | Reset window and font size to the system default (Windows console); in the status view: remove the SSH key (asks first, `j`/`y` confirms) |
+| `r` | Reset window and font size to the system default (Windows console) and delete the remembered selection (without a controllable console only the selection, with a note); in the status view: remove the SSH key (asks first, `j`/`y` confirms) |
 | `Esc` | Back / Cancel |
-| `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session) |
+| `q` / `Ctrl+C` / `Alt+F4` | Quit (Alt+F4 also works inside an SSH session); a downloaded update is installed on every way of quitting, also when the window is closed with X |
 
 ### Adding a Connection
 
@@ -150,25 +150,23 @@ Press `I` (Shift+I) in the list — this also works with an empty list, e.g. on 
 
 The file is treated as untrusted: at most 1 MiB, every entry is validated (name, host, port, user, tunnels), entries with control characters (e.g. terminal escape sequences) are skipped, duplicate names inside the file are skipped, and key paths are never taken over. Only connections are imported — settings like language or auto-update stay as they are.
 
-### File manager (one connection)
+### File manager
 
-The second to last entry of the connection list asks for **one** connection only (also
-*Local PC*, so it works without any saved connection), opens just that one and shows a single
-full-width panel. Everything from the next section applies – view (`F3`), edit (`F4`), make
-directory (`F7`), delete (`F8`), open locally, menu (`F9`: *Panel*, *File*, *Options*) –
-except copy and move (`F5`/`F6`), which need a second panel as target. `Tab` does nothing here.
-
-### File manager (two connections)
-
-The last entry of the connection list opens a reduced
-Midnight-Commander-style file manager for working with two SSH hosts side by side:
+The last entry of the connection list (only shown when at least one connection exists) opens a reduced
+Midnight-Commander-style file manager for working with two SSH hosts side by side – or with one:
 
 1. Choose the connection for the **left** panel, then the one for the **right** panel.
-   *Local PC* (first entry) shows the file system of your own computer, so you can copy
+   *Local PC* (first entry on the left) shows the file system of your own computer, so you can copy
    between your PC and a server; on Windows `..` above `C:\` shows the drive list
-   (`q` goes back to the list at any time). The list starts on the placeholder
-   *(not selected)*, which cannot be confirmed – both connections have to be chosen
-   deliberately. The left connection is not offered again for the right panel.
+   (`q` goes back to the list at any time). There is no placeholder: the cursor starts on the
+   first entry (or on the remembered choice, see below), so look before pressing `Enter`.
+   The left connection is not offered again for the right panel. For the right panel the
+   first entry is *(none)*: then only the left connection is opened and the file manager shows
+   a **single panel** over the full width. Everything below applies – view (`F3`), edit (`F4`),
+   make directory (`F7`), delete (`F8`), open locally, menu (`F9`: *Panel*, *File*, *Options*) –
+   except copy and move (`F5`/`F6`), which need a second panel as target; `Tab` does nothing there.
+   With exactly one saved connection the right panel is asked anyway, so that copying between
+   server and PC (*Local PC*) stays possible.
 2. Both connections are opened as separate SSH connections **without tunnels**
    (SSH agent / keys first, password prompt if needed; `Esc` cancels the prompt).
    Nothing needs to be installed on the servers — the file lists come via SFTP.
@@ -236,8 +234,8 @@ unknown types are refused because opening them could run them. On Windows the co
 downloaded from the internet (Protected View, SmartScreen). The copies are deleted when
 ssh-easy exits.
 
-The file manager with two connections needs at least one saved connection (the other side
-can be *Local PC*); until then its entry is greyed out. Files copied from a server to your PC are marked as
+The file manager needs at least one saved connection (the other side
+can be *Local PC*); until then its entry is not shown. Files copied from a server to your PC are marked as
 downloaded (Windows SmartScreen warns before running them).
 
 **Options (`F9` → Options):** *Appearance* switches between the classic (mc), ssh-easy and
@@ -253,14 +251,20 @@ changes are saved immediately.
 
 If automatic authentication fails, ssh-easy asks for the password and shows the host and — on the line below — the user name, so you know which password is meant.
 
+### Remembered selection
+
+Off by default. The switch `v` *Remember connection* in the menu (`m`) turns it on. Then the connection you last opened with `Enter` and the last choice left/right in the file manager (including *Local PC* and *(none)*) are saved at once and preselected at the next start. Switching it off deletes the remembered values; `r` deletes them too. A connection that has been deleted since is ignored. The values are not part of the export.
+
 ### Auto-Update
 
-Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line, shown with `m`, and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit:
+Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line, shown with `m`, and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit – with `q`, `Ctrl+C`, `Alt+F4` and also when you close the window with the X button, even during an SSH session (Windows classic console and Windows Terminal, Linux terminal window):
 
 - Linux, or Windows with write access to the program folder: the binary is replaced
 - Windows installed in *Program Files*: the setup runs silently with administrator rights (Windows asks via UAC); the desktop shortcut is kept
 
 Every release contains a checksum list (`ssh-easy-SHA256SUMS`) signed with Ed25519 (`ssh-easy-SHA256SUMS.sig`). ssh-easy verifies the signature with the public key built into the program and only installs a file whose SHA-256 matches the signed list — so even someone with access to the GitHub account cannot push a manipulated update. Size and file format are checked as well — right after the download and again just before installation. Unsigned releases are rejected.
+
+On Windows, ssh-easy starts a short helper without a window for the installation when you quit; it waits until the program has ended and then starts the checked setup (with the UAC prompt). Limit: when Windows logs off or shuts down, programs get no chance to react – the update is then installed at the next regular quit.
 
 ### Auto-Reconnect
 

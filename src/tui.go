@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-30 16:20
+// @date   2026-10-31 02:06
 package main
 
 import (
@@ -327,6 +327,10 @@ type AppModel struct {
 	windowSaveSeq int
 	// Hauptmenü (Tastenhilfe unten) eingeblendet? Taste m, Standard: aus
 	showMenu bool
+	// Schalter "Verbindung merken" (Taste v, Standard aus, Build 87): Nur wenn
+	// an, wird die per Enter gewählte Verbindung gespeichert und beim Start
+	// vorausgewählt. Spiegelt AppConfig.RememberSelection.
+	rememberSelection bool
 	// Schrift- und Fenstergröße beim Programmstart (Ziel von Taste r)
 	consoleDefaults consoleDefaults
 	// Statusansicht: offene Rückfrage "Schlüssel entfernen?" (Taste r, j/y)
@@ -364,7 +368,7 @@ type AppModel struct {
 // @param buildNumber - Aktuelle Build-Nummer
 // @param sshManager - SSH-Verbindungsmanager
 // @return AppModel - Initialisiertes Modell
-// @date   2026-03-07 21:00
+// @date   2026-10-31 02:06
 func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) AppModel {
 	cache := NewConfigCache(configPath)
 
@@ -393,7 +397,14 @@ func NewAppModel(configPath string, buildNumber string, sshManager *SSHManager) 
 		m.connections = sortConnectionsByName(cfg.Connections)
 		m.language = cfg.Language
 		m.autoUpdate = cfg.AutoUpdate
+		m.rememberSelection = cfg.RememberSelection
 		m.applyFMSettings(cfg)
+		// Gemerkte Verbindung vorauswählen (nur bei eingeschaltetem Schalter).
+		// Eine unbekannte oder gelöschte ID ändert nichts: Cursor bleibt auf 0,
+		// keine Meldung. Die ID wird nur verglichen, nie angezeigt.
+		if m.rememberSelection && cfg.LastConnectionID != "" {
+			m.selectConnectionByID(cfg.LastConnectionID)
+		}
 	}
 
 	// Sprache initialisieren
@@ -718,11 +729,14 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // @param msg - Tastendruck-Nachricht
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-03-07 21:00
+// @date   2026-10-31 07:02
 func (m AppModel) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Globale Tasten: Ctrl+C und Alt+F4 beenden immer.
-	// Alt+F4 wird von Windows bei Konsolenfenstern NICHT selbst behandelt
-	// (kein automatisches WM_CLOSE wie bei GUI-Fenstern), daher hier explizit.
+	// Alt+F4 kommt nur in conhost hier an: Dort ist ENABLE_PROCESSED_INPUT
+	// aus, die Konsole gibt Alt+F4 als Taste weiter, statt das Fenster zu
+	// schließen. In Windows Terminal schließt Alt+F4 dagegen das Fenster und
+	// löst CTRL_CLOSE_EVENT aus (in Go SIGTERM, wie das Schließkreuz) - das
+	// behandelt main.go (watchCloseSignals, finishRun).
 	if msg.String() == "ctrl+c" || msg.String() == "alt+f4" {
 		m.sshManager.DisconnectAll()
 		return m, tea.Quit

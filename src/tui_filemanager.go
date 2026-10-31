@@ -1,10 +1,11 @@
 // Paket main - Datei-Manager (MC-Modus): Ansichten und Tastensteuerung
 //
 // Ablauf: Eintrag "Datei-Manager" ganz unten in der Verbindungsliste ->
-// linke Verbindung wählen -> rechte Verbindung wählen -> beide Verbindungen
-// werden nacheinander aufgebaut (eigene SSH-Verbindungen ohne Tunnel,
-// bei Bedarf mit Passwortabfrage) -> Zwei-Fenster-Ansicht wie im Midnight
-// Commander: oben Menüleiste, unten F-Tasten-Leiste, keine Kommandozeile.
+// linke Verbindung wählen -> rechte Verbindung oder "(keine)" wählen ->
+// die Verbindungen werden nacheinander aufgebaut (eigene SSH-Verbindungen
+// ohne Tunnel, bei Bedarf mit Passwortabfrage) -> Zwei-Fenster-Ansicht wie
+// im Midnight Commander: oben Menüleiste, unten F-Tasten-Leiste, keine
+// Kommandozeile.
 //
 // q (bzw. Esc im Passwortfeld) bricht jederzeit ab, F10 beendet den
 // Datei-Manager; beides führt zurück zur Liste mit dem Cursor auf dem
@@ -18,17 +19,30 @@
 // tui_filemanager_ops.go), Menüs (F9, tui_filemanager_menu.go) und Neu
 // einlesen (Strg+R) funktionieren; F1 und F2 sind nur optisch vorhanden.
 //
-// Build 82: Der Eintrag "Datei-Manager (eine Verbindung)" wählt und
-// verbindet nur eine Seite (fileManager.single) und zeigt ein Fenster über
-// die ganze Breite. Kopieren und Verschieben (F5/F6) entfallen dort - sie
-// brauchen eine zweite Verbindung -, alles andere bleibt gleich.
+// Build 82: Ein-Fenster-Modus (fileManager.single): nur eine Seite wird
+// verbunden, ein Fenster über die ganze Breite. Kopieren und Verschieben
+// (F5/F6) entfallen dort - sie brauchen eine zweite Verbindung -, alles
+// andere bleibt gleich.
 //
 // Build 86: Nach einer erfolgreichen Anmeldung mit Passwort - oder wenn
 // die Verbindung noch keinen eigenen Schlüssel hat - wird ungefragt ein
 // Schlüssel vergeben (tui_filemanager_keydeploy.go).
 //
+// Build 87 (Nutzerwunsch 2026-10-28): Es gibt nur noch EINEN Eintrag
+// "Datei-Manager". Der Platzhalter "(nicht ausgewählt)" entfällt:
+//   - links:  Zeile 0 "Lokaler PC", danach die Verbindungen
+//   - rechts: Zeile 0 "(keine)" = Ein-Fenster-Modus, dann "Lokaler PC"
+//     (nur wenn links nicht der Lokale PC gewählt ist), dann die
+//     Verbindungen ohne die linke
+//
+// Rechts wird immer gefragt, auch mit nur einer Verbindung (sonst gäbe es
+// kein Kopieren zwischen Server und PC). Ist "Verbindung merken"
+// eingeschaltet (AppConfig.RememberSelection), steht der Cursor auf der
+// zuletzt gewählten Seite (FileManagerLastLeft/-Right), und der Abschluss
+// der Wahl speichert sie. Abbruch mit q/Esc speichert nichts.
+//
 // @author Kurt Ingwer
-// @date   2026-10-30 16:13
+// @date   2026-10-31 02:06
 package main
 
 import (
@@ -72,7 +86,8 @@ const (
 type fileManager struct {
 	// Laufende Nummer der Sitzung: Ergebnisse älterer Sitzungen werden verworfen
 	session int
-	// Nur eine Verbindung (ein Fenster, kein Kopieren/Verschieben)
+	// Ein-Fenster-Modus: rechts "(keine)" gewählt (ein Fenster, kein
+	// Kopieren/Verschieben)
 	single bool
 	// Verbindungsauswahl: welche Seite wird gerade gewählt (0 links, 1 rechts)
 	pickSide int
@@ -164,40 +179,47 @@ type fmDirLoadedMsg struct {
 }
 
 // openFileManager startet den Datei-Manager mit der Auswahl der linken
-// (bzw. der einzigen) Verbindung. Der Farbmodus bleibt über Sitzungen
-// hinweg erhalten.
+// Verbindung. Der Farbmodus bleibt über Sitzungen hinweg erhalten. Der
+// Cursor steht auf Zeile 0 ("Lokaler PC") bzw. - bei eingeschaltetem
+// Merken - auf der zuletzt gewählten linken Seite; das Scroll-Fenster wird
+// gleich so gesetzt, dass dieser Eintrag sichtbar ist.
 //
-// @param single - nur eine Verbindung (ein Fenster, nur ansehen und bearbeiten)
 // @return tea.Model - Modell in ViewFMPick
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-10-26 21:04
-func (m AppModel) openFileManager(single bool) (tea.Model, tea.Cmd) {
-	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme, single: single}
+// @date   2026-10-31 02:06
+func (m AppModel) openFileManager() (tea.Model, tea.Cmd) {
+	m.fm = fileManager{session: m.fm.session + 1, theme: m.fm.theme}
 	m.state = ViewFMPick
 	m.errorMsg = ""
 	m.successMsg = ""
+	m.fmPickStart()
 	return m, nil
 }
 
 // closeFileManager schließt alle Verbindungen des Datei-Managers und
-// kehrt zur Liste zurück (Cursor auf dem Eintrag, über den er geöffnet
-// wurde). Die Sitzungsnummer wird erhöht, damit noch laufende Hintergrund-
+// kehrt zur Liste zurück (Cursor auf dem Datei-Manager-Eintrag). Die
+// Sitzungsnummer wird erhöht, damit noch laufende Hintergrund-
 // ergebnisse verworfen werden. Noch nicht gezeigte Meldungen der
 // Schlüsselvergabe (fm.keyNotice) gehen nicht verloren, sondern erscheinen
 // in der Liste: Erfolg in successMsg, Fehler in errorMsg.
 //
 // @return AppModel - Modell in ViewList
-// @date   2026-10-28 13:16
+// @date   2026-10-31 02:06
 func (m AppModel) closeFileManager() AppModel {
 	for i := range m.fm.panels {
 		if m.fm.panels[i].fs != nil {
 			m.fm.panels[i].fs.Close()
 		}
 	}
-	// Zeilen: … | eine Verbindung | zwei Verbindungen
-	m.cursor = len(m.listRows()) - 1
-	if m.fm.single {
-		m.cursor--
+	// Cursor auf den (einzigen) Datei-Manager-Eintrag; er steht ganz
+	// unten, deshalb von hinten suchen
+	rows := m.listRows()
+	m.cursor = len(rows) - 1
+	for i := len(rows) - 1; i >= 0; i-- {
+		if rows[i].kind == rowFileManager {
+			m.cursor = i
+			break
+		}
 	}
 	m.successMsg = joinFMNotice(m.successMsg, m.fm.keyNoticeOK)
 	m.errorMsg = joinFMNotice(m.errorMsg, m.fm.keyNoticeErr)
@@ -210,12 +232,13 @@ func (m AppModel) closeFileManager() AppModel {
 // fmPickConnections liefert die wählbaren Verbindungen: zuerst "Lokaler
 // PC", dann die Verbindungen flach (ohne Gruppen), alphabetisch wie in der
 // Konfiguration. Bei der Wahl der rechten Seite fehlt die links gewählte
-// (keine Verbindung mit sich selbst). Davor steht in der Anzeige immer der
-// Platzhalter "(nicht ausgewählt)" (Zeile 0), Verbindung i steht also in
-// Zeile i+1.
+// (keine Verbindung mit sich selbst; war links der Lokale PC, fehlt er).
+// "(keine)" gehört NICHT dazu: In der Anzeige steht links Verbindung i in
+// Zeile i, rechts steht "(keine)" in Zeile 0 und Verbindung i in Zeile i+1
+// (siehe fmPickRows/fmPickRowConn).
 //
 // @return []Connection - Verbindungen
-// @date   2026-10-22 06:40
+// @date   2026-10-31 02:06
 func (m AppModel) fmPickConnections() []Connection {
 	all := append([]Connection{m.fmLocalConnection()}, m.connections...)
 	if m.fm.pickSide == 0 {
@@ -239,20 +262,148 @@ func (m AppModel) fmLocalConnection() Connection {
 	return Connection{ID: fmLocalConnID, Name: m.tr(txtFMLocalPC)}
 }
 
+// fmPickRows liefert die Zahl der Zeilen der Auswahl: links die
+// Verbindungen (inkl. Lokaler PC), rechts zusätzlich "(keine)" in Zeile 0.
+//
+// @param conns - Ergebnis von fmPickConnections
+// @return int - Zeilen
+// @date   2026-10-31 02:06
+func (m AppModel) fmPickRows(conns []Connection) int {
+	if m.fm.pickSide == 1 {
+		return len(conns) + 1
+	}
+	return len(conns)
+}
+
+// fmPickRowConn liefert die Verbindung einer Zeile der Auswahl.
+//
+// @param conns - Ergebnis von fmPickConnections
+// @param row - Zeile
+// @return Connection - Verbindung (leer bei "(keine)" bzw. ungültiger Zeile)
+// @return bool - true bei einer Verbindung, false bei "(keine)" bzw.
+// ungültiger Zeile
+// @date   2026-10-31 02:06
+func (m AppModel) fmPickRowConn(conns []Connection, row int) (Connection, bool) {
+	if m.fm.pickSide == 1 {
+		row--
+	}
+	if row < 0 || row >= len(conns) {
+		return Connection{}, false
+	}
+	return conns[row], true
+}
+
+// fmRememberKey liefert die Schreibweise einer Seite in
+// FileManagerLastLeft/-Right: die Verbindungs-ID, rememberLocalPC für den
+// Lokalen PC (intern eine ID mit NUL-Zeichen) bzw. rememberNone für
+// "(keine)" (leere ID).
+//
+// @param connID - Verbindungs-ID der Seite ("" = keine)
+// @return string - Wert für die Konfiguration
+// @date   2026-10-31 02:06
+func fmRememberKey(connID string) string {
+	switch connID {
+	case "":
+		return rememberNone
+	case fmLocalConnID:
+		return rememberLocalPC
+	}
+	return connID
+}
+
+// fmRememberedPickRow liefert die Startzeile der aktuellen Seite: die
+// gemerkte Wahl, wenn "Verbindung merken" eingeschaltet ist und der Wert
+// zu einer wählbaren Zeile gehört, sonst Zeile 0. Die Werte stammen aus der
+// Konfigurationsdatei und gelten als nicht vertrauenswürdig: Sie werden nur
+// mit den wählbaren Einträgen verglichen und nie angezeigt. Ungültig (also
+// Zeile 0) sind u. a. gelöschte Verbindungen, "none" links, rechts die links
+// gewählte Seite und die interne ID des Lokalen PCs.
+//
+// @param conns - Ergebnis von fmPickConnections
+// @return int - Zeile
+// @date   2026-10-31 02:06
+func (m AppModel) fmRememberedPickRow(conns []Connection) int {
+	cfg, err := LoadConfig(m.configPath)
+	if err != nil || !cfg.RememberSelection {
+		return 0
+	}
+	value := cfg.FileManagerLastLeft
+	if m.fm.pickSide == 1 {
+		value = cfg.FileManagerLastRight
+		if value == rememberNone {
+			return 0
+		}
+	}
+	if value == "" || value == fmLocalConnID || value == rememberNone {
+		return 0
+	}
+	for i, conn := range conns {
+		if fmRememberKey(conn.ID) != value {
+			continue
+		}
+		if m.fm.pickSide == 1 {
+			return i + 1
+		}
+		return i
+	}
+	return 0
+}
+
+// fmPickStart setzt Cursor und Scroll-Fenster der aktuellen Seite auf die
+// Startzeile (fmRememberedPickRow), damit ein gemerkter Eintrag weit unten
+// sofort sichtbar ist.
+//
+// @date   2026-10-31 02:06
+func (m *AppModel) fmPickStart() {
+	conns := m.fmPickConnections()
+	m.fm.pickCursor = m.fmRememberedPickRow(conns)
+	m.fm.pickOffset = scrollOffset(m.fmPickRows(conns), m.fm.pickCursor, 0, visibleRowLimit(m.termHeight))
+}
+
+// fmSavePickChoice speichert die abgeschlossene Wahl (beide Seiten), wenn
+// "Verbindung merken" eingeschaltet ist. Synchron im Update und über
+// updateConfig: Der Schalter wird unter der Sperre am aktuellen Stand
+// geprüft, und eine gleichzeitige Schlüsselvergabe (KeyPath) wird nicht mit
+// einem alten Stand überschrieben. Ist der Schalter aus oder sind die
+// Werte schon gespeichert, bleibt die Datei unberührt.
+//
+// @date   2026-10-31 02:06
+func (m AppModel) fmSavePickChoice() {
+	left := fmRememberKey(m.fm.panels[0].conn.ID)
+	right := fmRememberKey(m.fm.panels[1].conn.ID)
+	saved := false
+	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		if !cfg.RememberSelection {
+			return false
+		}
+		if cfg.FileManagerLastLeft == left && cfg.FileManagerLastRight == right {
+			return false
+		}
+		cfg.FileManagerLastLeft = left
+		cfg.FileManagerLastRight = right
+		saved = true
+		return true
+	})
+	if err == nil && saved {
+		m.configCache.Invalidate()
+	}
+}
+
 // handleFMPickKeys verarbeitet Tasten in der Verbindungsauswahl.
-// Der Cursor startet auf dem Platzhalter "(nicht ausgewählt)"; Enter darauf
-// bewirkt nichts - so landet man nicht mit Enter-Enter versehentlich im
-// Datei-Manager, sondern muss beide Verbindungen bewusst wählen. Mit nur
-// einer Verbindung startet der Aufbau gleich nach der ersten Wahl.
+// Es gibt keinen Platzhalter mehr (Build 87): Links startet der Cursor auf
+// "Lokaler PC" bzw. der gemerkten Seite, rechts auf "(keine)" bzw. der
+// gemerkten Seite. Enter links wechselt immer zur rechten Seite - auch mit
+// nur einer Verbindung. Enter rechts schließt die Wahl ab: speichern (bei
+// eingeschaltetem Merken), dann verbinden; "(keine)" ergibt den
+// Ein-Fenster-Modus. q/Esc brechen ab, ohne etwas zu speichern.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der letzten Wahl)
-// @date   2026-10-26 21:04
+// @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der rechten Wahl)
+// @date   2026-10-31 02:06
 func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	conns := m.fmPickConnections()
-	// Zeilen: Platzhalter + Verbindungen
-	rows := len(conns) + 1
+	rows := m.fmPickRows(conns)
 	limit := visibleRowLimit(m.termHeight)
 	switch msg.String() {
 	case "q", "esc":
@@ -270,21 +421,35 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "end":
 		m.fm.pickCursor = rows - 1
 	case "enter":
-		// Platzhalter oder ungültige Zeile: nichts tun
-		if m.fm.pickCursor < 1 || m.fm.pickCursor > len(conns) {
-			return m, nil
-		}
-		conn := conns[m.fm.pickCursor-1]
-		// Eigene Verbindung ohne Tunnel (Kopie - die Liste bleibt unverändert)
-		conn.Tunnels = nil
-		m.fm.panels[m.fm.pickSide] = filePanel{conn: conn}
-		if m.fm.pickSide == 0 && !m.fm.single {
-			// Rechte Seite: wieder auf dem Platzhalter beginnen
+		conn, isConn := m.fmPickRowConn(conns, m.fm.pickCursor)
+		if m.fm.pickSide == 0 {
+			// Ungültige Zeile: nichts tun
+			if !isConn {
+				return m, nil
+			}
+			// Eigene Verbindung ohne Tunnel (Kopie - die Liste bleibt unverändert)
+			conn.Tunnels = nil
+			m.fm.panels[0] = filePanel{conn: conn}
+			// Rechte Seite: gemerkte Seite bzw. "(keine)"
 			m.fm.pickSide = 1
-			m.fm.pickCursor = 0
-			m.fm.pickOffset = 0
+			m.fmPickStart()
 			return m, nil
 		}
+		if isConn {
+			conn.Tunnels = nil
+			m.fm.panels[1] = filePanel{conn: conn}
+		} else {
+			if m.fm.pickCursor != 0 {
+				// Ungültige Zeile (nicht "(keine)"): nichts tun
+				return m, nil
+			}
+			// "(keine)": Ein-Fenster-Modus, nur links wird verbunden
+			m.fm.panels[1] = filePanel{}
+			m.fm.single = true
+		}
+		// Wahl abgeschlossen: vor dem Verbindungsaufbau merken - ein
+		// Verbindungsfehler lässt die Wahl gespeichert
+		m.fmSavePickChoice()
 		return m.startFMConnect(0, "")
 	}
 	if m.fm.pickCursor >= rows {
@@ -438,14 +603,15 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 
 // fmLastPathKey liefert den Schlüssel einer Verbindung für die gemerkten
 // Pfade. Der Lokale PC hat intern eine ID mit NUL-Zeichen; in der
-// Konfiguration steht er lesbar als "local-pc".
+// Konfiguration steht er lesbar als rememberLocalPC ("local-pc", dieselbe
+// Schreibweise wie bei der gemerkten Wahl).
 //
 // @param connID - Verbindungs-ID
 // @return string - Schlüssel in AppConfig.FileManagerLastPaths
-// @date   2026-10-23 19:37
+// @date   2026-10-31 02:06
 func fmLastPathKey(connID string) string {
 	if connID == fmLocalConnID {
-		return "local-pc"
+		return rememberLocalPC
 	}
 	return connID
 }
@@ -759,25 +925,22 @@ func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 
 // --- Darstellung ---
 
-// renderFMPick rendert die Verbindungsauswahl (linke bzw. rechte Seite
-// oder die einzige Verbindung).
+// renderFMPick rendert die Verbindungsauswahl (linke bzw. rechte Seite).
+// Rechts steht "(keine)" in Zeile 0. Angezeigt werden nur Namen, Benutzer
+// und Host aus der Liste - nie ein gemerkter Wert aus der Konfiguration.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) renderFMPick(s *strings.Builder) {
 	title := m.tr(txtFMPickLeft)
-	switch {
-	case m.fm.single:
-		title = m.tr(txtFMPickSingle)
-	case m.fm.pickSide == 1:
+	if m.fm.pickSide == 1 {
 		title = m.tr(txtFMPickRight)
 	}
 	s.WriteString(titleStyle.Render("  " + title))
 	s.WriteString("\n\n")
 
 	conns := m.fmPickConnections()
-	// Zeile 0 = Platzhalter "(nicht ausgewählt)", Zeile i = conns[i-1]
-	rows := len(conns) + 1
+	rows := m.fmPickRows(conns)
 	limit := visibleRowLimit(m.termHeight)
 	offset := scrollOffset(rows, m.fm.pickCursor, m.fm.pickOffset, limit)
 	end := offset + limit
@@ -788,9 +951,8 @@ func (m AppModel) renderFMPick(s *strings.Builder) {
 		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
 	}
 	for i := offset; i < end; i++ {
-		line := "  " + m.tr(txtFMNotSelected)
-		if i > 0 {
-			conn := conns[i-1]
+		line := "  " + m.tr(txtFMNone)
+		if conn, ok := m.fmPickRowConn(conns, i); ok {
 			line = fmt.Sprintf("  %s  (%s@%s)", conn.Name, conn.User, conn.Host)
 			if conn.ID == fmLocalConnID {
 				line = "  " + conn.Name

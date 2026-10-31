@@ -5,7 +5,7 @@
 // Auto-Connect (Agent + alle verfügbaren Keys) ohne Nutzerabfrage.
 //
 // @author Kurt Ingwer
-// @date   2026-10-30 16:21
+// @date   2026-10-31 02:06
 package main
 
 import (
@@ -25,7 +25,7 @@ import (
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-30 16:21
+// @date   2026-10-31 02:06
 func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	rows := m.listRows()
 	limit := visibleRowLimit(m.termHeight)
@@ -126,16 +126,10 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 
 	case "enter":
-		// Datei-Manager mit einer Verbindung: immer nutzbar (Lokaler PC)
-		if row != nil && row.kind == rowFileManagerSingle {
-			return m.openFileManager(true)
-		}
-		// Datei-Manager-Eintrag ganz unten (erst ab einer Verbindung nutzbar)
+		// Datei-Manager-Eintrag ganz unten (gibt es erst ab einer Verbindung):
+		// öffnet die Auswahl links; ein oder zwei Fenster entscheidet rechts
 		if row != nil && row.kind == rowFileManager {
-			if !m.fileManagerEnabled() {
-				break
-			}
-			return m.openFileManager(false)
+			return m.openFileManager()
 		}
 		// Gruppe: auf-/zuklappen
 		if row != nil && row.kind == rowGroup {
@@ -148,13 +142,24 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Verbindung herstellen (Auto-Connect) oder Statusansicht
 		if conn, ok := m.selectedConnection(); ok {
+			// Wahl merken (nur bei eingeschaltetem Schalter, auch wenn schon
+			// verbunden). Ein Speicherfehler verhindert das Verbinden nicht.
+			saveErr := m.rememberLastConnection(conn.ID)
 			if m.sshManager.IsConnected(conn.ID) {
 				// Bereits verbunden: Statusansicht anzeigen
 				m.state = ViewStatus
 				m.activeID = conn.ID
+				if saveErr != nil {
+					m.errorMsg = saveErr.Error()
+				}
 				return m, nil
 			}
-			return m.startAutoConnect(conn)
+			updated, cmd := m.startAutoConnect(conn)
+			if next, isApp := updated.(AppModel); isApp && saveErr != nil {
+				next.errorMsg = saveErr.Error()
+				return next, cmd
+			}
+			return updated, cmd
 		}
 
 	case "x":
@@ -167,6 +172,10 @@ func (m AppModel) handleListKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "u":
 		// Auto-Update ein-/ausschalten (Menüzeile ganz unten)
 		return m.toggleAutoUpdate()
+
+	case "v":
+		// Schalter "Verbindung merken" umschalten (sofort gespeichert)
+		return m.toggleRememberSelection()
 
 	case "E":
 		// Verbindungsliste exportieren (alle oder Auswahl, ohne Schlüssel)
@@ -229,31 +238,82 @@ func (m AppModel) startAutoConnect(conn Connection) (tea.Model, tea.Cmd) {
 }
 
 // listRows liefert die aktuell sichtbaren Zeilen der Verbindungsliste.
-// Ganz unten stehen immer die Datei-Manager-Einträge: "eine Verbindung"
-// und darunter "zwei Verbindungen" (ohne Verbindung ausgegraut, siehe
-// fileManagerEnabled).
+// Ganz unten steht genau ein Datei-Manager-Eintrag - aber nur, wenn es
+// mindestens eine Verbindung gibt (Build 87). Ohne Verbindung ist die
+// Liste leer.
 //
 // @return []listRow - Zeilen (Gruppen, Mitglieder, Einzelverbindungen,
 // Datei-Manager)
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) listRows() []listRow {
 	rows := buildListRows(m.connections, m.expandedGroups)
-	return append(rows,
-		listRow{kind: rowFileManagerSingle, connIndex: -1},
-		listRow{kind: rowFileManager, connIndex: -1})
+	if len(m.connections) == 0 {
+		return rows
+	}
+	return append(rows, listRow{kind: rowFileManager, connIndex: -1})
 }
 
-// fmDisabledFg - Schriftfarbe des ausgegrauten Datei-Manager-Eintrags
-const fmDisabledFg = "244"
-
-// fileManagerEnabled meldet, ob der Datei-Manager nutzbar ist: Er braucht
-// zwei verschiedene Seiten - seit Build 70 genügt dafür eine Verbindung,
-// die andere Seite kann "Lokaler PC" sein.
+// toggleRememberSelection schaltet "Verbindung merken" um und speichert den
+// Schalter sofort. Beim Ausschalten werden die gemerkte Verbindung und die
+// gemerkte Wahl links/rechts im Datei-Manager gelöscht, damit beim
+// Wiedereinschalten kein alter Stand zurückkommt. Der Cursor bleibt stehen.
+// updateConfig lädt die Datei frisch und ändert nur diese Felder; parallel
+// gespeicherte Schlüsselpfade bleiben erhalten.
 //
-// @return bool - true ab einer Verbindung
-// @date   2026-10-22 06:40
-func (m AppModel) fileManagerEnabled() bool {
-	return len(m.connections) >= 1
+// @return tea.Model - Modell mit neuem Schalterstand
+// @return tea.Cmd - kein Folgekommando
+// @date   2026-10-31 02:06
+func (m AppModel) toggleRememberSelection() (tea.Model, tea.Cmd) {
+	on := !m.rememberSelection
+	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		cfg.RememberSelection = on
+		if !on {
+			cfg.LastConnectionID = ""
+			cfg.FileManagerLastLeft = ""
+			cfg.FileManagerLastRight = ""
+		}
+		return true
+	})
+	if err != nil {
+		m.errorMsg = err.Error()
+		return m, nil
+	}
+	m.configCache.Invalidate()
+	m.rememberSelection = on
+	m.errorMsg = ""
+	return m, nil
+}
+
+// rememberLastConnection speichert die per Enter gewählte Verbindung als
+// Vorauswahl für den nächsten Start - nur bei eingeschaltetem Schalter und
+// nur, wenn sich der gespeicherte Wert ändert (sonst wird die Datei nicht
+// neu geschrieben). Läuft synchron im Update; Cursorbewegungen rufen diese
+// Funktion nie auf. Verglichen wird mit der Datei, nicht mit einem Stand im
+// Modell: So greift auch eine Wahl nach dem Zurücksetzen mit r.
+//
+// @param id - ID der gewählten Verbindung
+// @return error - Fehler beim Lesen oder Schreiben der Konfiguration
+// @date   2026-10-31 02:06
+func (m *AppModel) rememberLastConnection(id string) error {
+	if !m.rememberSelection {
+		return nil
+	}
+	changed := false
+	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
+		if cfg.LastConnectionID == id {
+			return false
+		}
+		cfg.LastConnectionID = id
+		changed = true
+		return true
+	})
+	if err != nil {
+		return err
+	}
+	if changed {
+		m.configCache.Invalidate()
+	}
+	return nil
 }
 
 // selectedConnection liefert die Verbindung unter dem Cursor.
@@ -329,7 +389,7 @@ func (m *AppModel) selectConnectionByID(id string) {
 // Hinweise "↑ +N" / "↓ +N" nennen die Zahl der verborgenen Zeilen.
 //
 // @param s - String-Builder für die Ausgabe
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) renderList(s *strings.Builder) {
 	// Titel mit Version und Build, z.B. "ssh-easy v0.46 (Build 46)"
 	s.WriteString(titleStyle.Render("  " + formatAppTitle(m.buildNumber)))
@@ -351,8 +411,8 @@ func (m AppModel) renderList(s *strings.Builder) {
 		s.WriteString(helpStyle.UnsetMarginTop().Render(fmt.Sprintf("  ↑ +%d", offset)) + "\n")
 	}
 	for i := offset; i < end; i++ {
-		// Datei-Manager-Einträge mit Leerzeile von den Verbindungen absetzen
-		if rows[i].kind == rowFileManagerSingle {
+		// Datei-Manager-Eintrag mit Leerzeile von den Verbindungen absetzen
+		if rows[i].kind == rowFileManager {
 			s.WriteString("\n")
 		}
 		s.WriteString(m.renderListRow(rows[i], i == m.cursor))
@@ -386,7 +446,7 @@ func (m AppModel) renderList(s *strings.Builder) {
 //
 // @param s - String-Builder für die Ausgabe
 // @param hasGroups - true wenn die Liste Gruppen enthält (Gruppenhilfe)
-// @date   2026-10-27 17:20
+// @date   2026-10-31 02:06
 func (m AppModel) renderListMenu(s *strings.Builder, hasGroups bool) {
 	if !m.showMenu {
 		if m.autoUpdate && m.updateStatus != "" {
@@ -396,11 +456,18 @@ func (m AppModel) renderListMenu(s *strings.Builder, hasGroups bool) {
 		return
 	}
 	s.WriteString(helpStyle.Render("\n" + m.lang.HelpList))
-	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtHelpMenuMore)))
+	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtHelpMenuExtra)))
 	if hasGroups {
 		s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtGroupHelp)))
 	}
 	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(m.tr(txtHelpExport)+m.tr(txtHelpImport)))
+
+	// Schalter "Verbindung merken" direkt vor dem Auto-Update-Schalter
+	remember := m.tr(txtRememberOff)
+	if m.rememberSelection {
+		remember = m.tr(txtRememberOn)
+	}
+	s.WriteString("\n" + helpStyle.UnsetMarginTop().Render(remember))
 
 	// Auto-Update-Schalter ganz unten im Menü
 	s.WriteString("\n" + m.renderAutoUpdateLine())
@@ -417,7 +484,7 @@ func (m AppModel) renderListMenu(s *strings.Builder, hasGroups bool) {
 // @param row - Darzustellende Zeile
 // @param selected - true wenn der Cursor auf der Zeile steht
 // @return string - Gerenderte Zeile
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) renderListRow(row listRow, selected bool) string {
 	base := normalStyle
 	if selected {
@@ -425,17 +492,10 @@ func (m AppModel) renderListRow(row listRow, selected bool) string {
 	}
 	dotStyle := base.Foreground(lipgloss.Color("46")).Bold(true)
 
-	// Datei-Manager-Einträge: keine Verbindung, kein Statuspunkt; "zwei
-	// Verbindungen" ohne Verbindung ausgegraut mit Hinweis
-	if row.kind == rowFileManagerSingle {
-		return base.Render("    ▸ " + m.tr(txtFMListEntrySingle))
-	}
+	// Datei-Manager-Eintrag: keine Verbindung, kein Statuspunkt, nie
+	// ausgegraut (es gibt ihn nur ab einer Verbindung)
 	if row.kind == rowFileManager {
-		if m.fileManagerEnabled() {
-			return base.Render("    ▸ " + m.tr(txtFMListEntry))
-		}
-		hint := m.tr(txtFMNeedConnection)
-		return base.Bold(false).Foreground(lipgloss.Color(fmDisabledFg)).Render("    ▸ " + m.tr(txtFMListEntry) + "  – " + hint)
+		return base.Render("    ▸ " + m.tr(txtFMEntry))
 	}
 
 	// Statuspunkt: Verbindung verbunden bzw. mindestens ein Gruppenmitglied
@@ -596,7 +656,7 @@ func (m AppModel) renderDeleteConfirm(s *strings.Builder) {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folge-Kommando
-// @date   2026-10-26 21:04
+// @date   2026-10-31 02:06
 func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y", "j":
@@ -614,10 +674,10 @@ func (m AppModel) handleDeleteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.configCache.Invalidate()
 		m.reloadConfig()
 		m.clampListCursor()
-		// Wurde die letzte Verbindung gelöscht, nicht auf einem
+		// Wurde die letzte Verbindung der Liste gelöscht, nicht auf dem
 		// Datei-Manager-Eintrag stehen bleiben, sondern auf der Verbindung davor
 		rows := m.listRows()
-		for m.cursor > 0 && m.cursor < len(rows) && isFileManagerRow(rows[m.cursor].kind) {
+		for m.cursor > 0 && m.cursor < len(rows) && rows[m.cursor].kind == rowFileManager {
 			m.cursor--
 		}
 		m.clampListCursor()

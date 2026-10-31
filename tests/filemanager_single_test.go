@@ -1,5 +1,10 @@
 // Paket main - Tests: Datei-Manager mit einer Verbindung (Build 82)
 //
+// Build 87: Es gibt nur noch EINEN Datei-Manager-Eintrag. Der Ein-Fenster-
+// Modus entsteht, wenn rechts "(keine)" gewählt wird (pickSingle). Die
+// Listenzeilen und die Auswahl stehen in remember_selection_test.go und
+// filemanager_pick_test.go.
+//
 // Nutzerwunsch 2026-10-26: Option "Datei-Manager (eine Verbindung)", die
 // nur lesen und bearbeiten kann; Kopieren und Verschieben entfallen ohne
 // zweite Verbindung. Es wird nur EINE Verbindung gewählt und aufgebaut,
@@ -16,18 +21,8 @@ import (
 	"testing"
 )
 
-// openSinglePick öffnet aus der Liste die Auswahl des Datei-Managers mit
-// einer Verbindung (vorletzte Zeile).
-func openSinglePick(t *testing.T, m AppModel) AppModel {
-	t.Helper()
-	m = press(t, m, "end", "up", "enter")
-	if m.state != ViewFMPick || !m.fm.single {
-		t.Fatalf("state = %v, single = %v, erwartet Auswahl mit einer Verbindung", m.state, m.fm.single)
-	}
-	return m
-}
-
-// openSingleManager öffnet den Datei-Manager mit einer Verbindung auf "Server".
+// openSingleManager öffnet den Datei-Manager mit einer Verbindung auf "Server":
+// links "Server", rechts "(keine)" (seit Build 87 der einzige Weg dorthin).
 func openSingleManager(t *testing.T) (AppModel, *fmConnectRecorder) {
 	t.Helper()
 	rec := newConnectRecorder()
@@ -40,84 +35,12 @@ func openSingleManagerWith(t *testing.T, connect fmConnectFunc) AppModel {
 	m := newListTestModel(t, "Server", "Zweit")
 	m.fmConnect = connect
 	m.termWidth, m.termHeight = 100, 30
-	m = openSinglePick(t, m)
-	m = pickSide(t, m, "Server")
-	if m.state != ViewFileManager {
+	m = openPick(t, m)
+	m = pickSingle(t, m, "Server")
+	if m.state != ViewFileManager || !m.fm.single {
 		t.Fatalf("state = %v, erwartet ViewFileManager (Fehler: %q)", m.state, m.fm.message)
 	}
 	return m
-}
-
-// TestFileManagerSingleRowsAtEnd - ganz unten stehen "Datei-Manager (eine
-// Verbindung)" und darunter "Datei-Manager (zwei Verbindungen)", beide genau
-// einmal, mit einer Leerzeile vor dem ersten und keiner dazwischen.
-func TestFileManagerSingleRowsAtEnd(t *testing.T) {
-	m := newListTestModel(t, "Abc:1", "Server")
-	rows := m.listRows()
-	if n := len(rows); n < 2 || rows[n-2].kind != rowFileManagerSingle || rows[n-1].kind != rowFileManager {
-		t.Fatalf("letzte Zeilen %v, erwartet eine Verbindung, dann zwei", rows)
-	}
-	for _, row := range rows[:len(rows)-2] {
-		if row.kind == rowFileManager || row.kind == rowFileManagerSingle {
-			t.Error("Datei-Manager-Zeile kommt mehrfach vor")
-		}
-	}
-	lines := strings.Split(stripANSI(renderListText(m)), "\n")
-	single := -1
-	for i, line := range lines {
-		if strings.Contains(line, m.tr(txtFMListEntrySingle)) {
-			single = i
-		}
-	}
-	if single < 2 || strings.TrimSpace(lines[single-1]) != "" || !strings.Contains(lines[single-2], "Server") {
-		t.Fatalf("Leerzeile vor %q fehlt:\n%s", m.tr(txtFMListEntrySingle), strings.Join(lines, "\n"))
-	}
-	if single+1 >= len(lines) || !strings.Contains(lines[single+1], m.tr(txtFMListEntry)) {
-		t.Errorf("zwei-Verbindungen-Eintrag folgt nicht direkt:\n%s", strings.Join(lines, "\n"))
-	}
-}
-
-// TestFileManagerSingleUsableWithoutConnection - auch ohne gespeicherte
-// Verbindung nutzbar (Lokaler PC), nicht ausgegraut; e/d/x wirken nicht.
-func TestFileManagerSingleUsableWithoutConnection(t *testing.T) {
-	withColorProfile(t)
-	m := newListTestModel(t)
-	line := selectedLine(t, renderListText(m), m.tr(txtFMListEntrySingle))
-	if strings.Contains(line, "38;5;"+fmDisabledFg) || strings.Contains(stripANSI(line), m.tr(txtFMNeedConnection)) {
-		t.Errorf("ausgegraut: %q", line)
-	}
-	m = press(t, m, "end", "up")
-	if _, ok := m.selectedConnection(); ok {
-		t.Fatal("Zeile darf keine Verbindung liefern")
-	}
-	for _, key := range []string{"e", "d", "x"} {
-		if got := press(t, m, key); got.state != ViewList {
-			t.Errorf("Taste %q wechselt nach %v", key, got.state)
-		}
-	}
-	m = openSinglePick(t, m)
-	if got := strings.Join(pickNames(m), ","); got != m.tr(txtFMLocalPC) {
-		t.Errorf("Auswahl = %s, erwartet nur den lokalen PC", got)
-	}
-}
-
-// TestFileManagerSinglePickTitle - eigener Titel, Platzhalter zuerst, Enter
-// darauf bewirkt nichts (keine Wahl per Enter-Enter).
-func TestFileManagerSinglePickTitle(t *testing.T) {
-	m := newListTestModel(t, "Server")
-	m.fmConnect = newConnectRecorder().connect
-	m = openSinglePick(t, m)
-	text := stripANSI(m.View())
-	if !strings.Contains(text, m.tr(txtFMPickSingle)) || strings.Contains(text, m.tr(txtFMPickLeft)) {
-		t.Errorf("Titel falsch:\n%s", text)
-	}
-	if m.fm.pickCursor != 0 {
-		t.Errorf("Cursor %d, erwartet Platzhalter", m.fm.pickCursor)
-	}
-	m = press(t, m, "enter")
-	if m.state != ViewFMPick {
-		t.Errorf("Enter auf Platzhalter: state %v", m.state)
-	}
 }
 
 // TestFileManagerSingleConnectsOnce - nur die gewählte Verbindung wird
@@ -258,18 +181,19 @@ func TestFileManagerSingleViewEditMkdirDelete(t *testing.T) {
 	}
 }
 
-// TestFileManagerSingleCloseReturnsToSingleRow - q, F10 und Abbruch in der
-// Auswahl führen zurück auf den Eintrag "eine Verbindung" und schließen
-// die Verbindung; danach öffnet "zwei Verbindungen" wieder beide Seiten.
-func TestFileManagerSingleCloseReturnsToSingleRow(t *testing.T) {
+// TestFileManagerSingleCloseReturnsToRow - q, F10 und Abbruch in der
+// Auswahl führen zurück auf den (einzigen) Datei-Manager-Eintrag und
+// schließen die Verbindung; danach öffnet Enter wieder die Auswahl der
+// linken Seite, ohne Ein-Fenster-Modus.
+func TestFileManagerSingleCloseReturnsToRow(t *testing.T) {
 	for _, key := range []string{"q", "f10"} {
 		m, rec := openSingleManager(t)
 		m = pressRun(t, m, key)
 		if m.state != ViewList {
 			t.Fatalf("%s: state %v", key, m.state)
 		}
-		if rows := m.listRows(); rows[m.cursor].kind != rowFileManagerSingle {
-			t.Errorf("%s: Cursor nicht auf dem Eintrag mit einer Verbindung", key)
+		if rows := m.listRows(); rows[m.cursor].kind != rowFileManager {
+			t.Errorf("%s: Cursor nicht auf dem Datei-Manager-Eintrag", key)
 		}
 		if !rec.created["id-0"].closed {
 			t.Errorf("%s: Verbindung nicht geschlossen", key)
@@ -277,16 +201,19 @@ func TestFileManagerSingleCloseReturnsToSingleRow(t *testing.T) {
 		if m.fm.single {
 			t.Errorf("%s: Modus bleibt nach dem Schließen", key)
 		}
-		m = press(t, m, "down", "enter")
-		if m.state != ViewFMPick || m.fm.single {
-			t.Errorf("%s: danach zwei Verbindungen: state %v, single %v", key, m.state, m.fm.single)
+		m = press(t, m, "enter")
+		if m.state != ViewFMPick || m.fm.single || m.fm.pickSide != 0 {
+			t.Errorf("%s: danach: state %v, single %v, Seite %d", key, m.state, m.fm.single, m.fm.pickSide)
 		}
 	}
-	m := newListTestModel(t, "Server")
-	m = openSinglePick(t, m)
-	m = press(t, m, "esc")
-	if rows := m.listRows(); m.state != ViewList || rows[m.cursor].kind != rowFileManagerSingle {
-		t.Errorf("Esc in der Auswahl: state %v, Cursor %d", m.state, m.cursor)
+	// Esc in der Auswahl (links und rechts)
+	for _, keys := range [][]string{{"esc"}, {"enter", "esc"}} {
+		m := newListTestModel(t, "Server")
+		m = openPick(t, m)
+		m = press(t, m, keys...)
+		if rows := m.listRows(); m.state != ViewList || rows[m.cursor].kind != rowFileManager {
+			t.Errorf("Tasten %v in der Auswahl: state %v, Cursor %d", keys, m.state, m.cursor)
+		}
 	}
 }
 
@@ -306,8 +233,8 @@ func TestFileManagerSingleSmallScreens(t *testing.T) {
 	}
 }
 
-// TestFileManagerTwoConnectionsUnchanged - der bisherige Eintrag öffnet
-// weiter die Auswahl beider Seiten mit Kopieren.
+// TestFileManagerTwoConnectionsUnchanged - mit einer Verbindung rechts
+// (statt "(keine)") bleibt es beim Zwei-Fenster-Modus mit Kopieren.
 func TestFileManagerTwoConnectionsUnchanged(t *testing.T) {
 	m, _ := openFileManagerFor(t)
 	if m.fm.single || len(m.fmMenus()) != 4 || m.fm.panels[1].fs == nil {

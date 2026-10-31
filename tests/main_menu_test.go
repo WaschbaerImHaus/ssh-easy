@@ -7,7 +7,8 @@
 //     hochzählendem "#2"), Host, Port, Benutzer und Tunnel - keine Keys
 //     (Host seit Build 85).
 //   - "r" setzt Fenster- und Schriftgröße auf den Stand beim Programmstart
-//     (Systemstandard) zurück.
+//     (Systemstandard) zurück; seit Build 87 auch die gemerkte Auswahl
+//     (Tests dazu in remember_selection_test.go).
 //   - Fenster- und Schriftgröße werden bei der Änderung gespeichert, auch
 //     während einer SSH-Sitzung - nicht erst beim Beenden.
 //
@@ -37,7 +38,7 @@ func TestListMenuHiddenByDefault(t *testing.T) {
 	if strings.Contains(text, "Auto-Update") {
 		t.Error("Auto-Update-Schalter gehört ins Menü und ist ohne m ausgeblendet")
 	}
-	if strings.Contains(text, strings.TrimSpace(m.tr(txtHelpMenuMore))) {
+	if strings.Contains(text, strings.TrimSpace(m.tr(txtHelpMenuExtra))) {
 		t.Error("Zusatzzeile des Menüs darf ohne m nicht erscheinen")
 	}
 	lines := strings.Split(strings.TrimRight(text, "\n "), "\n")
@@ -57,7 +58,7 @@ func TestListMenuToggle(t *testing.T) {
 		t.Fatal("m blendet das Menü nicht ein")
 	}
 	text := stripANSI(renderListText(m))
-	for _, want := range []string{m.lang.HelpList, m.tr(txtHelpMenuMore), m.tr(txtHelpExport)} {
+	for _, want := range []string{m.lang.HelpList, m.tr(txtHelpMenuExtra), m.tr(txtHelpExport)} {
 		if !strings.Contains(text, strings.TrimSpace(want)) {
 			t.Errorf("Menü enthält %q nicht", strings.TrimSpace(want))
 		}
@@ -267,7 +268,7 @@ func TestCopySavedAsNewConnection(t *testing.T) {
 //
 // @date 2026-10-27 17:00
 func TestCopyIgnoredOnNonConnectionRows(t *testing.T) {
-	// Keine Verbindungen: Cursor steht auf dem Datei-Manager-Eintrag
+	// Keine Verbindungen: die Liste hat gar keine Zeile (auch keinen Datei-Manager)
 	m := press(t, newListTestModel(t), "c")
 	if m.state != ViewList {
 		t.Errorf("c ohne Verbindungen: Ansicht %v, erwartet ViewList", m.state)
@@ -350,19 +351,22 @@ func TestResetConsoleSize(t *testing.T) {
 	if len(cfg.Connections) != 1 {
 		t.Errorf("Verbindungen verloren: %d", len(cfg.Connections))
 	}
-	if m.successMsg != m.tr(txtConsoleReset) || m.errorMsg != "" {
+	if m.successMsg != m.tr(txtConsoleResetAll) || m.errorMsg != "" {
 		t.Errorf("Meldung = %q / Fehler %q", m.successMsg, m.errorMsg)
 	}
 }
 
 // TestResetConsoleSizeUnsupported prüft r ohne steuerbare Konsole (Linux,
-// Windows Terminal): Hinweis statt Wirkung, Konfiguration unverändert.
+// Windows Terminal): Seit Build 87 bleibt die Schriftgröße in der
+// Konfiguration unverändert, die gemerkte Auswahl wird aber trotzdem
+// gelöscht. Die Meldung ist ein Erfolg (txtSelectionResetOnly), kein Fehler.
 //
-// @date 2026-10-27 17:00
+// @date 2026-10-30 17:00
 func TestResetConsoleSizeUnsupported(t *testing.T) {
 	m := newListTestModel(t, "A")
 	cfg, _ := LoadConfig(m.configPath)
 	cfg.FontSize = 20
+	cfg.LastConnectionID = "id-0"
 	_ = SaveConfig(m.configPath, cfg)
 	fonts := stubConsoleFont(t, 0)
 	windows := stubSetWindow(t)
@@ -373,11 +377,15 @@ func TestResetConsoleSizeUnsupported(t *testing.T) {
 	if len(*fonts) != 0 || len(*windows) != 0 {
 		t.Errorf("ohne Steuerung nichts setzen: Schrift %v, Fenster %v", *fonts, *windows)
 	}
-	if m.errorMsg != m.tr(txtConsoleResetUnsupported) {
-		t.Errorf("Fehler = %q, erwartet Hinweis %q", m.errorMsg, m.tr(txtConsoleResetUnsupported))
+	if m.errorMsg != "" || m.successMsg != m.tr(txtSelectionResetOnly) {
+		t.Errorf("Meldung = %q / Fehler %q, erwartet Erfolg %q ohne Fehler", m.successMsg, m.errorMsg, m.tr(txtSelectionResetOnly))
 	}
-	if cfg, _ = LoadConfig(m.configPath); cfg.FontSize != 20 {
+	cfg, _ = LoadConfig(m.configPath)
+	if cfg.FontSize != 20 {
 		t.Errorf("Konfiguration verändert: Schrift %d", cfg.FontSize)
+	}
+	if cfg.LastConnectionID != "" {
+		t.Errorf("gemerkte Auswahl nicht gelöscht: %q", cfg.LastConnectionID)
 	}
 }
 
@@ -400,7 +408,7 @@ func TestResetConsoleSizeFontOnly(t *testing.T) {
 	if len(*windows) != 0 {
 		t.Errorf("unbekannte Fenstergröße darf nicht gesetzt werden: %v", *windows)
 	}
-	if m.successMsg != m.tr(txtConsoleReset) {
+	if m.successMsg != m.tr(txtConsoleResetAll) {
 		t.Errorf("Meldung = %q", m.successMsg)
 	}
 }

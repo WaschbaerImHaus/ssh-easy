@@ -80,9 +80,22 @@ type Connection struct {
 	UpdatedAt string `json:"updated_at"`
 }
 
+// Gemerkte Datei-Manager-Auswahl: Sonderwerte neben den Verbindungs-IDs.
+const (
+	// rememberLocalPC steht in FileManagerLastLeft/-Right für "Lokaler PC".
+	//
+	// @date   2026-10-30 21:08
+	rememberLocalPC = "local-pc"
+	// rememberNone steht in FileManagerLastRight für "(keine)", also den
+	// Ein-Fenster-Modus des Datei-Managers.
+	//
+	// @date   2026-10-30 21:08
+	rememberNone = "none"
+)
+
 // AppConfig ist die gesamte Konfigurationsdatei mit allen Verbindungen
 //
-// @date   2026-10-16 10:00
+// @date   2026-10-30 21:08
 type AppConfig struct {
 	// Schema-Version für zukünftige Migrationen
 	Version int `json:"version"`
@@ -109,6 +122,20 @@ type AppConfig struct {
 	// (Schlüssel = Verbindungs-ID, Lokaler PC = "local-pc"). Gehört bewusst
 	// nicht zur Verbindung, damit es nicht im Export landet.
 	FileManagerLastPaths map[string]string `json:"file_manager_last_paths,omitempty"`
+	// Verbindung merken (Standard: aus). Nur wenn an, werden die zuletzt
+	// gewählte Verbindung und die Datei-Manager-Auswahl gespeichert und beim
+	// nächsten Start vorausgewählt. Gehört zu diesem Rechner: nicht im Export.
+	RememberSelection bool `json:"remember_selection,omitempty"`
+	// Zuletzt gewählte Verbindung in der Liste (Verbindungs-ID; leer = keine).
+	// Wird nur bei RememberSelection gepflegt. Nicht im Export.
+	LastConnectionID string `json:"last_connection_id,omitempty"`
+	// Datei-Manager: zuletzt gewählte linke Seite (Verbindungs-ID oder
+	// rememberLocalPC; leer = keine). Nur bei RememberSelection. Nicht im Export.
+	FileManagerLastLeft string `json:"file_manager_last_left,omitempty"`
+	// Datei-Manager: zuletzt gewählte rechte Seite (Verbindungs-ID,
+	// rememberLocalPC oder rememberNone für den Ein-Fenster-Modus; leer = keine).
+	// Nur bei RememberSelection. Nicht im Export.
+	FileManagerLastRight string `json:"file_manager_last_right,omitempty"`
 	// Liste aller gespeicherten Verbindungen
 	Connections []Connection `json:"connections"`
 }

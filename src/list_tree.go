@@ -10,7 +10,7 @@
 // und dadurch einfach testbar.
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 19:45
+// @date   2026-10-31 02:06
 package main
 
 import "strings"
@@ -27,10 +27,13 @@ const minVisibleListRows = 3
 
 // listChromeLines - Zeilen, die außer der Liste selbst auf dem Bildschirm
 // stehen (Titel, Bildlauf-Hinweise, Meldungen, Hilfe, Export-Hinweis,
-// Auto-Update-Zeile, Leerzeile vor dem Datei-Manager-Eintrag). Gerechnet
-// mit eingeblendetem Hauptmenü inkl. Zusatzzeile c/r/m (Build 84);
-// ausgeblendet braucht die Liste weniger.
-const listChromeLines = 14
+// Schalter "Verbindung merken", Auto-Update-Zeile, Leerzeile vor dem
+// Datei-Manager-Eintrag). Gerechnet mit eingeblendetem Hauptmenü inkl.
+// Zusatzzeile c/r/m (Build 84) und Merken-Zeile (Build 87); ausgeblendet
+// braucht die Liste weniger.
+//
+// @date   2026-10-31 02:06
+const listChromeLines = 15
 
 // listRowKind unterscheidet die Zeilentypen der Liste.
 type listRowKind int
@@ -42,23 +45,11 @@ const (
 	rowGroup
 	// rowChild - Verbindung innerhalb einer aufgeklappten Gruppe
 	rowChild
-	// rowFileManager - Eintrag "Datei-Manager (zwei Verbindungen)" ganz
-	// unten (keine Verbindung)
+	// rowFileManager - einziger Eintrag "Datei-Manager" ganz unten (keine
+	// Verbindung; nur ab einer Verbindung vorhanden, Build 87). Ein oder
+	// zwei Fenster entscheidet erst die rechte Auswahl ("(keine)").
 	rowFileManager
-	// rowFileManagerSingle - Eintrag "Datei-Manager (eine Verbindung)"
-	// direkt darüber (Build 82: nur ansehen und bearbeiten)
-	rowFileManagerSingle
 )
-
-// isFileManagerRow meldet, ob ein Zeilentyp einer der beiden
-// Datei-Manager-Einträge ist.
-//
-// @param kind - Zeilentyp
-// @return bool - true bei rowFileManager und rowFileManagerSingle
-// @date   2026-10-26 21:04
-func isFileManagerRow(kind listRowKind) bool {
-	return kind == rowFileManager || kind == rowFileManagerSingle
-}
 
 // listRow ist eine sichtbare Zeile der Verbindungsliste.
 type listRow struct {
@@ -68,8 +59,8 @@ type listRow struct {
 	label string
 	// Gruppenschlüssel in Kleinbuchstaben (nur rowGroup/rowChild)
 	groupKey string
-	// Index in der Verbindungsliste (-1 bei rowGroup und den
-	// Datei-Manager-Einträgen)
+	// Index in der Verbindungsliste (-1 bei rowGroup und dem
+	// Datei-Manager-Eintrag)
 	connIndex int
 	// Indizes aller Verbindungen der Gruppe (nur rowGroup)
 	children []int

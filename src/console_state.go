@@ -1,5 +1,5 @@
 // Paket main - Fenster- und Schriftgröße der Konsole: sofort speichern und
-// zurücksetzen (Taste r im Hauptmenü)
+// zurücksetzen (Taste r in der Verbindungsliste)
 //
 // Bis Build 83 wurden Fenster- und Schriftgröße teils erst beim Beenden
 // gespeichert. Wurde das Fenster während einer SSH-Sitzung per X
@@ -12,8 +12,12 @@
 // und Fenster waren, BEVOR die gespeicherten Werte angewendet wurden - das
 // ist der Systemstandard der Konsole (captureConsoleDefaults).
 //
+// Seit Build 87 löscht r außerdem immer die gemerkte Auswahl (zuletzt
+// gewählte Verbindung, linke und rechte Seite des Datei-Managers) - auch
+// dann, wenn sich Schrift und Fenster nicht steuern lassen.
+//
 // @author Kurt Ingwer
-// @date   2026-10-27 18:10
+// @date   2026-10-31 02:05
 package main
 
 import (
@@ -180,34 +184,58 @@ func (s *consoleStateSaver) tick(now time.Time) {
 	s.save()
 }
 
-// resetConsoleSize setzt Schrift- und Fenstergröße auf den Startzustand
-// zurück und löscht die gespeicherten Werte (Taste r im Hauptmenü).
+// clearRememberedSelection löscht die drei gemerkten Auswahlwerte (Build 87):
+// zuletzt gewählte Verbindung und die beiden Seiten des Datei-Managers.
+// Der Schalter RememberSelection und die gemerkten Verzeichnisse
+// (FileManagerLastPaths, Build 77) bleiben unberührt.
+//
+// @param cfg - zu ändernde Konfiguration
+// @return bool - true wenn sich etwas geändert hat
+// @date   2026-10-31 02:05
+func clearRememberedSelection(cfg *AppConfig) bool {
+	changed := cfg.LastConnectionID != "" || cfg.FileManagerLastLeft != "" || cfg.FileManagerLastRight != ""
+	cfg.LastConnectionID, cfg.FileManagerLastLeft, cfg.FileManagerLastRight = "", "", ""
+	return changed
+}
+
+// resetConsoleSize setzt zurück (Taste r in der Verbindungsliste):
+//   - IMMER die gemerkte Auswahl (clearRememberedSelection) - auch ohne
+//     steuerbare Konsole und bei ausgeschaltetem Schalter
+//   - bei steuerbarer Konsole zusätzlich Schrift- und Fenstergröße auf den
+//     Startzustand; die gespeicherten Werte werden 0 (Systemstandard)
+//
+// Ohne steuerbare Konsole (Linux, Windows Terminal) bleiben Schrift- und
+// Fensterwerte in der Konfiguration stehen. Alles wird in EINEM
+// updateConfig-Aufruf gespeichert. Cursor und Verbindungen im laufenden
+// Programm bleiben unverändert - erst der nächste Start beginnt oben.
 // Reihenfolge wie beim Start: erst Schrift, dann Fenster - die mögliche
 // Fenstergröße hängt von der Schrift ab.
 //
 // @return tea.Model - Modell mit Meldung
 // @return tea.Cmd - Immer nil
-// @date   2026-10-27 17:10
+// @date   2026-10-31 02:05
 func (m AppModel) resetConsoleSize() (tea.Model, tea.Cmd) {
 	d := m.consoleDefaults
-	if !d.supported() {
-		m.errorMsg = m.tr(txtConsoleResetUnsupported)
-		m.successMsg = ""
-		return m, nil
-	}
-	if d.fontSize > 0 && queryFontSize() > 0 {
-		applyFontSize(d.fontSize)
-		fixHorizontalScroll()
-	}
-	if validWindowSize(d.cols, d.rows) {
-		setWindowSize(d.cols, d.rows)
+	controllable := d.supported()
+	if controllable {
+		if d.fontSize > 0 && queryFontSize() > 0 {
+			applyFontSize(d.fontSize)
+			fixHorizontalScroll()
+		}
+		if validWindowSize(d.cols, d.rows) {
+			setWindowSize(d.cols, d.rows)
+		}
 	}
 
 	// 0 = Systemstandard: beim nächsten Start wird nichts angewendet. Die
 	// Abfrage alle 2 s speichert danach ebenfalls 0 (persistConsoleState).
 	err := updateConfig(m.configPath, func(cfg *AppConfig) bool {
-		cfg.FontSize, cfg.WindowCols, cfg.WindowRows = 0, 0, 0
-		return true
+		changed := clearRememberedSelection(cfg)
+		if controllable {
+			cfg.FontSize, cfg.WindowCols, cfg.WindowRows = 0, 0, 0
+			changed = true
+		}
+		return changed
 	})
 	if err != nil {
 		m.errorMsg = err.Error()
@@ -215,7 +243,11 @@ func (m AppModel) resetConsoleSize() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.configCache.Invalidate()
-	m.successMsg = m.tr(txtConsoleReset)
 	m.errorMsg = ""
+	if controllable {
+		m.successMsg = m.tr(txtConsoleResetAll)
+	} else {
+		m.successMsg = m.tr(txtSelectionResetOnly)
+	}
 	return m, nil
 }

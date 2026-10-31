@@ -58,16 +58,16 @@ Programm starten:
 | `←` | Gruppe zuklappen (auch von einem Gruppeneintrag aus) |
 | `Bild↑` / `Bild↓` / `Pos1` / `Ende` | In langen Listen blättern |
 | `u` | Auto-Update ein-/ausschalten (letzte Menüzeile) |
+| `v` | *Verbindung merken* ein-/ausschalten (Standard aus, steht im Menü; siehe *Gemerkte Auswahl*) |
 | `E` | Verbindungen exportieren (alle oder Auswahl) |
 | `I` | Verbindungen aus einer Exportdatei importieren |
-| `Enter` auf *Datei-Manager (eine Verbindung)* | Ein-Fenster-Datei-Manager zum Ansehen und Bearbeiten öffnen (vorletzter Listeneintrag) |
-| `Enter` auf *Datei-Manager (zwei Verbindungen)* | Zwei-Fenster-Datei-Manager öffnen (letzter Listeneintrag) |
+| `Enter` auf *Datei-Manager* | Datei-Manager öffnen (letzter Listeneintrag, nur sichtbar, wenn es mindestens eine Verbindung gibt) |
 | `Tab` | Naechstes Formularfeld |
 | `Strg+V` / `Shift+Einf` | Zwischenablage in Formularfeld und Passwortabfrage einfügen (auch unter Windows) |
 | `Strg+Hoch` / `Strg+Runter` | Schriftgröße ändern (Windows; Strg+Mausrad geht auch) |
-| `r` | Fenster- und Schriftgröße auf den Systemstandard zurücksetzen (Windows-Konsole); in der Statusansicht: SSH-Schlüssel entfernen (fragt zuerst, `j`/`y` bestätigt) |
+| `r` | Fenster- und Schriftgröße auf den Systemstandard zurücksetzen (Windows-Konsole) und die gemerkte Auswahl löschen (ohne steuerbare Konsole nur die Auswahl, mit Hinweis); in der Statusansicht: SSH-Schlüssel entfernen (fragt zuerst, `j`/`y` bestätigt) |
 | `Esc` | Zurueck / Abbrechen |
-| `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session) |
+| `q` / `Strg+C` / `Alt+F4` | Beenden (Alt+F4 auch in laufender SSH-Session); ein heruntergeladenes Update wird bei jedem Beenden installiert, auch beim Schließen des Fensters mit X |
 
 ### Verbindung anlegen
 
@@ -137,27 +137,25 @@ Die Datei hat das Format von `connections.json` und kann damit auf einem anderen
 
 Die Datei gilt als nicht vertrauenswürdig: höchstens 1 MiB, jeder Eintrag wird geprüft (Name, Host, Port, Benutzer, Tunnel), Einträge mit Steuerzeichen (z. B. Terminal-Escape-Sequenzen) und doppelte Namen innerhalb der Datei werden übersprungen, Schlüsselpfade werden nie übernommen. Importiert werden nur Verbindungen – Einstellungen wie Sprache oder Auto-Update bleiben unverändert.
 
-### Datei-Manager (eine Verbindung)
+### Datei-Manager
 
-Der vorletzte Eintrag der Verbindungsliste fragt nur nach **einer** Verbindung (auch
-*Lokaler PC*, er funktioniert also auch ohne gespeicherte Verbindung), baut nur diese auf
-und zeigt ein Fenster über die ganze Breite. Alles aus dem folgenden Abschnitt gilt –
-Ansehen (`F3`), Bearbeiten (`F4`), Verzeichnis anlegen (`F7`), Löschen (`F8`), lokal öffnen,
-Menü (`F9`: *Fenster*, *Datei*, *Optionen*) –, nur Kopieren und Verschieben (`F5`/`F6`)
-entfallen, weil es kein zweites Fenster als Ziel gibt. `Tab` hat hier keine Wirkung.
-
-### Datei-Manager (zwei Verbindungen)
-
-Der letzte Eintrag der Verbindungsliste öffnet einen
+Der letzte Eintrag der Verbindungsliste (nur sichtbar, wenn es mindestens eine Verbindung gibt) öffnet einen
 reduzierten Datei-Manager im Stil des Midnight Commander, um mit zwei SSH-Servern
-nebeneinander zu arbeiten:
+nebeneinander zu arbeiten – oder mit einem:
 
 1. Verbindung für das **linke** Fenster wählen, dann die für das **rechte** Fenster.
-   *Lokaler PC* (erster Eintrag) zeigt das Dateisystem deines eigenen Rechners, so kopierst
+   *Lokaler PC* (links erster Eintrag) zeigt das Dateisystem deines eigenen Rechners, so kopierst
    du zwischen PC und Server; unter Windows zeigt `..` oberhalb von `C:\` die Laufwerksliste
-   (`q` führt jederzeit zurück zur Liste). Die Auswahl beginnt auf dem Platzhalter
-   *(nicht ausgewählt)*, der sich nicht bestätigen lässt – beide Verbindungen müssen
-   bewusst gewählt werden. Die linke Verbindung steht rechts nicht mehr zur Wahl.
+   (`q` führt jederzeit zurück zur Liste). Es gibt keinen Platzhalter: Der Cursor steht
+   auf dem ersten Eintrag (oder auf der gemerkten Wahl, siehe unten) – vor `Enter` also hinsehen.
+   Die linke Verbindung steht rechts nicht mehr zur Wahl. Für das rechte Fenster ist der
+   erste Eintrag *(keine)*: Dann wird nur die linke Verbindung geöffnet, und der Datei-Manager
+   zeigt **ein Fenster** über die ganze Breite. Alles Folgende gilt – Ansehen (`F3`),
+   Bearbeiten (`F4`), Verzeichnis anlegen (`F7`), Löschen (`F8`), lokal öffnen,
+   Menü (`F9`: *Fenster*, *Datei*, *Optionen*) –, nur Kopieren und Verschieben (`F5`/`F6`)
+   entfallen, weil es kein zweites Fenster als Ziel gibt; `Tab` hat dort keine Wirkung.
+   Bei genau einer gespeicherten Verbindung wird rechts trotzdem gefragt, damit das
+   Kopieren zwischen Server und PC (*Lokaler PC*) möglich bleibt.
 2. Beide Verbindungen werden als eigene SSH-Verbindungen **ohne Tunnel** aufgebaut
    (zuerst SSH-Agent/Schlüssel, bei Bedarf Passwortabfrage; `Esc` bricht sie ab).
    Auf den Servern muss nichts installiert sein – die Dateilisten kommen per SFTP.
@@ -227,8 +225,8 @@ unbekannte Typen werden abgelehnt, weil „Öffnen“ dort „Ausführen“ hei�
 Internet“ gekennzeichnet (geschützte Ansicht, SmartScreen). Die Kopien werden beim Beenden
 von ssh-easy gelöscht.
 
-Der Datei-Manager mit zwei Verbindungen braucht mindestens eine gespeicherte Verbindung
-(die andere Seite kann *Lokaler PC* sein); bis dahin ist sein Eintrag ausgegraut. Vom Server auf den PC kopierte Dateien werden
+Der Datei-Manager braucht mindestens eine gespeicherte Verbindung
+(die andere Seite kann *Lokaler PC* sein); bis dahin wird sein Eintrag nicht angezeigt. Vom Server auf den PC kopierte Dateien werden
 als heruntergeladen gekennzeichnet (Windows-SmartScreen warnt vor dem Ausführen).
 
 **Optionen (`F9` → Optionen):** *Aussehen* schaltet zwischen den Farbmodi klassisch (mc),
@@ -245,14 +243,20 @@ gespeichert.
 
 Schlägt die automatische Anmeldung fehl, fragt ssh-easy nach dem Passwort und zeigt dabei Host und – in der Zeile darunter – den Benutzernamen, damit klar ist, welches Passwort gemeint ist.
 
+### Gemerkte Auswahl
+
+Standardmäßig aus. Der Schalter `v` *Verbindung merken* im Menü (`m`) schaltet sie ein. Dann werden die zuletzt mit `Enter` gewählte Verbindung und die letzte Wahl links/rechts im Datei-Manager (auch *Lokaler PC* und *(keine)*) sofort gespeichert und beim nächsten Start vorausgewählt. Ausschalten löscht die gemerkten Werte; `r` löscht sie ebenfalls. Eine inzwischen gelöschte Verbindung wird ignoriert. Die Werte stehen nicht im Export.
+
 ### Auto-Update
 
-Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile, die `m` einblendet, und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; installiert wird beim Beenden:
+Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile, die `m` einblendet, und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; installiert wird beim Beenden – mit `q`, `Strg+C`, `Alt+F4` und auch beim Schließen des Fensters mit dem Kreuz, selbst während einer SSH-Sitzung (Windows-Konsole und Windows Terminal, Linux-Terminalfenster):
 
 - Linux oder Windows mit Schreibrecht im Programmordner: Die Programmdatei wird ersetzt
 - Windows-Installation unter *Programme*: Das Setup läuft still mit Administratorrechten (Windows fragt per Benutzerkontensteuerung); die Desktop-Verknüpfung bleibt erhalten
 
 Jedes Release enthält eine mit Ed25519 signierte Prüfsummenliste (`ssh-easy-SHA256SUMS` + `ssh-easy-SHA256SUMS.sig`). ssh-easy prüft die Signatur mit dem im Programm eingebauten öffentlichen Schlüssel und installiert nur eine Datei, deren SHA-256 in der signierten Liste steht – selbst wer Zugriff auf das GitHub-Konto hat, kann so kein manipuliertes Update unterschieben. Dazu kommen Größen- und Formatprüfung – direkt nach dem Download und noch einmal unmittelbar vor der Installation. Unsignierte Releases werden abgelehnt.
+
+Unter Windows startet ssh-easy für die Installation beim Beenden einen kurzen Helfer ohne Fenster; er wartet, bis das Programm beendet ist, und startet dann das geprüfte Setup (mit Benutzerkontensteuerung). Grenze: Beim Abmelden oder Herunterfahren gibt Windows Programmen keine Gelegenheit zu reagieren – das Update wird dann beim nächsten regulären Beenden installiert.
 
 ### Auto-Reconnect
 

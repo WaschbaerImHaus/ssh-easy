@@ -5,6 +5,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.87] – Build 87
+- **Fixed** a downloaded update is now also installed when you close the window with the X button or with Alt+F4 – also during an SSH session, on Windows (classic console and Windows Terminal) and on Linux (closing the terminal window). Before, only `q` installed it. Causes: on Linux the closing signal (SIGHUP) was not caught, so the program ended at once; on Windows the system ends the program about 5 seconds after the close event, Bubbletea drops the signal while the SSH terminal runs, and the administrator prompt (UAC) of the setup could not be answered in time
+- **Added** on Windows ssh-easy starts a short helper for this (`ssh-easy --install-update …`, no window): it waits until the main program has ended, checks the downloaded setup again (signature-checked hash, folder, file name) and then starts it with the UAC prompt. If the window is closed, disconnecting, cleaning up and saving the sizes now run within a few seconds
+- **Changed** limit: when Windows logs off or shuts down it gives programs no chance to react; the update is then installed at the next regular exit
+- **Fixed** an error from the user interface no longer skips the exit tasks (disconnect, cleanup, saving, update); before, the program ended at once with exit code 1
+- **Added** new switch `v` "Remember connection" in the menu (`m`), off by default. When on, the connection you last opened with Enter and the last choice left/right in the file manager are saved at once and preselected at the next start. Switching it off deletes the remembered values. A deleted connection in a remembered choice is ignored. The values are not part of the export
+- **Changed** `r` (reset window and font size) now always deletes the remembered selection as well. Without a controllable console (Linux, Windows Terminal) only the selection is deleted, with a short note
+- **Changed** file manager: only one entry "File manager", shown only when at least one connection exists. The pure local file manager without a saved connection is gone (use *Local PC* as one side)
+- **Changed** file manager choice: no placeholder "(not selected)" any more, left and right. The cursor starts on the first entry (or on the remembered choice). The right side offers "(none)" for a single panel (as before the separate "one connection" entry); with exactly one connection the right side is still asked so that copying between server and PC stays possible
+- **Fixed** saving the auto-update switch, the language, the file manager options and the font size now runs under the configuration lock, so a parallel change is no longer lost
+- **Removed** unused texts; 7 new texts in all 41 languages
+
 ## [v0.86] – Build 86
 - **Changed** automatic SSH key: after EVERY successful login, a connection that has no key of its own now gets one without asking – also after a login through the SSH agent or with another key from `~/.ssh`, in the main flow and in the file manager (user decision). Before, this only happened after typing a password, so many connections stayed on "password". The new file `~/.ssh/id_ed25519_<host>_<user>` (`_2`, `_3` … if the name is taken) has **no passphrase**
 - **Added** "remember and pause": after you remove the key in the status view (`r`, then `j`/`y`) and after 2 failed attempts, that connection gets no automatic key any more. A login with a typed password tries again and turns the automatic key back on. The two new fields (`AutoKeyOff`, `AutoKeyFailures`) are not part of the export, and an import that replaces a connection keeps the local values

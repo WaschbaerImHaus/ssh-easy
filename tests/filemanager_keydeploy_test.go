@@ -2,8 +2,8 @@
 //
 // Nutzerwunsch 2026-10-27: Nach jeder erfolgreichen Anmeldung im Datei-Manager
 // (Passwort ODER Auto-Auth ohne eigenen Schlüssel) bekommt die Verbindung
-// ungefragt einen Schlüssel - im Fenster mit zwei Verbindungen genauso wie bei
-// "Datei-Manager (eine Verbindung)".
+// ungefragt einen Schlüssel - im Fenster mit zwei Verbindungen genauso wie im
+// Ein-Fenster-Modus (rechts "(keine)").
 //   - Naht fmDeployKey: Tests ersetzen sie durch einen Stub (kein echter sshd).
 //     Der Stub schreibt wie AutoDeployKey den GANZEN Eintrag per
 //     UpdateConnection zurück (AuthKey + KeyPath) - so zeigt sich, ob der
@@ -448,8 +448,8 @@ func TestKeyDeployNeverForLocalPC(t *testing.T) {
 		m.fmConnect = newConnectRecorder().connect
 		m.fmLocalConnect = func() (remoteFS, error) { return newFakeFS(), nil }
 		m.termWidth, m.termHeight = 100, 30
-		m = openSinglePick(t, m)
-		m = pickSide(t, m, m.tr(txtFMLocalPC))
+		m = openPick(t, m)
+		m = pickSingle(t, m, m.tr(txtFMLocalPC))
 		if m.state != ViewFileManager || !m.fm.single {
 			t.Fatalf("state = %v, erwartet Datei-Manager mit einer Verbindung", m.state)
 		}
@@ -560,7 +560,7 @@ func TestKeyDeployFailureTwoWindows(t *testing.T) {
 }
 
 // TestKeyDeployFailureSingle (Fall 7): Wie Fall 6 im Datei-Manager mit einer
-// Verbindung (fm.single; Zeile "Datei-Manager (eine Verbindung)").
+// Verbindung (fm.single; rechts "(keine)" gewählt).
 //
 // @date 2026-10-28 13:09
 func TestKeyDeployFailureSingle(t *testing.T) {
@@ -570,8 +570,8 @@ func TestKeyDeployFailureSingle(t *testing.T) {
 	m.fmConnect = rec.connect
 	m.termWidth, m.termHeight = 100, 30
 	before := loadTestConfig(t, m).Connections
-	m = openSinglePick(t, m)
-	m = pickSide(t, m, "Server")
+	m = openPick(t, m)
+	m = pickSingle(t, m, "Server")
 	if m.state != ViewFileManager || !m.fm.single {
 		t.Fatalf("state = %v, single = %v", m.state, m.fm.single)
 	}
@@ -790,7 +790,7 @@ func TestKeyDeployStaleSession(t *testing.T) {
 				cmd := m.fmDeployKeyCmd(0, m.fm.panels[0].fs, true)
 				m = m.closeFileManager()
 				if reopen {
-					m = openSinglePick(t, m)
+					m = openPick(t, m)
 				}
 				msg, ok := cmd().(fmKeyDeployedMsg)
 				if !ok {
@@ -1447,8 +1447,8 @@ func TestKeyDeploySuspendedSingle(t *testing.T) {
 			m = editTestConfig(t, m, func(cfg *AppConfig) { cfg.Connections[0].AutoKeyOff = true })
 			m.fmConnect = rec.connect
 			m.termWidth, m.termHeight = 100, 30
-			m = openSinglePick(t, m)
-			m = pickSide(t, m, "Server")
+			m = openPick(t, m)
+			m = pickSingle(t, m, "Server")
 			if withPassword {
 				if m.state != ViewFMPassword {
 					t.Fatalf("state = %v, erwartet Passwortabfrage", m.state)
@@ -1554,8 +1554,8 @@ func TestKeyDeployFMFailureReloadsConnections(t *testing.T) {
 	m.termWidth, m.termHeight = 100, 30
 
 	for attempt := 1; attempt <= autoKeyMaxFailures; attempt++ {
-		m = openSinglePick(t, m)
-		m = pickSide(t, m, "Server")
+		m = openPick(t, m)
+		m = pickSingle(t, m, "Server")
 		if m.state != ViewFileManager {
 			t.Fatalf("Versuch %d: state = %v, erwartet ViewFileManager", attempt, m.state)
 		}
@@ -1576,8 +1576,8 @@ func TestKeyDeployFMFailureReloadsConnections(t *testing.T) {
 			t.Fatalf("Versuch %d: state = %v nach F10, erwartet ViewList", attempt, m.state)
 		}
 	}
-	m = openSinglePick(t, m)
-	m = pickSide(t, m, "Server")
+	m = openPick(t, m)
+	m = pickSingle(t, m, "Server")
 	if *calls != autoKeyMaxFailures {
 		t.Errorf("%d Aufrufe, erwartet %d (dritte Anmeldung darf nicht mehr vergeben)", *calls, autoKeyMaxFailures)
 	}

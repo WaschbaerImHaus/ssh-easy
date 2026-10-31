@@ -1530,8 +1530,8 @@ func TestFailedDeployMessageHasPrefixOnce(t *testing.T) {
 		m.fmConnect = newConnectRecorder().connect
 		m.termWidth, m.termHeight = 100, 30
 		for attempt := 1; attempt <= 2; attempt++ {
-			m = openSinglePick(t, m)
-			m = pickSide(t, m, "Server")
+			m = openPick(t, m)
+			m = pickSingle(t, m, "Server")
 			if n := strings.Count(m.fm.message, "fehlgeschlagen"); n != 1 {
 				t.Errorf("Versuch %d: \"fehlgeschlagen\" %d-mal in %q, erwartet genau 1", attempt, n, m.fm.message)
 			}

@@ -298,19 +298,29 @@ func openPick(t *testing.T, m AppModel) AppModel {
 	return m
 }
 
-// pickSide wählt in der Verbindungsauswahl per Tastatur einen Eintrag
-// ("" = "(nicht ausgewählt)") und führt die Folgekommandos aus.
+// pickSide wählt in der Verbindungsauswahl per Tastatur einen Eintrag und
+// führt die Folgekommandos aus. Seit Build 87 gibt es keinen Platzhalter
+// mehr: Links ist Zeile i die Verbindung i von fmPickConnections() (Zeile 0
+// "Lokaler PC"), rechts steht "(keine)" auf Zeile 0 und Verbindung i auf
+// Zeile i+1. Der Name "" meint "(keine)" und gilt nur rechts.
 func pickSide(t *testing.T, m AppModel, name string) AppModel {
 	t.Helper()
 	if m.state != ViewFMPick {
 		t.Fatalf("state = %v, erwartet ViewFMPick", m.state)
 	}
-	steps := 0
-	if name != "" {
-		steps = -1
+	steps := -1
+	if name == "" {
+		if m.fm.pickSide != 1 {
+			t.Fatal("\"(keine)\" gibt es nur auf der rechten Seite")
+		}
+		steps = 0
+	} else {
 		for i, conn := range m.fmPickConnections() {
 			if conn.Name == name {
-				steps = i + 1
+				steps = i
+				if m.fm.pickSide == 1 {
+					steps++
+				}
 			}
 		}
 		if steps < 0 {
@@ -322,6 +332,15 @@ func pickSide(t *testing.T, m AppModel, name string) AppModel {
 		m = pressRun(t, m, "down")
 	}
 	return pressRun(t, m, "enter")
+}
+
+// pickSingle wählt links eine Verbindung und rechts "(keine)": der
+// Datei-Manager mit einem Fenster (fm.single). Seit Build 87 gibt es dafür
+// keinen eigenen Listeneintrag mehr.
+func pickSingle(t *testing.T, m AppModel, name string) AppModel {
+	t.Helper()
+	m = pickSide(t, m, name)
+	return pickSide(t, m, "")
 }
 
 // pickNames liefert die Verbindungsnamen der aktuellen Auswahl.
@@ -373,80 +392,29 @@ func TestFileManagerRowIsLastListRow(t *testing.T) {
 	}
 }
 
-// TestFileManagerRowGreyedWithoutConnection - ohne Verbindung ist der
-// Eintrag ausgegraut, zeigt den Hinweis und öffnet nichts (seit Build 70
-// genügt eine Verbindung, die andere Seite kann "Lokaler PC" sein).
-func TestFileManagerRowGreyedWithoutConnection(t *testing.T) {
-	m := newListTestModel(t)
-	rows := m.listRows()
-	if len(rows) != 2 || rows[0].kind != rowFileManagerSingle || rows[1].kind != rowFileManager {
-		t.Fatalf("Zeilen %v, erwartet nur die beiden Datei-Manager-Einträge", rows)
-	}
-	text := stripANSI(renderListText(m))
-	if !strings.Contains(text, m.tr(txtFMListEntry)) || !strings.Contains(text, m.tr(txtFMNeedConnection)) {
-		t.Errorf("Eintrag/Hinweis fehlt:\n%s", text)
-	}
-	if !strings.Contains(text, m.lang.NoConnections) {
-		t.Errorf("Hinweis \"keine Verbindungen\" fehlt:\n%s", text)
-	}
-	m = press(t, m, "end", "enter")
-	if m.state != ViewList {
-		t.Errorf("Enter öffnet den Datei-Manager (state %v)", m.state)
-	}
-	// Auch e/d/x tun nichts
-	for _, key := range []string{"e", "d", "x"} {
-		if got := press(t, m, key); got.state != ViewList {
-			t.Errorf("Taste %q auf ausgegrautem Eintrag wechselt nach %v", key, got.state)
-		}
-	}
-}
-
-// TestFileManagerRowEnabledFromTwoConnections - ab zwei Verbindungen kein
-// Hinweis, Enter öffnet die Auswahl.
-func TestFileManagerRowEnabledFromTwoConnections(t *testing.T) {
-	m := newListTestModel(t, "A", "B")
-	text := stripANSI(renderListText(m))
-	if strings.Contains(text, m.tr(txtFMNeedConnection)) {
-		t.Errorf("Hinweis trotz zwei Verbindungen:\n%s", text)
-	}
+// TestFileManagerRowEnabledFromOneConnection - ab einer Verbindung öffnet
+// Enter auf dem Eintrag die Auswahl (die andere Seite kann "Lokaler PC" oder
+// "(keine)" sein). Ohne Verbindung gibt es den Eintrag gar nicht (Build 87,
+// siehe remember_selection_test.go).
+func TestFileManagerRowEnabledFromOneConnection(t *testing.T) {
+	m := newListTestModel(t, "A")
 	m = press(t, m, "end", "enter")
 	if m.state != ViewFMPick {
 		t.Errorf("state %v, erwartet ViewFMPick", m.state)
 	}
 }
 
-// TestFileManagerRowGreyedStyle - ausgegraut in grauer Schrift (auch als
-// Cursorzeile), aktiv in normaler Schrift.
-func TestFileManagerRowGreyedStyle(t *testing.T) {
-	withColorProfile(t)
-	grey := "38;5;" + fmDisabledFg
-	m := newListTestModel(t)
-	line := selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
-	if !strings.Contains(line, grey) {
-		t.Errorf("nicht ausgegraut: %q", line)
-	}
-	m = press(t, m, "end")
-	line = selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
-	if !strings.Contains(line, grey) {
-		t.Errorf("als Cursorzeile nicht ausgegraut: %q", line)
-	}
-	m = newListTestModel(t, "A")
-	line = selectedLine(t, renderListText(m), m.tr(txtFMListEntry))
-	if strings.Contains(line, grey) {
-		t.Errorf("trotz Verbindung ausgegraut: %q", line)
-	}
-}
-
 // TestFileManagerRowSeparatedByBlankLine prüft die Leerzeile vor dem
-// ersten Datei-Manager-Eintrag ("eine Verbindung", seit Build 82).
+// Datei-Manager-Eintrag (seit Build 87 der einzige).
 func TestFileManagerRowSeparatedByBlankLine(t *testing.T) {
 	m := newListTestModel(t, "Server")
 	lines := strings.Split(stripANSI(renderListText(m)), "\n")
-	entry := m.tr(txtFMListEntrySingle)
+	entry := m.tr(txtFMEntry)
 	for i, line := range lines {
 		if strings.Contains(line, entry) {
-			if i == 0 || strings.TrimSpace(lines[i-1]) != "" {
+			if i < 2 || strings.TrimSpace(lines[i-1]) != "" {
 				t.Errorf("vor %q fehlt die Leerzeile:\n%s", entry, strings.Join(lines, "\n"))
+				return
 			}
 			if !strings.Contains(lines[i-2], "Server") {
 				t.Errorf("Leerzeile steht nicht direkt nach der letzten Verbindung:\n%s", strings.Join(lines, "\n"))
@@ -484,7 +452,9 @@ func TestSelectConnectionByIDSkipsFileManagerRow(t *testing.T) {
 
 // --- Verbindungsauswahl ---
 
-// TestFileManagerPickBothSides prüft Auswahl links, dann rechts.
+// TestFileManagerPickBothSides prüft Auswahl links, dann rechts. Seit Build 87
+// gibt es keinen Platzhalter mehr: links steht "Lokaler PC" auf Zeile 0,
+// darunter die Verbindungen.
 func TestFileManagerPickBothSides(t *testing.T) {
 	m := newListTestModel(t, "Links", "Rechts")
 	m.fmConnect = newConnectRecorder().connect
@@ -500,24 +470,17 @@ func TestFileManagerPickBothSides(t *testing.T) {
 	if !strings.Contains(text, "Links") || !strings.Contains(text, "Rechts") {
 		t.Errorf("Verbindungen fehlen in der Auswahl:\n%s", text)
 	}
-	// Erster Punkt ist "(nicht ausgewählt)", der Cursor steht darauf
-	lines := strings.Split(text, "\n")
-	first := -1
-	for i, line := range lines {
-		if strings.Contains(line, m.tr(txtFMNotSelected)) {
-			first = i
-			break
-		}
+	// Kein Platzhalter; Zeile 0 ist "Lokaler PC" und der Cursor steht darauf
+	if strings.Contains(text, "(nicht ausgewählt)") {
+		t.Errorf("Platzhalter \"(nicht ausgewählt)\" entfällt seit Build 87:\n%s", text)
 	}
-	if first < 0 || first > strings.Index(text, "Links") || m.fm.pickCursor != 0 {
-		t.Errorf("\"(nicht ausgewählt)\" ist nicht der erste, gewählte Punkt:\n%s", text)
-	}
-	if strings.Index(text, m.tr(txtFMNotSelected)) > strings.Index(text, "Links") {
-		t.Errorf("\"(nicht ausgewählt)\" steht nicht vor den Verbindungen:\n%s", text)
+	local := strings.Index(text, m.tr(txtFMLocalPC))
+	if local < 0 || local > strings.Index(text, "Links") || m.fm.pickCursor != 0 {
+		t.Errorf("\"Lokaler PC\" ist nicht der erste, gewählte Punkt (Cursor %d):\n%s", m.fm.pickCursor, text)
 	}
 
-	// Zeile 1 ist "Lokaler PC", Zeile 2 die erste Verbindung
-	m = press(t, m, "down", "down", "enter")
+	// Zeile 0 ist "Lokaler PC", Zeile 1 die erste Verbindung
+	m = press(t, m, "down", "enter")
 	if m.state != ViewFMPick || m.fm.pickSide != 1 {
 		t.Fatalf("nach erster Wahl: state = %v/Seite %d, erwartet rechte Seite", m.state, m.fm.pickSide)
 	}
@@ -542,7 +505,9 @@ func TestFileManagerPickShowsGroupedNamesFlat(t *testing.T) {
 	}
 }
 
-// TestFileManagerPickQuitReturnsToFileManagerRow - q bricht ab.
+// TestFileManagerPickQuitReturnsToFileManagerRow - q bricht ab (auch nach
+// der Wahl der linken Seite); der Cursor steht danach auf dem einzigen
+// Datei-Manager-Eintrag.
 func TestFileManagerPickQuitReturnsToFileManagerRow(t *testing.T) {
 	m := newListTestModel(t, "Links", "Rechts")
 	for _, keys := range [][]string{{"q"}, {"down", "enter", "q"}, {"enter", "q"}, {"esc"}} {
@@ -577,47 +542,13 @@ func TestFileManagerPickExcludesLeftConnection(t *testing.T) {
 	if strings.Contains(text, "  B  (") {
 		t.Errorf("linke Verbindung B steht rechts noch zur Wahl:\n%s", text)
 	}
-	if !strings.Contains(text, m.tr(txtFMNotSelected)) {
-		t.Errorf("\"(nicht ausgewählt)\" fehlt rechts:\n%s", text)
+	// Rechts steht "(keine)" an erster Stelle (Ein-Fenster-Modus)
+	if !strings.Contains(text, m.tr(txtFMNone)) {
+		t.Errorf("\"(keine)\" fehlt rechts:\n%s", text)
 	}
-	// Cursor beginnt rechts wieder oben auf "(nicht ausgewählt)"
+	// Cursor beginnt rechts wieder oben (ohne gemerkte Wahl)
 	if m.fm.pickCursor != 0 {
 		t.Errorf("Cursor rechts = %d, erwartet 0", m.fm.pickCursor)
-	}
-}
-
-// TestFileManagerPickPlaceholderForcesChoice - "(nicht ausgewählt)" ist
-// nur ein Platzhalter: Enter darauf bewirkt nichts, damit man nicht mit
-// Enter-Enter versehentlich im Datei-Manager landet.
-func TestFileManagerPickPlaceholderForcesChoice(t *testing.T) {
-	m := newListTestModel(t, "Links", "Rechts")
-	rec := newConnectRecorder()
-	m.fmConnect = rec.connect
-	m = openPick(t, m)
-	for i := 0; i < 3; i++ {
-		updated, cmd := m.Update(keyMsgFor("enter"))
-		m = updated.(AppModel)
-		if cmd != nil || m.state != ViewFMPick || m.fm.pickSide != 0 {
-			t.Fatalf("Enter auf Platzhalter links: state %v, Seite %d", m.state, m.fm.pickSide)
-		}
-	}
-	m = pickSide(t, m, "Links")
-	if m.fm.pickSide != 1 {
-		t.Fatalf("nach Wahl links: Seite %d, erwartet rechts", m.fm.pickSide)
-	}
-	for i := 0; i < 3; i++ {
-		updated, cmd := m.Update(keyMsgFor("enter"))
-		m = updated.(AppModel)
-		if cmd != nil || m.state != ViewFMPick || m.fm.pickSide != 1 {
-			t.Fatalf("Enter auf Platzhalter rechts: state %v, Seite %d", m.state, m.fm.pickSide)
-		}
-	}
-	if len(rec.calls) != 0 {
-		t.Errorf("Verbindungsaufbau ohne Wahl: %v", rec.calls)
-	}
-	m = pickSide(t, m, "Rechts")
-	if m.state != ViewFileManager {
-		t.Errorf("nach bewusster Wahl: state %v, erwartet ViewFileManager", m.state)
 	}
 }
 
@@ -794,7 +725,7 @@ func TestFileManagerQuitWhileConnectingClosesLateResult(t *testing.T) {
 	m.fmConnect = newConnectRecorder().connect
 	m = openPick(t, m)
 	m = pickSide(t, m, "Links")
-	m = press(t, m, "down") // "Rechts"
+	m = press(t, m, "down", "down") // rechts: (keine), Lokaler PC, "Rechts"
 	updated, cmd := m.Update(keyMsgFor("enter"))
 	m = updated.(AppModel)
 	if m.state != ViewFMConnecting {

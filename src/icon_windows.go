@@ -20,8 +20,10 @@
 //   3. AUMID setzen    → eindeutige App-ID für Taskleisten-Gruppierung
 //   4. Icon setzen     → WM_SETICON auf eigenes Konsolenfenster
 //
+// Der Update-Helfer ("--install-update", Build 87) überspringt all das.
+//
 // @author Kurt Ingwer
-// @date   2026-04-07
+// @date   2026-10-31 14:40
 
 //go:build windows
 
@@ -274,8 +276,16 @@ func fixLipglossColorProfile() {
 //  5. Icon setzen           – EXE-Icon auf eigenes Konsolenfenster
 //  6. Fokus setzen          – Konsolenfenster in den Vordergrund holen
 //
-// @date 2026-07-03 19:25
+// Ausnahme Update-Helfer ("--install-update", Build 87): Er läuft nach dem
+// Ende des Hauptprozesses unsichtbar weiter und startet nur das Setup. Für
+// ihn KEINE eigene Konsole (sonst ginge ein leeres Fenster auf) und KEIN
+// Fokuswechsel (sonst stiehlt er dem UAC-Dialog bzw. dem Nutzer den Fokus).
+//
+// @date 2026-10-31 14:40
 func init() {
+	if isInstallHelperInvocation(os.Args) {
+		return
+	}
 	allocOwnConsole()
 	fixLipglossColorProfile()
 	setAppUserModelID()

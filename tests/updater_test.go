@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -546,7 +547,7 @@ func TestCleanupUpdateLeftovers(t *testing.T) {
 	_ = os.MkdirAll(downloadDir, 0o700)
 	_ = os.WriteFile(filepath.Join(downloadDir, "ssh-easy-setup-amd64.exe"), []byte("x"), 0o600)
 
-	cleanupUpdateLeftovers(exe, downloadDir)
+	cleanupUpdateLeftovers(exe, downloadDir, setupLeftoverMinAge)
 	for _, p := range []string{exe + ".old", exe + ".new", filepath.Join(downloadDir, "ssh-easy-setup-amd64.exe")} {
 		if _, err := os.Stat(p); !os.IsNotExist(err) {
 			t.Errorf("%s wurde nicht aufgeräumt", p)
@@ -756,7 +757,11 @@ func TestCleanupRemovesSetupDirectories(t *testing.T) {
 	sub := filepath.Join(downloadDir, "setup-123")
 	_ = os.MkdirAll(sub, 0o700)
 	_ = os.WriteFile(filepath.Join(sub, "ssh-easy-setup-amd64.exe"), []byte("MZ"), 0o600)
-	cleanupUpdateLeftovers(exe, downloadDir)
+	// Seit Build 87 räumt der Start nur noch ältere Ordner ab (ein Helfer
+	// könnte noch auf die UAC-Bestätigung warten) - der Ordner ist 2 h alt
+	old := time.Now().Add(-2 * time.Hour)
+	_ = os.Chtimes(sub, old, old)
+	cleanupUpdateLeftovers(exe, downloadDir, setupLeftoverMinAge)
 	if _, err := os.Stat(sub); !os.IsNotExist(err) {
 		t.Error("Setup-Unterordner wurde nicht aufgeräumt")
 	}
