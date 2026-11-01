@@ -5,6 +5,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.88] – Build 88
+- **Fixed** closing the window in an emergency (X button, Alt+F4, SIGHUP while the normal exit does not come in time) now works in a safer order: first the terminal is restored, then the downloaded update is started, and only after that are the connections disconnected, cleaned up and the sizes saved – all together within one shared time limit (750 ms). Before, a hanging connection could hold back the update until Windows ended the program
+- **Fixed** when ssh-easy is ended during an SSH session (X button, `kill`), the shell is no longer left in raw mode (no echo, no line editing); the terminal is restored first
+- **Fixed** on Linux, closing the window no longer sometimes ends with exit code 1 or an error message: the "closing requested" flag is now set at once when the signal arrives, before the user interface is asked to quit
+- **Fixed** update helper: a setup folder that the helper is just using is no longer deleted too early after a quick restart (the folder is touched when the helper starts, so the 10 minute clean-up period counts from then)
+- **Fixed** update helper: the folder check compares exactly (case counts, also on Windows). Unicode folding such as the long s (U+017F) for `s` or the Kelvin sign (U+212A) for `K` is no longer possible
+- **Changed** log: after starting the setup the log now says "update helper started" instead of "installed", because the installation (UAC) is still pending at that moment
+- **Fixed** an error while saving the remembered file manager choice is now shown – after closing the file manager, in the connection list. The connection is still opened
+- **Fixed** the import (`I`) now saves under the configuration lock, so a parallel change (for example the window size) is no longer lost
+- No new texts
+
 ## [v0.87] – Build 87
 - **Fixed** a downloaded update is now also installed when you close the window with the X button or with Alt+F4 – also during an SSH session, on Windows (classic console and Windows Terminal) and on Linux (closing the terminal window). Before, only `q` installed it. Causes: on Linux the closing signal (SIGHUP) was not caught, so the program ended at once; on Windows the system ends the program about 5 seconds after the close event, Bubbletea drops the signal while the SSH terminal runs, and the administrator prompt (UAC) of the setup could not be answered in time
 - **Added** on Windows ssh-easy starts a short helper for this (`ssh-easy --install-update …`, no window): it waits until the main program has ended, checks the downloaded setup again (signature-checked hash, folder, file name) and then starts it with the UAC prompt. If the window is closed, disconnecting, cleaning up and saving the sizes now run within a few seconds

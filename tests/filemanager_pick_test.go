@@ -17,14 +17,33 @@
 // zusätzlich rememberNone ("none"). Die Hilfsfunktionen restartModel,
 // newRememberModel usw. stehen in remember_selection_test.go.
 //
+// ERGÄNZUNG BUILD 88 (spec88.md, Abschnitt H2): Schlägt das Speichern der
+// Wahl fehl (Konfiguration nicht beschreibbar), zeigt der Datei-Manager den
+// Fehler in m.errorMsg (von Steuerzeichen bereinigt), baut die Verbindung aber
+// trotzdem auf - wie rememberLastConnection in der Liste.
+//
+//	func (m AppModel) fmSavePickChoice() error
+//	    nil, wenn nichts zu speichern war (Schalter aus, Werte unverändert) oder
+//	    gespeichert wurde; sonst der Fehler aus updateConfig.
+//
+// VON MIR FESTGELEGT: errorMsg wird unmittelbar nach dem Enter der rechten
+// Seite geprüft (Zustand ViewFMConnecting). Was später daraus wird, wenn der
+// Datei-Manager schließt (closeFileManager hängt Schlüsselmeldungen an), prüfen
+// diese Tests nicht. Der Rechtetest (Ordner 0500) wird übersprungen, wenn der
+// Prozess trotzdem schreiben darf (root) und unter Windows.
+//
 // @author Kurt Ingwer
-// @date   2026-10-30 21:14
+// @date   2026-11-01 10:00
 package main
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 // --- Hilfsfunktionen ---
@@ -677,4 +696,191 @@ func TestFMPickSmallScreens(t *testing.T) {
 			t.Errorf("Größe %v: rechts markiert %q, erwartet Host09", size, got)
 		}
 	}
+}
+
+// --- Build 88, H2: Fehler beim Speichern der Wahl anzeigen ---
+
+// lockConfigDir macht den Ordner der Konfiguration schreibgeschützt (0500):
+// Lesen geht, eine neue Temp-Datei anlegen (SaveConfig) nicht. Wo das nicht
+// wirkt (Windows, root), wird der Test übersprungen - sonst würde er grundlos
+// scheitern. Der Ordner wird beim Aufräumen wieder freigegeben.
+func lockConfigDir(t *testing.T, configPath string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("Ordnerrechte 0500 wirken unter Windows nicht")
+	}
+	dir := filepath.Dir(configPath)
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Skipf("Ordnerrechte nicht änderbar: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	probe := filepath.Join(dir, "probe.tmp")
+	if f, err := os.Create(probe); err == nil {
+		f.Close()
+		_ = os.Remove(probe)
+		t.Skip("Ordner trotz 0500 beschreibbar (root?) - Test nicht aussagekräftig")
+	}
+}
+
+// pickFinalEnter wählt links "A" (wie pickSide) und drückt dann rechts bei
+// right ("" = "(keine)") Enter OHNE das Folgekommando auszuführen. So bleibt
+// der Zustand direkt nach der Wahl sichtbar. beforeEnter läuft vor dem
+// letzten Enter (z.B. Ordner sperren).
+func pickFinalEnter(t *testing.T, m AppModel, right string, beforeEnter func(m AppModel)) (AppModel, func(AppModel) AppModel) {
+	t.Helper()
+	m = openPick(t, m)
+	m = pickSide(t, m, "A")
+	if m.state != ViewFMPick || m.fm.pickSide != 1 {
+		t.Fatalf("nach der linken Wahl: state %v, Seite %d", m.state, m.fm.pickSide)
+	}
+	steps := 0
+	if right != "" {
+		steps = -1
+		for i, conn := range m.fmPickConnections() {
+			if conn.Name == right {
+				steps = i + 1
+			}
+		}
+		if steps < 0 {
+			t.Fatalf("%q steht rechts nicht in der Auswahl", right)
+		}
+	}
+	m = press(t, m, "home")
+	for i := 0; i < steps; i++ {
+		m = press(t, m, "down")
+	}
+	if beforeEnter != nil {
+		beforeEnter(m)
+	}
+	updated, cmd := m.Update(fmKey("enter"))
+	next := updated.(AppModel)
+	return next, func(cur AppModel) AppModel { return runCmd(t, cur, cmd) }
+}
+
+// TestFMPickSaveErrorShownAndConnects (H2): Die Konfiguration ist nicht
+// beschreibbar. Nach der rechten Wahl steht der Fehler in errorMsg (nicht
+// leer), die Wahl wurde NICHT gespeichert, und die Verbindung wird trotzdem
+// aufgebaut (links "A", Ergebnis: Datei-Manager offen). Sowohl mit "(keine)"
+// (Ein-Fenster) als auch mit zweiter Verbindung.
+func TestFMPickSaveErrorShownAndConnects(t *testing.T) {
+	for _, right := range []string{"", "B"} {
+		name := right
+		if name == "" {
+			name = "(keine)"
+		}
+		t.Run("rechts "+name, func(t *testing.T) {
+			m, rec := fullPickModel(t, true, "", "", "A", "B")
+			m, run := pickFinalEnter(t, m, right, func(m AppModel) { lockConfigDir(t, m.configPath) })
+			if m.state != ViewFMConnecting {
+				t.Fatalf("state = %v, erwartet ViewFMConnecting (Verbindung muss trotz Fehler aufgebaut werden)", m.state)
+			}
+			if m.errorMsg == "" {
+				t.Error("errorMsg leer: der Speicherfehler wird nicht angezeigt")
+			}
+			if loadTestConfig(t, m).FileManagerLastLeft != "" {
+				t.Error("Wahl wurde trotz gesperrtem Ordner gespeichert?")
+			}
+			m = run(m)
+			if len(rec.calls) == 0 || rec.calls[0] != "id-0/" {
+				t.Errorf("Verbindungsaufbau = %v, erwartet id-0/ zuerst", rec.calls)
+			}
+			if m.state != ViewFileManager {
+				t.Errorf("state = %v, erwartet ViewFileManager (Fehler: %q / %q)", m.state, m.errorMsg, m.fm.message)
+			}
+		})
+	}
+}
+
+// TestFMPickSaveErrorSanitized (H2): Der Fehlertext enthält den Pfad der
+// Konfiguration; ein Ordnername kann Steuerzeichen tragen (Escape-Folge,
+// Zeilenumbruch). Der angezeigte Text darf keine Steuerzeichen enthalten, sonst
+// ließe sich die Oberfläche manipulieren (wie bei Servertexten sanitizeFileName).
+func TestFMPickSaveErrorSanitized(t *testing.T) {
+	m, _ := fullPickModel(t, true, "", "", "A", "B")
+	evilDir := filepath.Join(t.TempDir(), "x\x1b[31m\nrot\x07")
+	if err := os.MkdirAll(evilDir, 0o700); err != nil {
+		t.Skipf("Ordner mit Steuerzeichen nicht anlegbar: %v", err)
+	}
+	data, err := os.ReadFile(m.configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evilPath := filepath.Join(evilDir, "connections.json")
+	if err := os.WriteFile(evilPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.configPath = evilPath
+	m.configCache = NewConfigCache(evilPath)
+	m, _ = pickFinalEnter(t, m, "", func(m AppModel) { lockConfigDir(t, m.configPath) })
+	if m.errorMsg == "" {
+		t.Fatal("errorMsg leer: der Speicherfehler wird nicht angezeigt")
+	}
+	for _, r := range m.errorMsg {
+		if unicode.IsControl(r) {
+			t.Fatalf("errorMsg enthält Steuerzeichen %U: %q", r, m.errorMsg)
+		}
+	}
+}
+
+// TestFMPickNoErrorWhenSaveWorks (H2, Gegenprobe): Ist die Konfiguration
+// beschreibbar, bleibt errorMsg leer und die Wahl wird gespeichert.
+func TestFMPickNoErrorWhenSaveWorks(t *testing.T) {
+	m, rec := fullPickModel(t, true, "", "", "A", "B")
+	m, run := pickFinalEnter(t, m, "B", nil)
+	if m.errorMsg != "" {
+		t.Errorf("errorMsg = %q trotz erfolgreichem Speichern", m.errorMsg)
+	}
+	cfg := loadTestConfig(t, m)
+	if cfg.FileManagerLastLeft != "id-0" || cfg.FileManagerLastRight != "id-1" {
+		t.Errorf("gespeichert %q / %q, erwartet id-0 / id-1", cfg.FileManagerLastLeft, cfg.FileManagerLastRight)
+	}
+	m = run(m)
+	if m.state != ViewFileManager || len(rec.calls) == 0 {
+		t.Errorf("state = %v, Aufrufe %v", m.state, rec.calls)
+	}
+}
+
+// TestFMPickNoErrorWhenRememberOff (H2, Randfall): Bei ausgeschaltetem Merken
+// wird nichts geschrieben, also kann auch nichts scheitern - selbst bei
+// gesperrtem Ordner bleibt errorMsg leer.
+func TestFMPickNoErrorWhenRememberOff(t *testing.T) {
+	m, rec := fullPickModel(t, false, "", "", "A", "B")
+	m, run := pickFinalEnter(t, m, "B", func(m AppModel) { lockConfigDir(t, m.configPath) })
+	if m.errorMsg != "" {
+		t.Errorf("errorMsg = %q, obwohl Merken aus ist und nichts geschrieben wird", m.errorMsg)
+	}
+	m = run(m)
+	if m.state != ViewFileManager || len(rec.calls) == 0 {
+		t.Errorf("state = %v, Aufrufe %v", m.state, rec.calls)
+	}
+}
+
+// TestFMSavePickChoiceReturnsError (H2): fmSavePickChoice gibt den Fehler
+// zurück (statt ihn zu verschlucken): nil beim Speichern, nil bei Schalter aus
+// und bei unveränderten Werten, ein Fehler bei gesperrtem Ordner.
+func TestFMSavePickChoiceReturnsError(t *testing.T) {
+	m, _ := fullPickModel(t, true, "", "", "A", "B")
+	m.fm.panels[0].conn = connByName(t, m, "A")
+	m.fm.panels[1].conn = connByName(t, m, "B")
+
+	if err := m.fmSavePickChoice(); err != nil {
+		t.Fatalf("Speichern bei beschreibbarer Konfiguration: %v", err)
+	}
+	cfg := loadTestConfig(t, m)
+	if cfg.FileManagerLastLeft != "id-0" || cfg.FileManagerLastRight != "id-1" {
+		t.Errorf("gespeichert %q / %q, erwartet id-0 / id-1", cfg.FileManagerLastLeft, cfg.FileManagerLastRight)
+	}
+
+	// Unveränderte Werte: es wird nicht geschrieben, also auch kein Fehler
+	// (selbst bei gesperrtem Ordner)
+	t.Run("gesperrt", func(t *testing.T) {
+		lockConfigDir(t, m.configPath)
+		if err := m.fmSavePickChoice(); err != nil {
+			t.Errorf("unveränderte Werte: Fehler %v, erwartet nil", err)
+		}
+		m.fm.panels[1].conn = connByName(t, m, "A")
+		if err := m.fmSavePickChoice(); err == nil {
+			t.Error("geänderte Werte bei gesperrtem Ordner: kein Fehler")
+		}
+	})
 }

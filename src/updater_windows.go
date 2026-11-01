@@ -54,7 +54,7 @@ func defaultSetupStarter(path, sha string) error {
 // @param path - Pfad des heruntergeladenen Setups
 // @param sha - Erwartete SHA-256 (hex)
 // @return error - Prüf- oder Startfehler
-// @date   2026-10-31 02:30
+// @date   2026-11-01 10:30
 func startDetachedSetupInstaller(path, sha string) error {
 	// Vorprüfung: derselbe Aufruf, den der Helfer später selbst prüft
 	configDir, err := GetConfigDir()
@@ -74,6 +74,13 @@ func startDetachedSetupInstaller(path, sha string) error {
 	exe, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("eigene EXE unbekannt: %w", err)
+	}
+
+	// Setup-Ordner "anfassen": Die Aufräumfrist (setupLeftoverMinAge) gilt dann
+	// ab dem Start des Helfers, nicht ab dem Download. Ein Fehler ist nicht
+	// kritisch und wird nur protokolliert.
+	if err := touchSetupDir(path, time.Now()); err != nil {
+		NewLogger().Warn("Update: Setup-Ordner nicht aktualisiert: %v", err)
 	}
 
 	// Erst mit Breakaway aus dem Job (überlebt ein Schließen des Jobs), bei

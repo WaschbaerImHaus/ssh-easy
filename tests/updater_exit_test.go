@@ -51,8 +51,23 @@
 //	const setupLeftoverMinAge = 10 * time.Minute         // Wert, den main übergibt
 //	    (Spannweite laut Test: 1 Minute bis 1 Stunde)
 //
+// ÄNDERUNGEN BUILD 88 (Spezifikation spec88.md, Abschnitte N2, N3, H1):
+//
+//	func touchSetupDir(setupPath string, now time.Time) error
+//	    Plattformneutral; setzt Änderungs- und Zugriffszeit des Ordners
+//	    filepath.Dir(setupPath) auf now (os.Chtimes). Fehler (z.B. Ordner fehlt)
+//	    werden zurückgegeben, nicht verschluckt. updater_windows.go ruft die
+//	    Funktion in startDetachedSetupInstaller vor dem Start des Helfers auf.
+//	validateInstallHelperArgs: der Ordner <downloadDir>/setup-* wird EXAKT
+//	    verglichen (kein strings.EqualFold, auch nicht unter goos == "windows").
+//	Updater.ApplyOnExit: Setup-Weg protokolliert "Update-Helfer für v0.N gestartet",
+//	    Ersetzen-Weg weiter "Update auf v0.N installiert".
+//
+// VON MIR FESTGELEGT: Das Protokoll des Setup-Wegs muss "gestartet" und die
+// Version "v0.48" enthalten und darf "installiert" NICHT enthalten.
+//
 // @author Kurt Ingwer
-// @date   2026-10-31 02:20
+// @date   2026-11-01 10:00
 package main
 
 import (
@@ -218,6 +233,55 @@ func TestApplyOnExitInstalls(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(logPath); !strings.Contains(string(data), "v0.48") {
 		t.Errorf("Protokoll nennt die Version nicht: %q", data)
+	}
+}
+
+// TestApplyOnExitSetupLogsStarted (H1): Auf dem Setup-Weg (Windows) ist beim
+// Rückkehren von startSetup nur der Helfer GESTARTET, das Update aber noch
+// nicht installiert (UAC steht noch aus). Das Protokoll sagt deshalb
+// "gestartet" mit der Version und nicht "installiert".
+func TestApplyOnExitSetupLogsStarted(t *testing.T) {
+	u, fake := newPendingSetupUpdater(t)
+	u.SetInstallOnExit(true)
+	logger, logPath := fileLogger(t)
+	u.ApplyOnExit(logger)
+	if fake.callCount() != 1 {
+		t.Fatalf("startSetup %d mal aufgerufen, erwartet 1", fake.callCount())
+	}
+	data, _ := os.ReadFile(logPath)
+	log := string(data)
+	if !strings.Contains(log, "gestartet") || !strings.Contains(log, "v0.48") {
+		t.Errorf("Protokoll = %q, erwartet \"gestartet\" und v0.48", log)
+	}
+	if strings.Contains(log, "installiert") {
+		t.Errorf("Protokoll behauptet \"installiert\", obwohl nur der Helfer gestartet wurde: %q", log)
+	}
+}
+
+// TestApplyOnExitReplaceLogsInstalled (H1, Gegenprobe): Auf dem Ersetzen-Weg
+// (Binary getauscht) bleibt es bei "installiert", nicht "gestartet".
+func TestApplyOnExitReplaceLogsInstalled(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Ersetzen-Weg wird hier mit Unix-Rename geprüft")
+	}
+	srv := startReleaseServer(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF})
+	u, exe := newTestUpdater(t, srv, "47", "linux")
+	if _, err := u.CheckAndDownload(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	u.SetInstallOnExit(true)
+	logger, logPath := fileLogger(t)
+	u.ApplyOnExit(logger)
+	if data, _ := os.ReadFile(exe); string(data) != string(fakeELF) {
+		t.Fatalf("Binary nicht ersetzt: %q", data)
+	}
+	data, _ := os.ReadFile(logPath)
+	log := string(data)
+	if !strings.Contains(log, "installiert") || !strings.Contains(log, "v0.48") {
+		t.Errorf("Protokoll = %q, erwartet \"installiert\" und v0.48", log)
+	}
+	if strings.Contains(log, "gestartet") {
+		t.Errorf("Ersetzen-Weg protokolliert \"gestartet\": %q", log)
 	}
 }
 
@@ -532,6 +596,55 @@ func TestValidateInstallHelperArgsRejects(t *testing.T) {
 	}
 }
 
+// TestValidateInstallHelperArgsDirExactMatch (N3): Der Ordner
+// <downloadDir>/setup-* wird EXAKT verglichen. Frühere Fassung: strings.EqualFold
+// unter Windows - das gleicht aber auch Unicode-Verwandte an: das lange s
+// (U+017F) gilt als "s", das Kelvin-Zeichen (U+212A) als "k". Ein Angreifer
+// könnte so einen anderen Ordner einschmuggeln. Auch bloße ASCII-Großschreibung
+// wird abgelehnt: Der Pfad stammt aus unserem eigenen Aufruf und stimmt
+// buchstabengleich. Die Zeichen entstehen per string(rune(...)), damit keine
+// Escapes in Tool-Parametern zu echten Zeichen werden.
+func TestValidateInstallHelperArgsDirExactMatch(t *testing.T) {
+	root := t.TempDir()
+	sha := strings.Repeat("ab", 32)
+	asset := "ssh-easy-setup-amd64.exe"
+	longS := string(rune(0x017F))  // sieht aus wie s, EqualFold("s", ...) ist wahr
+	kelvin := string(rune(0x212A)) // sieht aus wie K, EqualFold("k", ...) ist wahr
+	build := func(users, kai, update string) string {
+		return filepath.Join(root, users, kai, update)
+	}
+	pathIn := func(dir string) string { return filepath.Join(dir, "setup-1", asset) }
+	downloadDir := build("Users", "Kai", "update")
+
+	// Gegenprobe: der exakte Pfad wird angenommen
+	if _, _, _, err := validateInstallHelperArgs([]string{pathIn(downloadDir), sha, "5"}, downloadDir, "windows", "amd64"); err != nil {
+		t.Fatalf("exakter Pfad abgelehnt: %v", err)
+	}
+
+	cases := map[string]string{
+		"langes s statt s":                  build("U"+longS+"ers", "Kai", "update"),
+		"Kelvin-Zeichen statt K":            build("Users", kelvin+"ai", "update"),
+		"ASCII-Großschreibung":              build("Users", "Kai", "UPDATE"),
+		"ASCII-Großschreibung Elternordner": build("USERS", "Kai", "update"),
+		"ASCII-Kleinschreibung":             build("Users", "kai", "update"),
+	}
+	for name, variant := range cases {
+		if variant == downloadDir {
+			t.Fatalf("%s: Testfall ist identisch mit dem Original", name)
+		}
+		if _, _, _, err := validateInstallHelperArgs([]string{pathIn(variant), sha, "5"}, downloadDir, "windows", "amd64"); err == nil {
+			t.Errorf("%s: %q wurde trotz anderer Schreibweise angenommen (downloadDir %q)", name, pathIn(variant), downloadDir)
+		}
+	}
+
+	// Dasselbe, wenn das lange s im LETZTEN Ordnernamen steckt (Update-Ordner)
+	staging := filepath.Join(root, "Users", "Kai", "staging")
+	fake := filepath.Join(root, "Users", "Kai", longS+"taging")
+	if _, _, _, err := validateInstallHelperArgs([]string{pathIn(fake), sha, "5"}, staging, "windows", "amd64"); err == nil {
+		t.Errorf("langes s im letzten Ordner: %q angenommen (downloadDir %q)", pathIn(fake), staging)
+	}
+}
+
 // TestInstallHelperArgs prüft die Argumentliste für den Prozessstart: genau
 // vier Elemente, der Pfad bleibt EIN Argument (keine Shell, kein Aufspalten
 // an Leerzeichen), und validateInstallHelperArgs nimmt sie wieder an.
@@ -714,4 +827,95 @@ func TestCleanupIgnoresSetupSymlink(t *testing.T) {
 func TestCleanupMissingDirs(t *testing.T) {
 	cleanupUpdateLeftovers("", "", 10*time.Minute)
 	cleanupUpdateLeftovers(filepath.Join(t.TempDir(), "gibt-es-nicht.exe"), filepath.Join(t.TempDir(), "fehlt"), 10*time.Minute)
+}
+
+// --- N2: Setup-Ordner beim Start des Helfers "anfassen" ---
+
+// TestTouchSetupDirSetsModTime (N2): touchSetupDir setzt die Änderungszeit des
+// Ordners, der das Setup enthält, auf den übergebenen Zeitpunkt. Damit misst
+// setupLeftoverMinAge "seit Start des Helfers" statt "seit dem Download".
+func TestTouchSetupDirSetsModTime(t *testing.T) {
+	downloadDir := filepath.Join(t.TempDir(), "update")
+	dir := makeSetupDir(t, downloadDir, "setup-1", 5*time.Hour)
+	setup := filepath.Join(dir, "ssh-easy-setup-amd64.exe")
+
+	now := time.Now().Add(-90 * time.Second).Truncate(time.Second)
+	if err := touchSetupDir(setup, now); err != nil {
+		t.Fatalf("touchSetupDir: %v", err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := info.ModTime().Sub(now); diff < -time.Second || diff > time.Second {
+		t.Errorf("ModTime = %v, erwartet %v", info.ModTime(), now)
+	}
+	// Die Datei selbst und der Update-Ordner bleiben unberührt
+	if fi, err := os.Stat(setup); err != nil || time.Since(fi.ModTime()) > time.Minute {
+		t.Errorf("Setup-Datei verändert oder fehlt: %v, %v", fi, err)
+	}
+}
+
+// TestTouchSetupDirKeepsFromCleanup (N2): Ein alter setup-*-Ordner (Download vor
+// Stunden, Helfer wartet erst jetzt auf UAC) wird nach dem "Anfassen" nicht
+// aufgeräumt - ein Neustart des Programms würde sonst das Setup unter dem
+// wartenden Helfer löschen. Der unberührte Nachbar (Kontrolle) fällt weg.
+func TestTouchSetupDirKeepsFromCleanup(t *testing.T) {
+	root := t.TempDir()
+	exe := filepath.Join(root, "ssh-easy.exe")
+	_ = os.WriteFile(exe, []byte("aktuell"), 0o755)
+	downloadDir := filepath.Join(root, "update")
+	touched := makeSetupDir(t, downloadDir, "setup-touched", 5*time.Hour)
+	untouched := makeSetupDir(t, downloadDir, "setup-untouched", 5*time.Hour)
+
+	if err := touchSetupDir(filepath.Join(touched, "ssh-easy-setup-amd64.exe"), time.Now()); err != nil {
+		t.Fatalf("touchSetupDir: %v", err)
+	}
+	cleanupUpdateLeftovers(exe, downloadDir, setupLeftoverMinAge)
+
+	if _, err := os.Stat(filepath.Join(touched, "ssh-easy-setup-amd64.exe")); err != nil {
+		t.Errorf("angefasster Ordner wurde aufgeräumt: %v", err)
+	}
+	if _, err := os.Stat(untouched); !os.IsNotExist(err) {
+		t.Error("Kontrolle: unberührter alter Ordner wurde nicht aufgeräumt")
+	}
+}
+
+// TestTouchSetupDirErrors (N2): Fehlt der Ordner, kommt ein Fehler zurück
+// (der Aufrufer protokolliert ihn nur) - kein Absturz, und es wird nichts
+// angelegt. Auch ein leerer Pfad darf nicht paniken.
+func TestTouchSetupDirErrors(t *testing.T) {
+	root := t.TempDir()
+	missing := filepath.Join(root, "update", "setup-gibt-es-nicht", "ssh-easy-setup-amd64.exe")
+	if err := touchSetupDir(missing, time.Now()); err == nil {
+		t.Error("fehlender Ordner: kein Fehler")
+	}
+	if _, err := os.Stat(filepath.Dir(missing)); !os.IsNotExist(err) {
+		t.Error("touchSetupDir hat den fehlenden Ordner angelegt")
+	}
+	_ = touchSetupDir("", time.Now())
+}
+
+// TestWindowsSetupStartTouchesSetupDir (N2): Quelltext-Prüfung, weil
+// startDetachedSetupInstaller nur unter Windows kompiliert: Innerhalb der
+// Funktion wird touchSetupDir VOR dem Start des Helfers (cmd.Start()) gerufen.
+func TestWindowsSetupStartTouchesSetupDir(t *testing.T) {
+	data, err := os.ReadFile("updater_windows.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(data)
+	start := strings.Index(text, "func startDetachedSetupInstaller(")
+	if start < 0 {
+		t.Fatal("startDetachedSetupInstaller fehlt in updater_windows.go")
+	}
+	body := text[start:]
+	touch := strings.Index(body, "touchSetupDir(")
+	launch := strings.Index(body, "cmd.Start()")
+	if touch < 0 {
+		t.Fatal("startDetachedSetupInstaller ruft touchSetupDir nicht auf")
+	}
+	if launch < 0 || touch > launch {
+		t.Error("touchSetupDir muss VOR cmd.Start() (Start des Helfers) aufgerufen werden")
+	}
 }

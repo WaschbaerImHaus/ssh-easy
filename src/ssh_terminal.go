@@ -10,7 +10,7 @@
 // und direkt auf os.Stdin/os.Stdout arbeiten statt auf Bubbleteas Streams.
 //
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-11-01 10:38
 package main
 
 import (
@@ -78,8 +78,12 @@ func (t *sshTerminalCmd) SetStderr(w io.Writer) { t.stderr = w }
 //  4. Warten bis der Nutzer "exit" eingibt oder die Verbindung abbricht
 //  5. Terminal-Zustand wiederherstellen
 //
+// Beim Beenden per Signal oder Schließkreuz (os.Exit, Defers laufen nicht)
+// stellt die mit registerEmergencyRestore angemeldete Funktion Raw- und
+// VT-Modus wieder her.
+//
 // @return error - Fehler beim Starten der Session oder nil bei normalem Ende
-// @date   2026-10-16 10:00
+// @date   2026-11-01 10:38
 func (t *sshTerminalCmd) Run() error {
 	// Stdin-Puffer als ERSTES defer registrieren → wird als LETZTES ausgeführt (LIFO).
 	// Muss nach allen anderen Defers laufen: term.Restore und restoreVT können beim
@@ -109,11 +113,33 @@ func (t *sshTerminalCmd) Run() error {
 		// Trotzdem fortfahren – einfache Befehle funktionieren noch.
 		oldState = nil
 	}
-	// Terminal-Zustand beim Beenden immer wiederherstellen
+	// Notfall-Wiederherstellung anmelden: Wird ssh-easy während der Sitzung per
+	// SIGTERM/SIGHUP oder Schließkreuz beendet, endet der Notfall-Ablauf
+	// (exit_signals.go) mit os.Exit - die Defers hier laufen dann nicht, und
+	// die Shell bliebe im Raw-Modus. runEmergencyRestore ruft diese Funktion
+	// vorher auf. Reihenfolge wie bei den Defers: erst Raw-Modus zurück, dann
+	// VT-Modus (restoreVT stellt den Eingabemodus von VOR MakeRaw her; anders
+	// herum bliebe ENABLE_VIRTUAL_TERMINAL_INPUT unter Windows gesetzt).
+	// oldState wird ab hier nicht mehr verändert, die Funktion darf also aus
+	// einer anderen Goroutine laufen.
+	unregister := registerEmergencyRestore(func() {
+		if oldState != nil {
+			term.Restore(stdinFd, oldState)
+		}
+		restoreVT()
+	})
+	// Terminal-Zustand beim Beenden immer wiederherstellen, DANACH die
+	// Notfall-Wiederherstellung abmelden. So gibt es keinen Moment, in dem
+	// ein Notfall das Terminal im Raw-Modus zurückließe. Kommt der Notfall
+	// genau zwischen Restore und Abmelden, setzt er denselben Zustand ein
+	// zweites Mal - das ist harmlos. Nach dem Abmelden (also auch nachdem
+	// Bubbletea wieder übernommen hat) fasst ein später Notfall das
+	// Terminal nicht mehr mit dem alten Zustand an.
 	defer func() {
 		if oldState != nil {
 			term.Restore(stdinFd, oldState)
 		}
+		unregister()
 	}()
 
 	// Neue SSH-Session für die Shell erstellen

@@ -243,23 +243,25 @@ func mergeImport(existing, imported []Connection, selected map[string]bool) ([]C
 	return merged, res
 }
 
-// applyImport lädt die aktuelle Konfiguration, führt den Import zusammen
-// und speichert (atomar). Andere Einstellungen bleiben unverändert.
+// applyImport führt den Import zusammen und speichert (atomar). Laden,
+// Zusammenführen und Speichern laufen über updateConfig unter configUpdateMu:
+// Nur die Verbindungen ändern sich, gleichzeitige Änderungen anderer Felder
+// (z. B. WindowCols) bleiben erhalten.
 //
 // @param configPath - Pfad der Konfiguration
 // @param imported - Verbindungen aus der Datei
 // @param selected - Gewählte IDs
 // @return importResult - Ergebnis
 // @return error - Lade- oder Speicherfehler
-// @date   2026-10-17 23:40
+// @date   2026-11-01 10:38
 func applyImport(configPath string, imported []Connection, selected map[string]bool) (importResult, error) {
-	cfg, err := LoadConfig(configPath)
-	if err != nil {
-		return importResult{}, err
-	}
 	var res importResult
-	cfg.Connections, res = mergeImport(cfg.Connections, imported, selected)
-	if err := SaveConfig(configPath, cfg); err != nil {
+	err := updateConfig(configPath, func(cfg *AppConfig) bool {
+		// Nur die Verbindungen werden ersetzt; alle anderen Felder bleiben
+		cfg.Connections, res = mergeImport(cfg.Connections, imported, selected)
+		return true
+	})
+	if err != nil {
 		return importResult{}, err
 	}
 	return res, nil

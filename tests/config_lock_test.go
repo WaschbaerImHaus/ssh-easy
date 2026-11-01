@@ -18,8 +18,13 @@
 // (getConsoleFontSize liefert 0), deshalb prüft ein Quelltext-Test zusätzlich,
 // dass keine der vier Dateien mehr LoadConfig/SaveConfig direkt aufruft.
 //
+// ERGÄNZUNG BUILD 88 (spec88.md, Abschnitt H3): Auch applyImport (import.go)
+// schreibt über updateConfig statt LoadConfig/SaveConfig. import.go enthält
+// sonst keinen legitimen LoadConfig-Aufruf (readImportFile liest eine fremde
+// Datei per json.Unmarshal), deshalb steht die Datei in der Quelltext-Prüfung.
+//
 // @author Kurt Ingwer
-// @date   2026-10-31 02:20
+// @date   2026-11-01 10:00
 package main
 
 import (
@@ -138,12 +143,32 @@ func TestPersistFontSizeWritesUnderLock(t *testing.T) {
 	})
 }
 
-// TestNoUnlockedConfigWritesInSource prüft den Quelltext der vier Dateien:
+// TestApplyImportWritesUnderLock (H3) prüft applyImport (Taste I): Der Import
+// wartet auf configUpdateMu, und eine gleichzeitige Änderung (WindowCols) geht
+// nicht verloren. Bestehende Verbindungen und der neue Eintrag stehen danach
+// beide in der Datei.
+func TestApplyImportWritesUnderLock(t *testing.T) {
+	m := newListTestModel(t, "A")
+	n := importConn("Neu", "neu.lan")
+	n.ID = "neu-id"
+	assertWritesUnderConfigLock(t, m.configPath, func() {
+		res, err := applyImport(m.configPath, []Connection{n}, map[string]bool{"neu-id": true})
+		if err != nil || res.added != 1 {
+			t.Errorf("applyImport: %+v, %v", res, err)
+		}
+	}, func(cfg *AppConfig) {
+		if len(cfg.Connections) != 2 {
+			t.Errorf("Verbindungen = %d, erwartet 2 (A und Neu)", len(cfg.Connections))
+		}
+	})
+}
+
+// TestNoUnlockedConfigWritesInSource prüft den Quelltext der fünf Dateien:
 // Außerhalb von Kommentaren darf weder LoadConfig noch SaveConfig vorkommen
 // (alles läuft über updateConfig). Deckt auch changeFontSize ab, das unter
 // Linux nicht auslösbar ist.
 func TestNoUnlockedConfigWritesInSource(t *testing.T) {
-	for _, file := range []string{"updater.go", "console_font.go", "tui_language.go", "tui_filemanager_menu.go"} {
+	for _, file := range []string{"updater.go", "console_font.go", "tui_language.go", "tui_filemanager_menu.go", "import.go"} {
 		data, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatalf("%s: %v", file, err)

@@ -12,6 +12,10 @@
 
 ## Offen
 
+- **Test `TestSSHTerminalRegistersEmergencyRestore` zu locker** (Build 88, `tests/exit_signals_test.go:1089`): Er sollte den Text des Funktionsliterals bis `})` prüfen und im `defer` verlangen, dass `term.Restore` vor `unregister()` steht.
+- **`watchCloseSignals`: erst `onSignal`, dann loggen** (Build 88, `src/exit_signals.go:293/297`): `onSignal` soll als Allererstes aufgerufen werden, das Protokollieren danach.
+- **Kopf von `tests/exit_signals_test.go` veraltet** (Build 88, Z. 20–35): beschreibt noch die Signaturen aus Build 87. Als historisch markieren oder anpassen.
+- **UX: Speicherfehler der Datei-Manager-Wahl erst nach dem Schließen sichtbar** (Build 88): Der Fehler erscheint erst in der Liste, wenn der Datei-Manager geschlossen ist. Eventuell zusätzlich in `fm.message` anzeigen. Das muss der Nutzer entscheiden.
 - **Schlüsselvergabe: Server-Skripte unter fish/csh nicht geprüft** (Build 86): Die Skripte zum Eintragen und Entfernen in `authorized_keys` laufen über die Login-Shell des Servers. Getestet sind sh/bash/BusyBox-sh; bei fish oder csh als Login-Shell ist das Verhalten ungeprüft (E2E mit `helper-e2e-sshd` möglich).
 - **Schlüssel entfernen bricht bei ungültigem UTF-8 oder NUL-Byte in `authorized_keys` ab** (Build 86): In `removeKeyScript` (`src/ssh.go`) endet `r` in der Statusansicht mit einem Fehler statt den Schlüssel zu entfernen, sobald `authorized_keys` ungültiges UTF-8 (z. B. ein Latin-1-Kommentar „Müller“ bei GNU grep unter UTF-8-Locale) oder ein NUL-Byte enthält; GNU grep hält die Datei dann für binär. Die Richtung ist sicher, die Datei bleibt unverändert. Vorschlag: `LC_ALL=C` vor die grep-Aufrufe setzen (`specialist-ssh`).
 - **Neutraler Name für `fmDeployMu`/`fmFreshConnection`** (Build 86): Beide werden jetzt auch vom Hauptablauf genutzt, nicht nur vom Datei-Manager; ein neutraler Name (z. B. `deployMu`) wäre passender (`worker-refactorer`).

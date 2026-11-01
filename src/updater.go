@@ -671,9 +671,12 @@ func (u *Updater) Apply() error {
 // Normalweg (nach p.Run) und im Notfallweg (Schließkreuz, SIGHUP); applyMu
 // wird über Prüfung UND Installation gehalten, damit ein zweiter Aufruf nicht
 // vorzeitig zurückkehrt, während das Setup noch gestartet wird.
+// Setup-Weg (Windows): Zurückgekehrt ist erst der Start des Helfers, die
+// Installation steht (UAC) noch aus - protokolliert wird "gestartet". Nur der
+// Ersetzen-Weg meldet "installiert".
 //
 // @param logger - Protokoll (darf nil sein)
-// @date   2026-10-31 02:30
+// @date   2026-11-01 10:30
 func (u *Updater) ApplyOnExit(logger *Logger) {
 	if u == nil || !u.InstallOnExit() {
 		return
@@ -686,6 +689,10 @@ func (u *Updater) ApplyOnExit(logger *Logger) {
 	}
 	if err := u.applyLocked(); err != nil {
 		logger.Error("Update auf v0.%d fehlgeschlagen: %v", pending.build, err)
+		return
+	}
+	if pending.kind == updateRunSetup {
+		logger.Info("Update-Helfer für v0.%d gestartet", pending.build)
 		return
 	}
 	logger.Info("Update auf v0.%d installiert", pending.build)

@@ -365,10 +365,19 @@ func (m *AppModel) fmPickStart() {
 // updateConfig: Der Schalter wird unter der Sperre am aktuellen Stand
 // geprüft, und eine gleichzeitige Schlüsselvergabe (KeyPath) wird nicht mit
 // einem alten Stand überschrieben. Ist der Schalter aus oder sind die
-// Werte schon gespeichert, bleibt die Datei unberührt.
+// Werte schon gespeichert, bleibt die Datei unberührt und es gibt keinen
+// Fehler. Schlägt Lesen oder Schreiben fehl, kommt der Fehler zurück
+// (Build 88; vorher wurde er still übergangen) - der Aufrufer zeigt ihn an
+// und verbindet trotzdem.
 //
-// @date   2026-10-31 02:06
-func (m AppModel) fmSavePickChoice() {
+// @return error - Fehler aus updateConfig, sonst nil
+// @date   2026-11-01 10:38
+func (m AppModel) fmSavePickChoice() error {
+	// Schalter aus: nichts lesen, nichts schreiben, also auch kein Fehler
+	// (wie rememberLastConnection in der Liste)
+	if !m.rememberSelection {
+		return nil
+	}
 	left := fmRememberKey(m.fm.panels[0].conn.ID)
 	right := fmRememberKey(m.fm.panels[1].conn.ID)
 	saved := false
@@ -384,9 +393,13 @@ func (m AppModel) fmSavePickChoice() {
 		saved = true
 		return true
 	})
-	if err == nil && saved {
+	if err != nil {
+		return err
+	}
+	if saved {
 		m.configCache.Invalidate()
 	}
+	return nil
 }
 
 // handleFMPickKeys verarbeitet Tasten in der Verbindungsauswahl.
@@ -395,12 +408,13 @@ func (m AppModel) fmSavePickChoice() {
 // gemerkten Seite. Enter links wechselt immer zur rechten Seite - auch mit
 // nur einer Verbindung. Enter rechts schließt die Wahl ab: speichern (bei
 // eingeschaltetem Merken), dann verbinden; "(keine)" ergibt den
-// Ein-Fenster-Modus. q/Esc brechen ab, ohne etwas zu speichern.
+// Ein-Fenster-Modus. Ein Fehler beim Speichern steht bereinigt in errorMsg,
+// verbunden wird trotzdem. q/Esc brechen ab, ohne etwas zu speichern.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der rechten Wahl)
-// @date   2026-10-31 02:06
+// @date   2026-11-01 10:38
 func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	conns := m.fmPickConnections()
 	rows := m.fmPickRows(conns)
@@ -448,8 +462,14 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.fm.single = true
 		}
 		// Wahl abgeschlossen: vor dem Verbindungsaufbau merken - ein
-		// Verbindungsfehler lässt die Wahl gespeichert
-		m.fmSavePickChoice()
+		// Verbindungsfehler lässt die Wahl gespeichert. Scheitert das
+		// Speichern, wird trotzdem verbunden (wie in der Liste); der Fehler
+		// steht in errorMsg und erscheint nach dem Schließen in der Liste.
+		// Der Text enthält den Pfad der Konfiguration und wird deshalb von
+		// Steuerzeichen bereinigt.
+		if err := m.fmSavePickChoice(); err != nil {
+			m.errorMsg = sanitizeFileName(err.Error())
+		}
 		return m.startFMConnect(0, "")
 	}
 	if m.fm.pickCursor >= rows {
@@ -516,12 +536,14 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // Fehlertexte können Text vom Server enthalten und werden deshalb von
 // Steuerzeichen bereinigt. Nach einer erfolgreichen Anmeldung startet bei
 // Bedarf die Schlüsselvergabe im Hintergrund (fmNeedsKeyDeploy).
+// Eine schon stehende errorMsg (Speicherfehler der Wahl) wird nie
+// überschrieben, sondern per joinFMNotice ergänzt.
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken,
 // Schlüsselvergabe)
-// @date   2026-10-28 13:16
+// @date   2026-11-01 10:38
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -532,9 +554,10 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	}
 	conn := m.fm.panels[msg.side].conn
 	if msg.err != nil {
-		// Nach closeFileManager steht in m.errorMsg höchstens eine
+		// Nach closeFileManager steht in m.errorMsg höchstens ein Fehler
+		// beim Speichern der Wahl (handleFMPickKeys) und/oder eine
 		// gescheiterte Schlüsselvergabe; der Verbindungsfehler kommt davor
-		// (joinFMNotice), damit keine der beiden Meldungen verloren geht.
+		// (joinFMNotice), damit keine dieser Meldungen verloren geht.
 		var sftpErr *fmSFTPError
 		switch {
 		case conn.ID == fmLocalConnID:

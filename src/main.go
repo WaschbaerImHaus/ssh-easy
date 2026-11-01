@@ -5,7 +5,7 @@
 // mit Local-Port-Forwarding-Tunneln.
 //
 // @author Kurt Ingwer
-// @date   2026-10-31 07:02
+// @date   2026-11-01 10:37
 package main
 
 import (
@@ -32,7 +32,11 @@ import (
 // das Programm nur als Helfer, der das Setup nach dem Ende des Hauptprozesses
 // startet (siehe runInstallUpdateHelper), und nie als TUI.
 //
-// @date   2026-10-31 07:02
+// Der Merker closeRequested wird beim ersten Schließ-Signal synchron gesetzt
+// (onSignal), damit ein Fehler aus der Ereignisschleife (Run) beim Schließen
+// nicht zu Exit-Code 1 führt (Build 88).
+//
+// @date   2026-11-01 10:37
 func main() {
 	// Helfer-Modus für das Update (Windows): kein Terminal, keine TUI, keine
 	// Aufräumarbeiten - das Setup-Verzeichnis gehört gerade diesem Helfer.
@@ -132,12 +136,14 @@ func main() {
 	signal.Notify(sigs, closeSignals()...)
 	allDone := make(chan struct{})
 	var closeRequested atomic.Bool
-	// Der Watcher ruft quit per "go" auf: p.Quit() blockiert, solange die
-	// Ereignisschleife steht (z. B. während tea.Exec im SSH-Terminal).
-	go watchCloseSignals(sigs, func() {
-		closeRequested.Store(true)
-		p.Quit()
-	}, allDone, tasks, closeGracePeriod, os.Exit, logger)
+	// onSignal setzt den Merker closeRequested SYNCHRON beim ersten Signal,
+	// noch bevor der Watcher quit startet (Build 88). Früher geschah das in
+	// der quit-Goroutine: Kam Run wegen des geschlossenen Fensters schon
+	// vorher mit einem Fehler zurück, sah finishRun den Merker noch nicht und
+	// beendete das Programm unter Linux mit Exit-Code 1.
+	// quit (p.Quit) ruft der Watcher per "go" auf: p.Quit() blockiert, solange
+	// die Ereignisschleife steht (z. B. während tea.Exec im SSH-Terminal).
+	go watchCloseSignals(sigs, func() { closeRequested.Store(true) }, p.Quit, allDone, tasks, closeGracePeriod, os.Exit, logger)
 
 	_, err = p.Run()
 	// Auch bei einem Fehler aus Run() laufen alle Aufgaben (vorher endete

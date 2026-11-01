@@ -119,5 +119,14 @@
 - 7 neue Texte (txtFMEntry, txtFMNone, txtRememberOn/Off, txtHelpMenuExtra, txtConsoleResetAll, txtSelectionResetOnly), alte entfernt, alle 41 Sprachen
 - 899 Tests in 54 Dateien
 
+## Build 88 (2026-11-01) - Nacharbeiten aus dem Fable-Review von Build 87
+- Keine neuen Texte, keine neuen Nutzerentscheidungen
+- Notfall-Schließen (`runEmergency(deadline)`): Terminal wiederherstellen -> apply -> disconnect/cleanup/persist in EINER Goroutine mit gemeinsamem Zeitlimit `emergencyStepsTimeout` (750 ms, vorher `emergencyPersistTimeout`). Hängende Verbindung hält das Update nicht mehr auf
+- `registerEmergencyRestore`/`runEmergencyRestore` (exit_signals.go): ssh_terminal.go meldet nach `term.MakeRaw` die Wiederherstellung an (Raw- und VT-Modus), Abmelden im Defer. Shell bleibt bei Kreuz/kill nicht mehr im Raw-Modus
+- `watchCloseSignals(sigs, onSignal, quit, ...)`: `onSignal` setzt `closeRequested` synchron VOR `go quit()` (Linux: kein gelegentlicher Exit-Code 1 mehr). Falle: `TestMainSetsCloseRequestedInOnSignal` sucht das erste `p.Run()` in main.go - nie in Kommentaren davor schreiben
+- Update-Helfer: `touchSetupDir` (Änderungszeit des Setup-Ordners beim Helfer-Start), Ordnervergleich exakt (kein `EqualFold`), Log „Update-Helfer für v0.N gestartet“ statt „installiert“
+- Datei-Manager-Wahl: Speicherfehler (`fmSavePickChoice` gibt error zurück) wird angezeigt, Verbindung wird trotzdem aufgebaut. Import (`applyImport`) speichert über `updateConfig`
+- 931 Tests in 54 Dateien
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

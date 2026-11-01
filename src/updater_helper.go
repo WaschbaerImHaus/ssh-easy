@@ -57,7 +57,13 @@ func isInstallHelperInvocation(args []string) bool {
 	return len(args) >= 2 && args[1] == installHelperFlag
 }
 
-// hasControlChars prüft auf Steuerzeichen (inkl. NUL, Zeilenumbruch, DEL).
+// hasControlChars prüft, ob ein Text Steuerzeichen enthält (Zeichen unter
+// 0x20 wie NUL und Zeilenumbruch sowie DEL 0x7f). Solche Zeichen haben in
+// einem Dateipfad nichts verloren und werden abgelehnt.
+//
+// @param s - Zu prüfender Text
+// @return bool - true, wenn mindestens ein Steuerzeichen enthalten ist
+// @date   2026-11-01 10:30
 func hasControlChars(s string) bool {
 	for i := 0; i < len(s); i++ {
 		if s[i] < 0x20 || s[i] == 0x7f {
@@ -67,7 +73,13 @@ func hasControlChars(s string) bool {
 	return false
 }
 
-// isHexString prüft, ob s genau n Hex-Zeichen (0-9, a-f, A-F) enthält.
+// isHexString prüft, ob s aus genau n Hex-Zeichen besteht (0-9, a-f, A-F;
+// Groß-/Kleinschreibung egal). Andere Zeichen oder eine andere Länge ergeben false.
+//
+// @param s - Zu prüfender Text (z.B. eine SHA-256)
+// @param n - Erwartete Anzahl Zeichen (SHA-256: 64)
+// @return bool - true, wenn s genau n Hex-Zeichen lang ist
+// @date   2026-11-01 10:30
 func isHexString(s string, n int) bool {
 	if len(s) != n {
 		return false
@@ -87,7 +99,8 @@ func isHexString(s string, n int) bool {
 // Gültig nur: genau 3 Argumente; downloadDir absolut und nicht leer; Pfad
 // absolut, unverändert (filepath.Clean(path) == path), ohne Steuerzeichen und
 // von der Form <downloadDir>/setup-*/<Setup-Dateiname der Plattform>;
-// SHA-256 aus 64 Hex-Zeichen; PID eine positive Dezimalzahl.
+// SHA-256 aus 64 Hex-Zeichen; PID eine positive Dezimalzahl. Der Ordner wird
+// exakt verglichen (Groß-/Kleinschreibung zählt, auch unter Windows).
 //
 // @param args - Argumente nach dem Schalter
 // @param downloadDir - Update-Ordner (~/.ssh-easy/update)
@@ -97,7 +110,7 @@ func isHexString(s string, n int) bool {
 // @return sha - geprüfte SHA-256 (unverändert)
 // @return pid - PID des Hauptprozesses
 // @return err - Grund der Ablehnung
-// @date   2026-10-31 02:30
+// @date   2026-11-01 10:30
 func validateInstallHelperArgs(args []string, downloadDir, goos, goarch string) (path, sha string, pid int, err error) {
 	if len(args) != 3 {
 		return "", "", 0, fmt.Errorf("erwartet 3 Argumente, erhalten %d", len(args))
@@ -121,13 +134,10 @@ func validateInstallHelperArgs(args []string, downloadDir, goos, goarch string) 
 		return "", "", 0, fmt.Errorf("unerwarteter Setup-Dateiname")
 	}
 	setupDir := filepath.Dir(path)
-	sameDir := func(a, b string) bool {
-		if goos == "windows" {
-			return strings.EqualFold(a, b)
-		}
-		return a == b
-	}
-	if !sameDir(filepath.Dir(setupDir), filepath.Clean(downloadDir)) {
+	// Exakter Vergleich, auch unter Windows: strings.EqualFold würde Unicode-
+	// Verwandte gleichsetzen (langes s U+017F = "s", Kelvin-Zeichen U+212A = "K").
+	// Der Pfad stammt aus unserem eigenen Aufruf und stimmt buchstabengleich.
+	if filepath.Dir(setupDir) != filepath.Clean(downloadDir) {
 		return "", "", 0, fmt.Errorf("Setup liegt nicht im Update-Ordner")
 	}
 	if name := filepath.Base(setupDir); !strings.HasPrefix(name, "setup-") || len(name) == len("setup-") {
@@ -147,6 +157,21 @@ func validateInstallHelperArgs(args []string, downloadDir, goos, goarch string) 
 		return "", "", 0, fmt.Errorf("PID ist nicht positiv")
 	}
 	return path, sha, pid, nil
+}
+
+// touchSetupDir setzt Änderungs- und Zugriffszeit des Ordners, der das Setup
+// enthält (filepath.Dir(setupPath)), auf now. Der Helfer wartet evtl. lange auf
+// die UAC-Bestätigung; cleanupUpdateLeftovers räumt setup-*-Ordner nur ab, wenn
+// ihre Änderungszeit mindestens setupLeftoverMinAge zurückliegt. Ohne das
+// "Anfassen" zählte die Frist ab dem Download statt ab dem Start des Helfers.
+// Ein fehlender Ordner wird nicht angelegt, sondern als Fehler gemeldet.
+//
+// @param setupPath - Pfad der Setup-Datei
+// @param now - Neuer Zeitstempel des Ordners
+// @return error - Fehler von os.Chtimes (z.B. Ordner fehlt)
+// @date   2026-11-01 10:30
+func touchSetupDir(setupPath string, now time.Time) error {
+	return os.Chtimes(filepath.Dir(setupPath), now, now)
 }
 
 // removeSetupDir entfernt den setup-*-Ordner eines gescheiterten Updates.
