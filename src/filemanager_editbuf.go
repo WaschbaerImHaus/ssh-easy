@@ -11,7 +11,7 @@
 // Positionen sind (Zeile, Spalte) in Zeichen, nicht in Bytes.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 00:45
+// @date   2026-11-07 12:10
 package main
 
 import (
@@ -317,18 +317,25 @@ func runesEqual(a, b []rune) bool {
 // editRuneDisplay liefert, wie ein Zeichen an Anzeigespalte col erscheint:
 // Tab als Leerzeichen bis zum nächsten Tabstopp, Steuer- und unsichtbare
 // Formatzeichen als "?" (Inhalt vom Server - darf das Terminal nicht steuern).
+// Auch Zeilen- und Absatztrenner (U+2028/U+2029, Kategorien Zl/Zp) werden
+// "?" mit Breite 1: Roh hätten sie Breite 0, und manche Terminals brechen
+// dort um - Zeile und Cursor verrutschten. Nur die Anzeige ändert sich, der
+// Inhalt bleibt und wird unverändert gespeichert.
 //
 // @param r - Zeichen
 // @param col - Anzeigespalte davor
 // @return string - Darstellung
 // @return int - Breite in Zellen
-// @date   2026-10-22 00:45
+// @date   2026-11-07 12:10
 func editRuneDisplay(r rune, col int) (string, int) {
 	switch {
 	case r == '\t':
 		width := editTabWidth - col%editTabWidth
 		return strings.Repeat(" ", width), width
 	case unicode.IsControl(r) || (unicode.Is(unicode.Cf, r) && r != '\u200c' && r != '\u200d'):
+		return "?", 1
+	case unicode.In(r, unicode.Zl, unicode.Zp):
+		// Zeilen- und Absatztrenner: würden im Terminal umbrechen
 		return "?", 1
 	}
 	return string(r), max(runewidth.RuneWidth(r), 0)

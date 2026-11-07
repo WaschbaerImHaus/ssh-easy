@@ -6,7 +6,7 @@
 // und tui_keygen.go ausgelagert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-31 02:06
+// @date   2026-11-07 11:51
 package main
 
 import (
@@ -714,6 +714,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = ViewKeygenResult
 		m.errorMsg = ""
 		return m, nil
+	}
+
+	// Shift+Einfg bzw. Strg+Einfg aus Unix-Terminals im F4-Editor: dort
+	// einfügen (mehrzeilig), nicht in ein Eingabefeld
+	if (isShiftInsertSequence(msg) || isCtrlInsertSequence(msg)) && m.fmEditorAcceptsPaste() {
+		return m.fmEditorPaste()
 	}
 
 	// Shift+Einfg aus Unix-Terminals (ESC[2;2~ als unbekannte CSI-Sequenz)

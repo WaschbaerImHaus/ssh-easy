@@ -5,6 +5,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [v0.89] – Build 89
+- **Added** file manager editor (`F4`): paste from the clipboard with `Ctrl+V`, `Shift+Insert` and `Ctrl+Insert` (user request; `Ctrl+Insert` usually means "copy" elsewhere). Works on Linux/macOS terminals (`ESC[2;2~` and `ESC[2;5~`) and on Windows. Line endings CR and CRLF become LF; control characters except Tab and LF are removed, also for a paste reported by the terminal (bracketed paste). A paste that would make the file larger than 16 MiB (counted in bytes, CRLF files count double) is refused with a message; a clipboard larger than 64 MiB is refused early. Only in text mode: in the file windows `Ctrl+Insert` still marks, in the hex mode, help, dialogs and input lines paste does nothing. New help line in `F1`
+- **Fixed** closing the window in an emergency on Linux (`kill -TERM`, window closed during an open SSH terminal): the terminal could stay in raw mode. The new order is restore, update, clean up, save, disconnect last. Afterwards the emergency path waits for the normal exit within the remaining time; if it does not come, the terminal is restored a second time and, on Linux/macOS, a reset sequence is written (bracketed paste off, leave the alternate screen, mouse modes off, show the cursor; limited to 250 ms), then the program ends. Total budget 2.5 s (Windows 2.25 s), still under 3 s
+- **Fixed** a hanging disconnect no longer keeps the local clean-up from running (local copies of F9 "open" stayed behind until the 24 h clean-up): clean-up and saving now run before the disconnect
+- **Fixed** removing and checking an SSH key in `authorized_keys` no longer aborts when the file contains Latin-1 characters (for example a comment "Müller" on a UTF-8 server) or a NUL byte: every `grep` in the scripts runs with `LC_ALL=C` and `-a` (checked with GNU grep and BusyBox grep)
+- **Changed** the error when the remembered file manager choice cannot be saved now also appears at once in the message line of the file manager (user decision). It survives the connection set-up and the password prompt; another error takes precedence. As before, it also shows in the connection list after closing
+- **Changed** editor display: the line and paragraph separators U+2028/U+2029 are shown as "?" (the content is unchanged and saved as it was), so that terminals do not break the line there
+- **Changed** `watchCloseSignals` now calls `onSignal` before the first log entry (a slow log write can no longer delay the "closing requested" flag)
+- One new text (message when pasting is refused) and one extended help text in all 41 languages
+
 ## [v0.88] – Build 88
 - **Fixed** closing the window in an emergency (X button, Alt+F4, SIGHUP while the normal exit does not come in time) now works in a safer order: first the terminal is restored, then the downloaded update is started, and only after that are the connections disconnected, cleaned up and the sizes saved – all together within one shared time limit (750 ms). Before, a hanging connection could hold back the update until Windows ended the program
 - **Fixed** when ssh-easy is ended during an SSH session (X button, `kill`), the shell is no longer left in raw mode (no echo, no line editing); the terminal is restored first

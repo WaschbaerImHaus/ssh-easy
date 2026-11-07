@@ -252,3 +252,42 @@ func TestParseHexQuery(t *testing.T) {
 	}
 	_ = strings.ToLower
 }
+
+// TestEditRuneDisplayLineAndParagraphSeparators (Runde 2, Fund 3): U+2028
+// (Zeilentrenner, Zl) und U+2029 (Absatztrenner, Zp) erscheinen in der Editor-
+// anzeige als "?" mit Breite 1, wie die unsichtbaren Formatzeichen (Cf): Manche
+// Terminals brechen dort die Zeile um und zerlegen das Bild. Der Inhalt bleibt
+// unverändert (nur die Anzeige ändert sich). Unverändert bleiben: ZWNJ/ZWJ
+// (Ausnahme der Cf-Regel), das geschützte Leerzeichen U+00A0 und gewöhnliche
+// Zeichen. Die Zeichen entstehen per Escape im Quelltext.
+func TestEditRuneDisplayLineAndParagraphSeparators(t *testing.T) {
+	for _, r := range []rune{0x2028, 0x2029} {
+		if text, width := editRuneDisplay(r, 0); text != "?" || width != 1 {
+			t.Errorf("editRuneDisplay(%U) = %q/%d, erwartet \"?\"/1", r, text, width)
+		}
+		if text, width := editRuneDisplay(r, 7); text != "?" || width != 1 {
+			t.Errorf("editRuneDisplay(%U, Spalte 7) = %q/%d, erwartet \"?\"/1", r, text, width)
+		}
+	}
+	// Gegenprobe: bisheriges Verhalten bleibt
+	for _, r := range []rune{0x85, 0x202e, 0xfeff} {
+		if text, _ := editRuneDisplay(r, 0); text != "?" {
+			t.Errorf("editRuneDisplay(%U) = %q, erwartet \"?\"", r, text)
+		}
+	}
+	for _, r := range []rune{0x200c, 0x200d, 0xa0, 'a', 0x65e5} {
+		if text, _ := editRuneDisplay(r, 0); text != string(r) {
+			t.Errorf("editRuneDisplay(%U) = %q, erwartet das Zeichen selbst", r, text)
+		}
+	}
+	line := []rune("a\u2028b\u2029c")
+	if got := renderEditLine(line); got != "a?b?c" {
+		t.Errorf("renderEditLine = %q, erwartet a?b?c", got)
+	}
+	if got := displayColumn(line, 4); got != 4 {
+		t.Errorf("displayColumn(4) = %d, erwartet 4", got)
+	}
+	if string(line) != "a\u2028b\u2029c" {
+		t.Error("renderEditLine hat die Zeile verändert")
+	}
+}

@@ -7,7 +7,8 @@
 //	hebt auf), F4 Ersetzen (mit Rückfrage je Treffer), F5 Block kopieren,
 //	F6 Block verschieben, F7 Suchen (erneut F7 + Enter: weitersuchen),
 //	F8 Block löschen, F10/Esc Beenden (bei Änderungen mit Rückfrage);
-//	dazu Strg+Y Zeile löschen.
+//	dazu Strg+Y Zeile löschen sowie Strg+V / Shift+Einfg / Strg+Einfg
+//	Einfügen aus der Zwischenablage (tui_filemanager_editpaste.go).
 //
 // Textdateien bearbeitet der textBuffer (filemanager_editbuf.go) - Zeilen-
 // enden und ein fehlender Umbruch am Ende bleiben erhalten. Binärdateien und
@@ -24,7 +25,7 @@
 // selbst bleibt Byte für Byte unverändert, solange man sie nicht ändert.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 00:52
+// @date   2026-11-07 11:51
 package main
 
 import (
@@ -304,12 +305,13 @@ func (m AppModel) fmEditorRows() int {
 	return max(height-2, 1)
 }
 
-// handleFMEditorKeys verarbeitet Tasten im Editor.
+// handleFMEditorKeys verarbeitet Tasten im Editor. Einfügen aus der
+// Zwischenablage wirkt nur im Textmodus ohne Hilfe, Dialog und Eingabezeile.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Speichern, Cursor-Blinken)
-// @date   2026-10-22 00:52
+// @date   2026-11-07 11:51
 func (m AppModel) handleFMEditorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := &m.fm.edit
 	key := msg.String()
@@ -333,6 +335,12 @@ func (m AppModel) handleFMEditorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	e.message = ""
+	// Einfügen (Strg+V, Shift+Einfg, Strg+Einfg) nur im Textmodus; unter
+	// Windows VOR jeder Einfg-Auswertung, denn Strg+Einfg kommt wie Einfg
+	// als NUL-Rune (tui_filemanager_editpaste.go)
+	if !e.hexMode && isEditorPasteKey(msg) {
+		return m.fmEditorPaste()
+	}
 	switch key {
 	case "f1":
 		e.showHelp = true
@@ -383,16 +391,21 @@ func (m AppModel) handleFMEditorKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.modified = true
 		}
 	default:
-		e.handleTextKey(msg, rows)
+		e.handleTextKey(msg, rows, m.tr)
 	}
 	e.ensureVisible(width, rows)
 	return m, nil
 }
 
 // handleTextKey verarbeitet Bewegungs- und Eingabetasten im Textmodus.
+// Ein vom Terminal gemeldetes Einfügen (Paste-Flag) wird wie Text aus der
+// Zwischenablage bereinigt (insertPasted).
 //
-// @date   2026-10-22 00:52
-func (e *fmEditor) handleTextKey(msg tea.KeyMsg, rows int) {
+// @param msg - Tastendruck
+// @param rows - sichtbare Textzeilen (Bild auf/ab)
+// @param tr - Übersetzungsfunktion (Meldung bei zu großem Einfügen)
+// @date   2026-11-07 11:51
+func (e *fmEditor) handleTextKey(msg tea.KeyMsg, rows int, tr func(textKey) string) {
 	b := e.text
 	switch msg.String() {
 	case "up":
@@ -442,10 +455,13 @@ func (e *fmEditor) handleTextKey(msg tea.KeyMsg, rows int) {
 		if msg.Type != tea.KeyRunes || isNulKey(msg) {
 			return
 		}
-		text := msg.Runes
 		if msg.Paste {
-			text = []rune(strings.ReplaceAll(strings.ReplaceAll(string(text), "\r\n", "\n"), "\r", "\n"))
+			// Vom Terminal gemeldetes Einfügen (Bracketed Paste): bereinigen
+			// wie aus der Zwischenablage (Zeilenenden, Steuerzeichen, Größe)
+			e.insertPasted(string(msg.Runes), tr)
+			return
 		}
+		text := msg.Runes
 		e.edit(func() { e.cur = b.insert(e.cur, text) })
 	}
 }

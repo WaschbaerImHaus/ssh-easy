@@ -169,7 +169,7 @@ nebeneinander zu arbeiten – oder mit einem:
 | `Einfg` | Eintrag unter dem Cursor markieren/entmarkieren und eine Zeile weiter |
 | `*` | Markierung aller Einträge (Dateien und Verzeichnisse) umkehren |
 | `F3` | Datei unter dem Cursor ansehen – Tasten wie im mc-Betrachter: `F1` Hilfe, `F2` Umbruch, `F4` Hex/Text, `F5` Gehe zu, `F6` Suche mit regulärem Ausdruck, `F7` Suchen (`n` weiter), `F9` mit dem Standardprogramm öffnen, `F3`/`F10`/`q`/`Esc` schließen |
-| `F4` | Datei unter dem Cursor bearbeiten – Tasten wie im mcedit: `F2` speichern, `F3` Block markieren, `F4` ersetzen, `F5`/`F6`/`F8` Block kopieren/verschieben/löschen, `F7` suchen, `F10`/`Esc` beenden, `Strg+Y` Zeile löschen; Binärdateien als bearbeitbare Hex-Ansicht |
+| `F4` | Datei unter dem Cursor bearbeiten – Tasten wie im mcedit: `F2` speichern, `F3` Block markieren, `F4` ersetzen, `F5`/`F6`/`F8` Block kopieren/verschieben/löschen, `F7` suchen, `F10`/`Esc` beenden, `Strg+Y` Zeile löschen, `Strg+V` / `Shift+Einfg` / `Strg+Einfg` aus der Zwischenablage einfügen (Textmodus); Binärdateien als bearbeitbare Hex-Ansicht |
 | `F5` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster kopieren |
 | `F6` | Markierte Einträge (bzw. den unter dem Cursor) ins andere Fenster verschieben |
 | `F7` | Verzeichnis im aktiven Fenster anlegen |
@@ -216,6 +216,8 @@ erhalten. Binärdateien öffnen sich als Hex-Ansicht, in der Hex-Ziffern Bytes �
 (`Tab` wechselt in die Zeichenspalte); die Größe ändert sich nie. Gespeichert wird über eine
 Temp-Datei, die am Ende umbenannt wird; die Rechte bleiben, und wurde die Datei inzwischen
 auf dem Server geändert, wird vorher nachgefragt.
+
+**Einfügen im Editor:** `Strg+V`, `Shift+Einfg` und `Strg+Einfg` fügen die Zwischenablage an der Cursorposition ein (nur im Textmodus; in den Datei-Fenstern markiert `Strg+Einfg` weiter). Zeilenenden werden zu LF, Steuerzeichen außer Tab und Zeilenumbruch entfallen. Würde die Datei dadurch größer als 16 MiB, lehnt der Editor das Einfügen mit einer Meldung ab. In der Hex-Ansicht, in der Hilfe, in Dialogen und in Eingabezeilen passiert beim Einfügen nichts.
 
 **Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
 übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).

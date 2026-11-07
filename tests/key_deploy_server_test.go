@@ -658,8 +658,11 @@ func TestRemoveDeployedKeyKeepsServerEntry(t *testing.T) {
 			t.Errorf("%s: %d Server-Befehle, erwartet %d: %+v", c.label, len(execs), c.wantExecs, execs)
 		}
 		for _, e := range execs {
-			if !strings.Contains(e.Command, "grep -vF") || e.Stdin != keyData {
-				t.Errorf("%s: unerwarteter Befehl %+v (erwartet grep -vF mit stdin %q)", c.label, e, keyData)
+			// Build 89: Der Befehl wird gegen removeKeyScript verglichen statt gegen
+			// den Text "grep -vF", der mit LC_ALL=C/-a vor dem grep nicht mehr
+			// zusammenhängend im Skript steht.
+			if e.Command != removeKeyScript || e.Stdin != keyData {
+				t.Errorf("%s: unerwarteter Befehl %+v (erwartet removeKeyScript mit stdin %q)", c.label, e, keyData)
 			}
 		}
 		// Geteilter Schlüssel: lokale Dateien bleiben in jedem Fall.

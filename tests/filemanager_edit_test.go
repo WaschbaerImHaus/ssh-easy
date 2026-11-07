@@ -586,3 +586,47 @@ func TestEditorScrollAndScreenSize(t *testing.T) {
 		assertScreenSize(t, m)
 	}
 }
+
+// TestEditorLineSeparatorsShownAsQuestionMark (Runde 2, Fund 3): Eine Datei mit
+// U+2028 und U+2029 zeigt im Editor "?" statt der Zeichen - das Bild behält in
+// allen Farbmodi und kleinen Größen genau seine Größe (ein Zeilentrenner in der
+// Ausgabe würde die Zeile umbrechen). Die Zeichen stecken weiter im Inhalt und
+// bleiben beim Speichern erhalten (auch nach einer Änderung an anderer Stelle).
+func TestEditorLineSeparatorsShownAsQuestionMark(t *testing.T) {
+	withColorProfile(t)
+	const content = "a\u2028b\u2029c\nzweite Zeile\n"
+	m, src := openEditorOn(t, map[string]string{"f.txt": content}, "f.txt")
+	m.termWidth, m.termHeight = 80, 24
+	if !strings.Contains(editText(m), "a?b?c") {
+		t.Errorf("Anzeige ohne a?b?c:\n%s", editText(m))
+	}
+	for _, sep := range []string{"\u2028", "\u2029"} {
+		if strings.Contains(m.View(), sep) {
+			t.Errorf("Zeichen %U in der Anzeige", []rune(sep)[0])
+		}
+	}
+	if got := string(m.fm.edit.text.bytes()); got != content {
+		t.Errorf("Inhalt verändert: %q", got)
+	}
+	for theme := range fmThemes {
+		m.fm.theme = theme
+		for _, size := range [][2]int{{100, 30}, {80, 24}, {40, 12}, {20, 5}} {
+			m.termWidth, m.termHeight = size[0], size[1]
+			assertScreenSize(t, m)
+			if strings.ContainsAny(m.View(), "\u2028\u2029") {
+				t.Fatalf("Trenner in der Anzeige (%v, %v)", theme, size)
+			}
+		}
+	}
+	// Speichern: die Trenner bleiben in der Datei
+	m.termWidth, m.termHeight = 80, 24
+	// ctrl+end: Ende der letzten Zeile, VOR dem abschließenden Zeilenumbruch
+	const want = "a\u2028b\u2029c\nzweite Zeile!\n"
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlEnd})
+	m = updated.(AppModel)
+	m = typeEdit(t, m, "!")
+	m = pressRun(t, m, "f2")
+	if got, _ := src.content("/home/a/f.txt"); got != want {
+		t.Errorf("Datei auf dem Server = %q, erwartet %q", got, want)
+	}
+}

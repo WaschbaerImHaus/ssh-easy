@@ -42,7 +42,7 @@
 // der Wahl speichert sie. Abbruch mit q/Esc speichert nichts.
 //
 // @author Kurt Ingwer
-// @date   2026-10-31 02:06
+// @date   2026-11-07 11:51
 package main
 
 import (
@@ -111,6 +111,11 @@ type fileManager struct {
 	keyNotice    string
 	keyNoticeOK  string
 	keyNoticeErr string
+	// Bereinigter Fehler beim Speichern der Wahl (handleFMPickKeys, Build 89).
+	// Er steht sofort in message und wird beim Wechsel in die Fensteransicht
+	// erneut gezeigt, falls Verbindungsaufbau oder Passwortabfrage die
+	// Meldung inzwischen geleert haben und kein anderer Fehler dasteht.
+	pickErr string
 	// Seite, deren Verbindung gerade aufgebaut wird bzw. ein Passwort braucht
 	connectSide  int
 	passwordSide int
@@ -408,13 +413,15 @@ func (m AppModel) fmSavePickChoice() error {
 // gemerkten Seite. Enter links wechselt immer zur rechten Seite - auch mit
 // nur einer Verbindung. Enter rechts schließt die Wahl ab: speichern (bei
 // eingeschaltetem Merken), dann verbinden; "(keine)" ergibt den
-// Ein-Fenster-Modus. Ein Fehler beim Speichern steht bereinigt in errorMsg,
-// verbunden wird trotzdem. q/Esc brechen ab, ohne etwas zu speichern.
+// Ein-Fenster-Modus. Ein Fehler beim Speichern steht bereinigt in errorMsg
+// (für die Liste) und zusätzlich sofort in der Meldungszeile des
+// Datei-Managers (fm.message, gemerkt in fm.pickErr); verbunden wird
+// trotzdem. q/Esc brechen ab, ohne etwas zu speichern.
 //
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (Verbindungsaufbau nach der rechten Wahl)
-// @date   2026-11-01 10:38
+// @date   2026-11-07 11:51
 func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	conns := m.fmPickConnections()
 	rows := m.fmPickRows(conns)
@@ -464,11 +471,15 @@ func (m AppModel) handleFMPickKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Wahl abgeschlossen: vor dem Verbindungsaufbau merken - ein
 		// Verbindungsfehler lässt die Wahl gespeichert. Scheitert das
 		// Speichern, wird trotzdem verbunden (wie in der Liste); der Fehler
-		// steht in errorMsg und erscheint nach dem Schließen in der Liste.
-		// Der Text enthält den Pfad der Konfiguration und wird deshalb von
-		// Steuerzeichen bereinigt.
+		// steht in errorMsg und erscheint nach dem Schließen in der Liste,
+		// zusätzlich sofort in der Meldungszeile des Datei-Managers
+		// (Nutzerentscheidung Build 89). Der Text enthält den Pfad der
+		// Konfiguration und wird deshalb von Steuerzeichen bereinigt.
 		if err := m.fmSavePickChoice(); err != nil {
-			m.errorMsg = sanitizeFileName(err.Error())
+			clean := sanitizeFileName(err.Error())
+			m.errorMsg = clean
+			m.fm.pickErr = clean
+			m.fm.message = clean
 		}
 		return m.startFMConnect(0, "")
 	}
@@ -537,13 +548,15 @@ func (m AppModel) startFMConnect(side int, password string) (tea.Model, tea.Cmd)
 // Steuerzeichen bereinigt. Nach einer erfolgreichen Anmeldung startet bei
 // Bedarf die Schlüsselvergabe im Hintergrund (fmNeedsKeyDeploy).
 // Eine schon stehende errorMsg (Speicherfehler der Wahl) wird nie
-// überschrieben, sondern per joinFMNotice ergänzt.
+// überschrieben, sondern per joinFMNotice ergänzt. In der Fensteransicht
+// erscheint der Speicherfehler (fm.pickErr), wenn keine andere Meldung
+// dasteht.
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando (rechte Seite verbinden, Cursor-Blinken,
 // Schlüsselvergabe)
-// @date   2026-11-01 10:38
+// @date   2026-11-07 11:51
 func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	// Veraltetes Ergebnis (Nutzer hat inzwischen abgebrochen): aufräumen
 	if msg.session != m.fm.session || m.state != ViewFMConnecting {
@@ -618,6 +631,13 @@ func (m AppModel) handleFMConnected(msg fmConnectedMsg) (tea.Model, tea.Cmd) {
 	}
 	m.state = ViewFileManager
 	m.fm.active = 0
+	// Speicherfehler der Wahl: Die Passwortabfrage hat die Meldung evtl.
+	// geleert - dann erneut zeigen; ein anderer Fehler (etwa ein nicht
+	// lesbares Startverzeichnis) hat Vorrang
+	if m.fm.message == "" {
+		m.fm.message = m.fm.pickErr
+	}
+	m.fm.pickErr = ""
 	// Unterwegs eingetroffene Meldung der Schlüsselvergabe zeigen
 	m.fm.message = joinFMNotice(m.fm.message, m.fm.keyNotice)
 	m.fm.keyNotice, m.fm.keyNoticeOK, m.fm.keyNoticeErr = "", "", ""

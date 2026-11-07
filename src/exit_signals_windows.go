@@ -1,4 +1,4 @@
-// Paket main - Schließ-Signale unter Windows (Build 87)
+// Paket main - Schließ-Signale unter Windows (Build 87, ergänzt in Build 89)
 //
 // Go meldet CTRL_CLOSE_EVENT (Schließkreuz, in Windows Terminal auch
 // Alt+F4), CTRL_LOGOFF_EVENT und CTRL_SHUTDOWN_EVENT als SIGTERM. Solange
@@ -7,7 +7,7 @@
 // beendet Windows hart. SIGINT (Strg+C) wird NICHT abgefangen.
 //
 // @author Kurt Ingwer
-// @date   2026-10-31 14:40
+// @date   2026-11-07 14:00
 
 //go:build windows
 
@@ -25,3 +25,8 @@ import (
 func closeSignals() []os.Signal {
 	return []os.Signal{syscall.SIGTERM}
 }
+
+// emergencyTerminalResetEnabled - unter Windows schreibt das letzte
+// Zurücksetzen im Notfall KEINE Terminalfolge (Build 89, Runde 2): Die
+// Konsole wird mit dem Prozess ohnehin abgebaut.
+const emergencyTerminalResetEnabled = false

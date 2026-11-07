@@ -884,3 +884,182 @@ func TestFMSavePickChoiceReturnsError(t *testing.T) {
 		}
 	})
 }
+
+// =============================================================================
+// Build 89, E: Speicherfehler der Wahl sofort im Datei-Manager anzeigen
+// =============================================================================
+//
+// Nutzerentscheidung: Scheitert fmSavePickChoice, steht der bereinigte Fehler
+// weiterhin in m.errorMsg (erscheint nach dem Schließen in der Liste) und
+// ZUSÄTZLICH sofort in der Infozeile des Datei-Managers. Er übersteht den
+// Verbindungsaufbau (startFMConnect, Antwort der Verbindung), solange kein
+// anderer Fehler kommt. Geprüft wird, was der Nutzer sieht (Bildschirmtext),
+// nicht ein bestimmtes Feld.
+
+// pickErrFragment liefert den Anfang des Fehlertexts (die ersten 30 Zeichen):
+// kurz genug, dass er in die Infozeile eines halben Fensters (100 Spalten) passt.
+func pickErrFragment(t *testing.T, errorMsg string) string {
+	t.Helper()
+	runes := []rune(errorMsg)
+	if len(runes) < 30 {
+		t.Fatalf("errorMsg %q ist leer oder zu kurz für die Anzeigeprüfung", errorMsg)
+	}
+	return string(runes[:30])
+}
+
+// screenTail liefert die letzten n Zeilen des Bildschirms ohne Farben (Infozeile
+// und F-Tasten-Leiste) für knappe Fehlermeldungen.
+func screenTail(m AppModel, n int) string {
+	lines := strings.Split(stripANSI(m.View()), "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
+}
+
+// TestFMPickSaveErrorShownOnFileManagerScreen: Nach Enter rechts und dem
+// (Fake-)Verbinden zeigt der Datei-Manager-Bildschirm den Speicherfehler in der
+// Infozeile - mit "(keine)" (Ein-Fenster) wie mit zweiter Verbindung (zwei
+// Verbindungsaufbauten nacheinander dürfen ihn nicht überschreiben). errorMsg
+// für die Liste bleibt unverändert stehen, und nach dem Schließen (q) steht er
+// dort wirklich.
+func TestFMPickSaveErrorShownOnFileManagerScreen(t *testing.T) {
+	for _, right := range []string{"", "B"} {
+		name := right
+		if name == "" {
+			name = "(keine)"
+		}
+		t.Run("rechts "+name, func(t *testing.T) {
+			m, _ := fullPickModel(t, true, "", "", "A", "B")
+			m, run := pickFinalEnter(t, m, right, func(m AppModel) { lockConfigDir(t, m.configPath) })
+			frag := pickErrFragment(t, m.errorMsg)
+			errBefore := m.errorMsg
+			m = run(m)
+			if m.state != ViewFileManager {
+				t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+			}
+			if !strings.Contains(stripANSI(m.View()), frag) {
+				t.Errorf("Speicherfehler (%q ...) fehlt auf dem Datei-Manager-Bildschirm (letzte Zeilen):\n%s", frag, screenTail(m, 4))
+			}
+			if m.errorMsg != errBefore {
+				t.Errorf("errorMsg = %q, erwartet unverändert %q (für die Liste)", m.errorMsg, errBefore)
+			}
+			assertScreenSize(t, m)
+			// Nach dem Schließen steht der Fehler wie bisher in der Liste
+			closed := press(t, m, "q")
+			if closed.state != ViewList || !strings.Contains(closed.errorMsg, frag) {
+				t.Errorf("nach q: state %v, errorMsg %q, erwartet ViewList mit dem Speicherfehler", closed.state, closed.errorMsg)
+			}
+		})
+	}
+}
+
+// TestFMPickSaveErrorSurvivesPasswordPrompt: Die erste Anmeldung links scheitert
+// (Passwort nötig, der Normalfall bei neuen Verbindungen). Nach der
+// Passworteingabe und erfolgreichem Verbinden steht der Speicherfehler trotzdem
+// im Datei-Manager: Die Passwortabfrage setzt die Meldung zurück, darf den
+// Fehler aber nicht endgültig verlieren.
+func TestFMPickSaveErrorSurvivesPasswordPrompt(t *testing.T) {
+	installDeployStub(t, nil)
+	m, rec := fullPickModel(t, true, "", "", "A", "B")
+	rec.results["id-0"] = errors.New("ssh: unable to authenticate")
+	m, run := pickFinalEnter(t, m, "B", func(m AppModel) { lockConfigDir(t, m.configPath) })
+	frag := pickErrFragment(t, m.errorMsg)
+	m = run(m)
+	if m.state != ViewFMPassword {
+		t.Fatalf("state = %v, erwartet ViewFMPassword", m.state)
+	}
+	// Ordner wieder freigeben: sonst scheitert die Schlüsselvergabe nach der
+	// Anmeldung ebenfalls (Speichern von KeyPath) und deren Meldung stünde im Bild
+	if err := os.Chmod(filepath.Dir(m.configPath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	delete(rec.results, "id-0")
+	m = typeText(t, m, "geheim")
+	m = pressRun(t, m, "enter")
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	}
+	if !strings.Contains(stripANSI(m.View()), frag) {
+		t.Errorf("Speicherfehler (%q ...) nach der Passwortabfrage verloren (letzte Zeilen):\n%s", frag, screenTail(m, 4))
+	}
+}
+
+// TestFMPickSaveErrorOnScreenIsSanitized: Der Pfad der Konfiguration steckt im
+// Fehlertext, ein Ordnername kann Steuerzeichen tragen (Escape-Folge,
+// Zeilenumbruch, BEL). Auf dem Bildschirm dürfen sie nicht ankommen: kein ESC
+// und kein BEL im Bild (im Test ohne Farbprofil gibt es sonst kein ESC), das
+// Bild behält genau seine Größe (ein Zeilenumbruch im Text würde das Layout
+// sprengen), und die Zeichen erscheinen als "?" (sanitizeFileName).
+func TestFMPickSaveErrorOnScreenIsSanitized(t *testing.T) {
+	m, _ := fullPickModel(t, true, "", "", "A", "B")
+	evilDir := filepath.Join(t.TempDir(), "x\x1b[31m\nrot\x07")
+	if err := os.MkdirAll(evilDir, 0o700); err != nil {
+		t.Skipf("Ordner mit Steuerzeichen nicht anlegbar: %v", err)
+	}
+	data, err := os.ReadFile(m.configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evilPath := filepath.Join(evilDir, "connections.json")
+	if err := os.WriteFile(evilPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m.configPath = evilPath
+	m.configCache = NewConfigCache(evilPath)
+	// Ein Fenster über die ganze Breite, damit der lange Pfad in die Infozeile passt
+	m.termWidth, m.termHeight = 240, 40
+	m, run := pickFinalEnter(t, m, "", func(m AppModel) { lockConfigDir(t, m.configPath) })
+	if m.errorMsg == "" {
+		t.Fatal("errorMsg leer: der Speicherfehler wird nicht angezeigt")
+	}
+	m = run(m)
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	}
+	view := m.View()
+	if strings.ContainsAny(view, "\x1b\x07") {
+		t.Errorf("Bildschirm enthält ESC oder BEL aus dem Fehlertext (letzte Zeilen):\n%q", screenTail(m, 4))
+	}
+	if !strings.Contains(view, "x?[31m?rot?") {
+		t.Errorf("bereinigter Pfad (x?[31m?rot?) fehlt auf dem Bildschirm (letzte Zeilen):\n%s", screenTail(m, 4))
+	}
+	assertScreenSize(t, m)
+}
+
+// TestFMPickNoMessageWithoutSaveError (Gegenprobe): Läuft das Speichern, zeigt
+// der Datei-Manager keine Meldung - weder in fm.message noch auf dem Bildschirm.
+func TestFMPickNoMessageWithoutSaveError(t *testing.T) {
+	for _, right := range []string{"", "B"} {
+		m, _ := fullPickModel(t, true, "", "", "A", "B")
+		m, run := pickFinalEnter(t, m, right, nil)
+		m = run(m)
+		if m.state != ViewFileManager {
+			t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+		}
+		if m.fm.message != "" || m.errorMsg != "" {
+			t.Errorf("rechts %q: Meldung %q / errorMsg %q ohne Fehler", right, m.fm.message, m.errorMsg)
+		}
+		if strings.Contains(stripANSI(m.View()), "Temporäre Datei") {
+			t.Errorf("rechts %q: Fehlermeldung auf dem Bildschirm ohne Fehler", right)
+		}
+	}
+}
+
+// TestFMPickNoMessageWhenRememberOff (Randfall): Bei ausgeschaltetem Merken
+// (Schalter v aus) wird nichts geschrieben - selbst bei gesperrtem Ordner kommt
+// keine Meldung in den Datei-Manager.
+func TestFMPickNoMessageWhenRememberOff(t *testing.T) {
+	m, _ := fullPickModel(t, false, "", "", "A", "B")
+	m, run := pickFinalEnter(t, m, "B", func(m AppModel) { lockConfigDir(t, m.configPath) })
+	m = run(m)
+	if m.state != ViewFileManager {
+		t.Fatalf("state = %v, erwartet ViewFileManager", m.state)
+	}
+	if m.fm.message != "" || m.errorMsg != "" {
+		t.Errorf("Meldung %q / errorMsg %q bei ausgeschaltetem Merken", m.fm.message, m.errorMsg)
+	}
+	if strings.Contains(stripANSI(m.View()), "Temporäre Datei") {
+		t.Error("Fehlermeldung auf dem Bildschirm bei ausgeschaltetem Merken")
+	}
+}

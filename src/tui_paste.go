@@ -10,8 +10,12 @@
 // Clipboard-Inhalts übernommen - eingeschleppte Zeilenumbrüche (etwa beim
 // Kopieren aus Dokumenten) lösen so kein versehentliches Absenden aus.
 //
+// Strg+Einfg wird nur im F4-Editor des Datei-Managers als Einfügen genutzt
+// (siehe tui_filemanager_editpaste.go); hier liegen dafür nur die
+// Erkennungs-Helfer.
+//
 // @author Kurt Ingwer
-// @date   2026-10-16 10:00
+// @date   2026-11-07 11:51
 package main
 
 import (
@@ -68,10 +72,13 @@ func makePasteKeyMsg(text string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(text), Paste: true}
 }
 
-// Virtuelle Tastencodes (Windows) für die Shift+Einfg-Erkennung
+// Virtuelle Tastencodes (Windows) für die Shift+Einfg- und
+// Strg+Einfg-Erkennung
 const (
 	// vkShift - linke oder rechte Shift-Taste
 	vkShift = 0x10
+	// vkControl - linke oder rechte Strg-Taste (VK_CONTROL)
+	vkControl = 0x11
 	// vkInsert - Einfg-Taste
 	vkInsert = 0x2D
 )
@@ -92,10 +99,24 @@ func shiftInsertPressed() bool {
 	return keyIsDown(vkShift) && keyIsDown(vkInsert)
 }
 
+// ctrlInsertPressed prüft ob Strg UND Einfg gedrückt sind. Windows liefert
+// Strg+Einfg wie Einfg als NUL-Rune; Strg allein reicht nicht, denn auch die
+// Strg-Taste selbst (und Strg+Plus usw.) kommt als NUL-Rune an.
+//
+// @return bool - true bei Strg+Einfg
+// @date   2026-11-07 11:51
+func ctrlInsertPressed() bool {
+	return keyIsDown(vkControl) && keyIsDown(vkInsert)
+}
+
 // shiftInsertCSI ist die VT-Sequenz für Shift+Einfg (ESC [ 2 ; 2 ~), die
 // manche Unix-Terminals senden. Bubbletea kennt sie nicht und meldet sie als
 // unbekannte CSI-Sequenz.
 const shiftInsertCSI = "\x1b[2;2~"
+
+// ctrlInsertCSI ist die VT-Sequenz für Strg+Einfg (ESC [ 2 ; 5 ~). Auch sie
+// kennt Bubbletea v1.3.10 nicht und meldet sie als unbekannte CSI-Sequenz.
+const ctrlInsertCSI = "\x1b[2;5~"
 
 // isPasteKey prüft ob ein Tastendruck "Einfügen" bedeutet.
 //
@@ -151,14 +172,16 @@ func isNulKey(msg tea.KeyMsg) bool {
 	return true
 }
 
-// isShiftInsertSequence erkennt ESC[2;2~ in einer Bubbletea-Nachricht.
-// Bubbletea liefert unbekannte CSI-Sequenzen als unexportierten []byte-Typ;
-// geprüft wird deshalb per Reflection auf "Byte-Slice mit diesem Inhalt".
+// isCSISequence prüft ob eine Bubbletea-Nachricht genau die angegebene
+// unbekannte CSI-Sequenz ist. Bubbletea liefert unbekannte CSI-Sequenzen als
+// unexportierten []byte-Typ; geprüft wird deshalb per Reflection auf
+// "Byte-Slice mit diesem Inhalt".
 //
 // @param msg - Beliebige Bubbletea-Nachricht
-// @return bool - true bei Shift+Einfg-Sequenz
-// @date   2026-10-16 10:00
-func isShiftInsertSequence(msg tea.Msg) bool {
+// @param seq - Erwartete Sequenz, z.B. shiftInsertCSI
+// @return bool - true wenn die Nachricht genau diese Sequenz enthält
+// @date   2026-11-07 11:51
+func isCSISequence(msg tea.Msg, seq string) bool {
 	if msg == nil {
 		return false
 	}
@@ -166,7 +189,27 @@ func isShiftInsertSequence(msg tea.Msg) bool {
 	if v.Kind() != reflect.Slice || v.Type().Elem().Kind() != reflect.Uint8 {
 		return false
 	}
-	return string(v.Bytes()) == shiftInsertCSI
+	return string(v.Bytes()) == seq
+}
+
+// isShiftInsertSequence erkennt ESC[2;2~ (Shift+Einfg) in einer
+// Bubbletea-Nachricht.
+//
+// @param msg - Beliebige Bubbletea-Nachricht
+// @return bool - true bei Shift+Einfg-Sequenz
+// @date   2026-11-07 11:51
+func isShiftInsertSequence(msg tea.Msg) bool {
+	return isCSISequence(msg, shiftInsertCSI)
+}
+
+// isCtrlInsertSequence erkennt ESC[2;5~ (Strg+Einfg) in einer
+// Bubbletea-Nachricht. Wird nur im F4-Editor als Einfügen ausgewertet.
+//
+// @param msg - Beliebige Bubbletea-Nachricht
+// @return bool - true bei Strg+Einfg-Sequenz
+// @date   2026-11-07 11:51
+func isCtrlInsertSequence(msg tea.Msg) bool {
+	return isCSISequence(msg, ctrlInsertCSI)
 }
 
 // pasteIntoFocusedInput fügt die erste Zeile der Zwischenablage in das

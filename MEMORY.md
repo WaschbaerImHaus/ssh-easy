@@ -128,5 +128,15 @@
 - Datei-Manager-Wahl: Speicherfehler (`fmSavePickChoice` gibt error zurück) wird angezeigt, Verbindung wird trotzdem aufgebaut. Import (`applyImport`) speichert über `updateConfig`
 - 931 Tests in 54 Dateien
 
+## Build 89 (2026-11-07) - Notfall-Reihenfolge, Editor-Einfügen, LC_ALL=C
+- Notfall-Schließen (`exit_signals*.go`): Reihenfolge restore → apply → cleanup → persist → disconnect (disconnect zuletzt). Danach wartet `runEmergency(deadline, allDone)` im Restbudget auf `allDone`; kommt es nicht: Logeintrag „ssh-easy beendet (Notfall-Ablauf)“, zweites Restore aus der Momentaufnahme, unter Unix zusätzlich `emergencyResetSequence` (Bracketed Paste aus, Alt-Screen verlassen, Maus-Modi aus, Cursor zeigen) über `emergencyTerminalReset`, Limit `emergencyResetWriteTimeout` 250 ms, dann `exit(0)`. Budget 2,5 s (Windows 2,25 s, kein Terminalfolgen-Write). `watchCloseSignals` ruft `onSignal` vor dem ersten Logeintrag. Behebt die beiden NIEDRIG-Bugs aus Build 88
+- `src/ssh.go`: jedes grep in den authorized_keys-Skripten mit `LC_ALL=C` und `-a` (Latin-1, NUL-Bytes; GNU und BusyBox geprüft)
+- Datei-Manager-Wahl: Speicherfehler zusätzlich sofort in `fm.message` (Nutzerentscheidung), gemerkt in `fm.pickErr`, übersteht Verbindungsaufbau und Passwortabfrage; ein anderer Fehler hat Vorrang
+- F4-Editor Einfügen (Nutzerwunsch): Strg+V, Shift+Einfg, Strg+Einfg (`src/tui_filemanager_editpaste.go`). Unix: ESC[2;2~ / ESC[2;5~ in `tui.go` an den Editor; Windows: NUL-Rune + `GetAsyncKeyState` (`ctrlInsertPressed`). `cleanEditPaste`: CRLF/CR → LF, Steuerzeichen außer Tab/LF raus (auch bei Bracketed Paste). Grenze `fmViewMaxBytes` (16 MiB in Bytes, CRLF zählt doppelt), frühe Ablehnung über 4× die Grenze, Meldung `txtFMEditPasteTooLarge`. Nur Textmodus; in den Fenstern markiert Strg+Einfg weiter
+- Editor-Anzeige: U+2028/U+2029 als „?“ (Inhalt unverändert)
+- Offen: Windows, Strg+Einfg könnte bei langem Halten von Strg doppelt einfügen (vermutet, Nutzer prüft); OPTIMIZE: Suchzeile F7 im Editor ohne Einfügen
+- Tests: Testschärfe `TestSSHTerminalRegistersEmergencyRestore`, Kopf von `tests/exit_signals_test.go` aktualisiert
+- 977 Tests in 56 Dateien
+
 ## Letzte Aenderung
 - 2026-03-07: Build 3 - SSHManager, Reconnect, Agent, Keepalive, Logging, TUI-Split

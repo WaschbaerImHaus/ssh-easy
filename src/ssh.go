@@ -433,6 +433,7 @@ func IsHostKeyChangedError(err error) bool {
 //     grep keine Zeile (leere Datei oder nur Kommentare, Exit 1), bekommt
 //     das zweite eine leere Eingabe und meldet korrekt "nicht gefunden".
 //     Einen Lesefehler des ersten grep schließt "[ -r ... ]" vorher aus.
+//     Jedes grep läuft als "LC_ALL=C grep -a" (Build 89, siehe unten).
 //  5. Endet die Datei ohne Zeilenumbruch (von Hand bearbeitet), zuerst einen
 //     anhängen; sonst klebte der Schlüssel an der letzten fremden Zeile.
 //  6. Schlüsselzeile anhängen ("| cat >> ~/.ssh/authorized_keys" hält die
@@ -445,11 +446,23 @@ func IsHostKeyChangedError(err error) bool {
 // einfacher Anführungszeichen unverändert.
 // Der Schlüssel steht nie im Befehlstext, er kommt nur über stdin.
 //
-// @date   2026-10-30 16:13
+// LC_ALL=C und -a vor jedem grep (Build 89, OPTIMIZE.md Build 86): GNU grep
+// hält eine Datei für binär, wenn sie in der laufenden Locale ungültige
+// Zeichen enthält (Latin-1-Kommentar "Müller" = Byte 0xFC unter UTF-8) oder
+// ein NUL-Byte. Dann gibt es statt der Zeilen nur "binary file matches" aus;
+// ein vorhandener Schlüssel würde nicht erkannt und doppelt eingetragen.
+// LC_ALL=C macht jedes Byte zu einem gültigen Zeichen, -a (Textmodus) deckt
+// das NUL-Byte ab, das auch in der C-Locale als binär gilt. Die Zuweisung
+// steht direkt vor dem Befehl und gilt nur für dieses eine grep.
+// Portabilität: BusyBox-grep nimmt -a an und ignoriert es (es arbeitet
+// ohnehin immer im Textmodus, steht nicht in seiner Hilfe); BSD-, macOS- und
+// toybox-grep kennen -a ebenfalls.
+//
+// @date   2026-11-07 11:50
 const deployKeyScript = `sh -c 'umask 077; set -f; KEY=$(cat); set -- $KEY; [ -n "$2" ] || exit 2; ` +
 	`mkdir -p ~/.ssh && chmod 700 ~/.ssh && touch ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys || exit 2; ` +
 	`[ -r ~/.ssh/authorized_keys ] || exit 2; ` +
-	`grep -v "^[[:space:]]*#" ~/.ssh/authorized_keys | grep -qF -- "$2"; rc=$?; [ "$rc" -eq 0 ] && exit 0; [ "$rc" -eq 1 ] || exit 2; ` +
+	`LC_ALL=C grep -a -v "^[[:space:]]*#" ~/.ssh/authorized_keys | LC_ALL=C grep -a -qF -- "$2"; rc=$?; [ "$rc" -eq 0 ] && exit 0; [ "$rc" -eq 1 ] || exit 2; ` +
 	`if [ -s ~/.ssh/authorized_keys ] && [ -n "$(tail -c 1 ~/.ssh/authorized_keys)" ]; then echo >> ~/.ssh/authorized_keys || exit 2; fi; ` +
 	`printf "%s\n" "$KEY" | cat >> ~/.ssh/authorized_keys'`
 
@@ -484,16 +497,23 @@ const deployKeyScript = `sh -c 'umask 077; set -f; KEY=$(cat); set -- $KEY; [ -n
 //     leer, "[ -eq ]" schlägt fehl und es folgt ebenfalls der Abbruch.
 //  5. mv -f, chmod 600; die Temp-Datei wird in jedem Fall entfernt.
 //
+// Beide grep laufen als "LC_ALL=C grep -a" (Build 89), aus demselben Grund
+// wie bei deployKeyScript: Sonst hält GNU grep eine authorized_keys mit
+// Latin-1-Zeichen oder NUL-Byte für binär, schreibt keine Zeile in die
+// Temp-Datei, der Zeilenabgleich schlägt an und das Entfernen bricht mit
+// Exit 2 ab. Filter und Zählung müssen dieselben Optionen haben, sonst
+// zählten sie unterschiedlich.
+//
 // Läuft wie deployKeyScript in "sh -c '...'" (Login-Shell egal): keine
 // einfachen Anführungszeichen, kein "!", keine Zeilenumbrüche.
 //
-// @date   2026-10-30 16:23
+// @date   2026-11-07 11:50
 const removeKeyScript = `sh -c 'umask 077; set -C; KEY=$(cat); [ -n "$KEY" ] || exit 2; ` +
 	`A="$HOME/.ssh/authorized_keys"; T="$HOME/.ssh/.authorized_keys_tmp"; [ -f "$A" ] || exit 0; ` +
 	`rm -rf "$T" || exit 2; : > "$T" || exit 2; [ -f "$T" ] || exit 2; [ -L "$T" ] && exit 2; ` +
-	`grep -vF -- "$KEY" "$A" >> "$T"; rc=$?; ` +
+	`LC_ALL=C grep -a -vF -- "$KEY" "$A" >> "$T"; rc=$?; ` +
 	`if [ "$rc" -gt 1 ]; then rm -f "$T"; exit 2; fi; ` +
-	`n=$(grep -cvF -- "$KEY" "$A"); [ "$(wc -l < "$T")" -eq "$n" ] || { rm -f "$T"; exit 2; }; ` +
+	`n=$(LC_ALL=C grep -a -cvF -- "$KEY" "$A"); [ "$(wc -l < "$T")" -eq "$n" ] || { rm -f "$T"; exit 2; }; ` +
 	`mv -f "$T" "$A" && chmod 600 "$A"; rc=$?; rm -f "$T"; exit $rc'`
 
 // deployPublicKey fügt einen öffentlichen SSH-Key zur authorized_keys des
@@ -965,7 +985,8 @@ func RemoveDeployedKey(conn Connection, client *ssh.Client, configPath string) e
 		}
 		defer session.Close()
 
-		// grep -vF filtert die Zeile mit dem Key heraus (siehe removeKeyScript).
+		// grep -vF (mit LC_ALL=C und -a) filtert die Zeile mit dem Key heraus
+		// (siehe removeKeyScript).
 		// Temp-Datei verhindert dass authorized_keys bei grep-Fehler geleert wird.
 		session.Stdin = strings.NewReader(keyData)
 		if err := session.Run(removeKeyScript); err != nil {
