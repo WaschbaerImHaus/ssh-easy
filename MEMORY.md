@@ -134,7 +134,8 @@
 - Datei-Manager-Wahl: Speicherfehler zusätzlich sofort in `fm.message` (Nutzerentscheidung), gemerkt in `fm.pickErr`, übersteht Verbindungsaufbau und Passwortabfrage; ein anderer Fehler hat Vorrang
 - F4-Editor Einfügen (Nutzerwunsch): Strg+V, Shift+Einfg, Strg+Einfg (`src/tui_filemanager_editpaste.go`). Unix: ESC[2;2~ / ESC[2;5~ in `tui.go` an den Editor; Windows: NUL-Rune + `GetAsyncKeyState` (`ctrlInsertPressed`). `cleanEditPaste`: CRLF/CR → LF, Steuerzeichen außer Tab/LF raus (auch bei Bracketed Paste). Grenze `fmViewMaxBytes` (16 MiB in Bytes, CRLF zählt doppelt), frühe Ablehnung über 4× die Grenze, Meldung `txtFMEditPasteTooLarge`. Nur Textmodus; in den Fenstern markiert Strg+Einfg weiter
 - Editor-Anzeige: U+2028/U+2029 als „?“ (Inhalt unverändert)
-- Offen: Windows, Strg+Einfg könnte bei langem Halten von Strg doppelt einfügen (vermutet, Nutzer prüft); OPTIMIZE: Suchzeile F7 im Editor ohne Einfügen
+- Windows, Strg+Einfg bei langem Halten von Strg: Nutzer hat unter Windows 11 geprüft (2026-11-07), fügt nur einmal ein; vermuteter Bug geschlossen (nicht reproduzierbar)
+- Offen: OPTIMIZE: Suchzeile F7 im Editor ohne Einfügen
 - Tests: Testschärfe `TestSSHTerminalRegistersEmergencyRestore`, Kopf von `tests/exit_signals_test.go` aktualisiert
 - 977 Tests in 56 Dateien
 
