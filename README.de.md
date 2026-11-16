@@ -285,14 +285,14 @@ Standardmäßig aus. Der Schalter `v` *Verbindung merken* im Menü (`m`) schalte
 
 ### Auto-Update
 
-Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile, die `m` einblendet, und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; installiert wird beim Beenden – mit `q`, `Strg+C`, `Alt+F4` und auch beim Schließen des Fensters mit dem Kreuz, selbst während einer SSH-Sitzung (Windows-Konsole und Windows Terminal, Linux-Terminalfenster):
+Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der letzten Menüzeile, die `m` einblendet, und wird gespeichert). Eingeschaltet prüft ssh-easy beim Start das neueste GitHub-Release und lädt die passende Datei im Hintergrund; solange kein Update bereitliegt, wird alle 6 Stunden erneut gesucht, ein Release, das erscheint, während ssh-easy läuft, wird also ebenfalls gefunden (beim Beenden wird nicht gesucht); installiert wird beim Beenden – mit `q`, `Strg+C`, `Alt+F4` und auch beim Schließen des Fensters mit dem Kreuz, selbst während einer SSH-Sitzung (Windows-Konsole und Windows Terminal, Linux-Terminalfenster):
 
 - Linux oder Windows mit Schreibrecht im Programmordner: Die Programmdatei wird ersetzt
 - Windows-Installation unter *Programme*: Das Setup läuft still mit Administratorrechten (Windows fragt per Benutzerkontensteuerung); die Desktop-Verknüpfung bleibt erhalten
 
 Jedes Release enthält eine mit Ed25519 signierte Prüfsummenliste (`ssh-easy-SHA256SUMS` + `ssh-easy-SHA256SUMS.sig`). ssh-easy prüft die Signatur mit dem im Programm eingebauten öffentlichen Schlüssel und installiert nur eine Datei, deren SHA-256 in der signierten Liste steht – selbst wer Zugriff auf das GitHub-Konto hat, kann so kein manipuliertes Update unterschieben. Dazu kommen Größen- und Formatprüfung – direkt nach dem Download und noch einmal unmittelbar vor der Installation. Unsignierte Releases werden abgelehnt. Neben dem Hauptschlüssel ist ein zweiter öffentlicher Schlüssel (Ersatzschlüssel) eingebaut, damit sich der Signaturschlüssel ohne Neuinstallation austauschen lässt; die Signatur jedes der beiden gilt. Schwache Schlüssel (Punkte kleiner Ordnung) werden abgelehnt. Zusätzlich kann `build.sh` die Windows-Programme und Setups mit Authenticode signieren, sobald ein Zertifikat eingerichtet ist (optional; noch nicht im Einsatz).
 
-Unter Windows startet ssh-easy für die Installation beim Beenden einen kurzen Helfer ohne Fenster; er wartet, bis das Programm beendet ist, und startet dann das geprüfte Setup (mit Benutzerkontensteuerung). Grenze: Beim Abmelden oder Herunterfahren gibt Windows Programmen keine Gelegenheit zu reagieren – das Update wird dann beim nächsten regulären Beenden installiert.
+Unter Windows startet ssh-easy für die Installation beim Beenden einen kurzen Helfer ohne Fenster; er wartet, bis das Programm beendet ist, und startet dann das geprüfte Setup (mit Benutzerkontensteuerung). Grenze: Beim Abmelden oder Herunterfahren gibt Windows Programmen keine Gelegenheit zu reagieren – das Update wird dann beim nächsten regulären Beenden installiert. Bis Build 90 beendete das Schließen mit dem Kreuz unter Windows das Programm sofort, ohne zu installieren (nur `q` funktionierte); seit Build 91 behoben.
 
 ### Auto-Reconnect
 
@@ -306,6 +306,12 @@ Verbindungen werden gespeichert unter:
 
 Log-Datei:
 - `~/.ssh-easy/ssh-easy.log`
+
+Das Log nennt beim Start und beim Ende Version und Prozessnummer („ssh-easy v0.91 gestartet (windows/amd64, PID 1234)“) und hält das Ergebnis jeder Update-Suche fest. Unter Windows PowerShell 5 zeigt `Get-Content` das UTF-8-Log falsch an („Ã¼“ statt „ü“). So wird es richtig gelesen:
+
+```powershell
+Get-Content $env:USERPROFILE\.ssh-easy\ssh-easy.log -Tail 40 -Encoding UTF8
+```
 
 Passwoerter werden **nicht** gespeichert und muessen bei jedem Verbindungsaufbau eingegeben werden.
 

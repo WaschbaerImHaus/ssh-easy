@@ -100,9 +100,10 @@
 - [x] Datei-Manager: Erfassen vor Kopieren/Verschieben stark beschleunigt (Nutzerbericht, Build 90: 30.000 leere Verzeichnisse, „Zählen dauerte unendlich“): ein `find`-Befehl über einen Exec-Kanal mit Stichprobe gegen SFTP und Rückfall auf paralleles SFTP-Erfassen (32); Anzeige „Erfasse … X Dateien, Y Verzeichnisse“ und Fortschritt beim Entfernen leerer Quellverzeichnisse
 - [x] F6 auf demselben Konto (Nutzerentscheidung, Build 90): Host, Port und Benutzer gleich (auch bei zwei Einträgen) – der Server benennt um statt zu kopieren; nie ein vorhandenes Ziel ersetzen, Prüfdatei, Rückfall auf Kopieren; neue Abschlusstexte „„Name“ verschoben“ / „N Einträge verschoben“
 - [x] Datei-Manager: leere Quellverzeichnisse ebenenweise parallel entfernen (nur `RemoveDir`), Symlink-Ziele parallel prüfen, F8 liest parallel vor (Build 90)
+- [x] Update-Suche wiederholt sich alle 6 Stunden, solange kein Update bereitliegt (Build 91; vorher nur beim Start): ein Release, das erscheint, während ssh-easy läuft, wird gefunden; Log mit Version/PID im Start-/Endzeile und Ergebnis jeder Suche
 - [x] Datei-Manager: Neu verbinden nach Verbindungsabriss (Build 90): beim nächsten Einlesen oder mit Strg+R, genau ein Versuch, auch wenn nur die SFTP-Sitzung stirbt; Passwortdialog, Passwort nie gespeichert, known_hosts bleibt Pflicht
 
 ## Offen
-- [ ] Massenaufrufe per Exec bündeln, wo verfügbar (Nutzerwunsch Build 90, vorgemerkt für Build 91; Einzelheiten in OPTIMIZE.md)
-- [ ] Direktübertragung Server → Server per rsync mit eingeschränktem, weitergereichtem Agenten (Nutzerwunsch Build 90, vorgemerkt für Build 92; Einzelheiten in OPTIMIZE.md)
+- [ ] Massenaufrufe per Exec bündeln, wo verfügbar (Nutzerwunsch Build 90, vorgemerkt für Build 92 (verschoben von 91, weil Build 91 ein Bugfix-Build ist); Einzelheiten in OPTIMIZE.md)
+- [ ] Direktübertragung Server → Server per rsync mit eingeschränktem, weitergereichtem Agenten (Nutzerwunsch Build 90, vorgemerkt für Build 93 (verschoben von 92); Einzelheiten in OPTIMIZE.md)
 - (sonst keine – die drei früheren Punkte OSC-52-Schalter, Suche/Filter in der Liste und unterschiedliche Tunnel-Ports hat der Nutzer am 2026-10-27 gestrichen)

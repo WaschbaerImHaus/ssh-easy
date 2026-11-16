@@ -1,12 +1,20 @@
 // Paket main - Beenden über Schließkreuz, Alt+F4 und SIGHUP (Build 87, ergänzt in Build 88 und 89)
 //
 // Wer das Fenster schließt, bekommt unter Linux SIGHUP (Terminal weg) und
-// unter Windows CTRL_CLOSE_EVENT (in Go: SIGTERM). Bis Build 86 lief dann
-// der Code nach p.Run() nie: Verbindungen blieben offen, und ein
-// heruntergeladenes Update wurde nicht installiert.
+// unter Windows CTRL_CLOSE_EVENT. Bis Build 86 lief dann der Code nach
+// p.Run() nie: Verbindungen blieben offen, und ein heruntergeladenes Update
+// wurde nicht installiert.
+//
+// Windows (Build 91): Gos eigener Handler hätte CTRL_CLOSE_EVENT als SIGTERM
+// gemeldet, wird aber durch AllocConsole in icon_windows.go abgemeldet. Die
+// Annahme bis Build 90, das Signal erreiche main.go über signal.Notify, war
+// falsch - beim Kreuz beendete Windows den Prozess sofort. Seit Build 91
+// meldet init() einen eigenen Handler an, der das Ereignis über
+// consoleCloseRelay an den Watcher gibt (exit_signals_console.go).
 //
 // Ablauf:
-//   - main registriert closeSignals() und startet watchCloseSignals.
+//   - main registriert closeSignals() und startet watchCloseSignals; der
+//     Watcher hört zusätzlich auf consoleCloseRelay.
 //   - Beim ersten Signal ruft der Watcher onSignal SYNCHRON auf (main setzt
 //     dort closeRequested) und bittet erst danach Bubbletea um ein normales
 //     Ende (quit). Endet das Programm innerhalb von closeGracePeriod,
@@ -27,13 +35,13 @@
 //     Paste ausschaltet, den Alt-Screen verlässt, die Maus-Modi abschaltet
 //     und den Cursor zeigt (Build 89, Runde 2 und 3) - term.Restore stellt
 //     nur den Terminal-Modus her.
-//   - Der Logeintrag „ssh-easy beendet (Notfall-Ablauf)“ steht VOR diesem
+//   - Der Logeintrag „ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)“ steht VOR diesem
 //     letzten Zurücksetzen; danach wird bis exit(0) nichts mehr geloggt.
 //
 // Jede Aufgabe läuft über beide Wege hinweg genau einmal (sync.Once).
 //
 // @author Kurt Ingwer
-// @date   2026-11-07 11:49
+// @date   2026-11-16 16:45
 package main
 
 import (
@@ -463,14 +471,18 @@ func callAllRecovered(fns []func()) {
 //  4. bis grace auf allDone warten - kommt es, endet main selbst
 //  5. sonst den Notfall-Ablauf (runEmergencyThen mit emergencyStepsTimeout,
 //     wartet im Budget noch auf allDone, Build 89) und exit(0). Der
-//     Logeintrag „ssh-easy beendet (Notfall-Ablauf)“ steht VOR dem letzten
+//     Logeintrag „ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)“ steht VOR dem letzten
 //     Zurücksetzen des Terminals; danach wird bis exit(0) nichts mehr
 //     geloggt (Build 89, Runde 2) - ein hängender Log-Write darf das
 //     Terminal nicht zwischen Zurücksetzen und Ende kaputt lassen.
 //
 // Weitere Signale lösen keine zweite Behandlung aus (onSignal und quit laufen
-// je einmal): Nach der Rückkehr liest niemand mehr den Kanal, signal.Notify
-// verwirft sie dann.
+// je einmal): Nach der Rückkehr liest niemand mehr die Kanäle, signal.Notify
+// bzw. das Relay verwerfen sie dann.
+//
+// Seit Build 91 eine Hülle: Sie schreibt den Stand des Windows-Konsolen-
+// Handlers ins Log und hört über watchCloseSignalsFrom zusätzlich auf
+// consoleCloseRelay. Unter Windows kommt das Schließkreuz NUR dort an.
 //
 // @param sigs - Kanal aus signal.Notify(…, closeSignals()...)
 // @param onSignal - läuft beim ersten Signal synchron vor quit (nil erlaubt)
@@ -480,14 +492,40 @@ func callAllRecovered(fns []func()) {
 // @param grace - Frist für das normale Ende
 // @param exit - beendet den Prozess (os.Exit; Funktionszeiger für Tests)
 // @param log - Logger (nil erlaubt)
-// @date   2026-11-07 14:00
+// @date   2026-11-16 16:45
 func watchCloseSignals(sigs <-chan os.Signal, onSignal func(), quit func(), allDone <-chan struct{}, tasks *exitTasks, grace time.Duration, exit func(int), log *Logger) {
+	// Ergebnis der Anmeldung des Konsolen-Handlers aus init() nachtragen
+	// (init läuft vor dem Logger; unter Linux/macOS schreibt das nichts)
+	logConsoleCtrlRegistration(log, consoleCtrlRegistrationState)
+	// Unter Windows kommt das Schließkreuz NUR über das Relay an: Gos eigener
+	// Handler ist seit AllocConsole abgemeldet (exit_signals_console.go)
+	watchCloseSignalsFrom(sigs, consoleCloseRelay.events(), onSignal, quit, allDone, tasks, grace, exit, log)
+}
+
+// watchCloseSignalsFrom ist der Kern von watchCloseSignals (Build 91): Er
+// reagiert auf das erste Signal aus sigs ODER extra. Beide dürfen nil sein
+// (ein nil-Kanal blockiert im select nur). Ablauf und Rückkehr wie bei
+// watchCloseSignals beschrieben.
+//
+// @param sigs - Kanal aus signal.Notify(…, closeSignals()...)
+// @param extra - weitere Quelle, z. B. consoleCloseRelay.events() (nil erlaubt)
+// @param onSignal - läuft beim ersten Signal synchron vor quit (nil erlaubt)
+// @param quit - bittet die Oberfläche um ein normales Ende (nil erlaubt)
+// @param allDone - wird geschlossen, wenn main die Aufgaben erledigt hat
+// @param tasks - Aufgaben beim Beenden (nil = keine)
+// @param grace - Frist für das normale Ende
+// @param exit - beendet den Prozess (os.Exit; Funktionszeiger für Tests)
+// @param log - Logger (nil erlaubt)
+// @date   2026-11-16 17:06
+func watchCloseSignalsFrom(sigs <-chan os.Signal, extra <-chan os.Signal, onSignal func(), quit func(), allDone <-chan struct{}, tasks *exitTasks, grace time.Duration, exit func(int), log *Logger) {
 	var sig os.Signal
 	select {
 	case <-allDone:
 		// Normal beendet, ohne dass das Fenster geschlossen wurde
 		return
 	case sig = <-sigs:
+	case sig = <-extra:
+		// Schließ-Ereignis vom eigenen Windows-Konsolen-Handler
 	}
 	// onSignal läuft als Allererstes, also sicher VOR dem Log und VOR quit -
 	// und nur einmal, weil der Kanal danach nicht mehr gelesen wird. Eine
@@ -510,7 +548,7 @@ func watchCloseSignals(sigs <-chan os.Signal, onSignal func(), quit func(), allD
 	}
 
 	log.Warn("Kein normales Ende binnen %v nach Signal %v - Notfall-Ablauf", grace, sig)
-	logDone := func() { log.Info("ssh-easy beendet (Notfall-Ablauf)") }
+	logDone := func() { log.Info("%s", formatEmergencyExitLogLine(readBuildNumber(), os.Getpid())) }
 	if tasks != nil {
 		if !tasks.runEmergencyThen(emergencyStepsTimeout, allDone, logDone) {
 			// allDone kam rechtzeitig: Bubbletea hat das Terminal selbst
@@ -524,6 +562,22 @@ func watchCloseSignals(sigs <-chan os.Signal, onSignal func(), quit func(), allD
 		finalTerminalReset(emergencyRestores.snapshot())
 	}
 	exit(0)
+}
+
+// emergencyExitSuffix - Zusatz der Endzeile im Notfall-Ablauf.
+const emergencyExitSuffix = " (Notfall-Ablauf)"
+
+// formatEmergencyExitLogLine erzeugt die Endzeile des Notfall-Ablaufs, z. B.
+// "ssh-easy v0.91 beendet (PID 1234) (Notfall-Ablauf)" (Build 91). Sie leitet
+// sich aus formatExitLogLine (main.go) ab, damit normale Endzeile und
+// Notfall-Endzeile dieselbe Version und PID tragen.
+//
+// @param build - Build-Nummer
+// @param pid   - Prozessnummer (os.Getpid())
+// @return string - Endzeile ohne Zeitstempel
+// @date   2026-11-16 17:06
+func formatEmergencyExitLogLine(build string, pid int) string {
+	return formatExitLogLine(build, pid) + emergencyExitSuffix
 }
 
 // exitCodeFor liefert den Exit-Code nach p.Run(). Ein Fehler zählt nicht,

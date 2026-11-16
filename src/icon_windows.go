@@ -17,13 +17,14 @@
 // ABLAUF IN init():
 //   1. AllocConsole()  → eigenes Konsolenfenster erstellen
 //   2. Stdio umleiten  → os.Stdin/Stdout/Stderr auf neue Konsole zeigen
-//   3. AUMID setzen    → eindeutige App-ID für Taskleisten-Gruppierung
-//   4. Icon setzen     → WM_SETICON auf eigenes Konsolenfenster
+//   3. Konsolen-Handler neu anmelden (Build 91) → Schließkreuz abfangen
+//   4. AUMID setzen    → eindeutige App-ID für Taskleisten-Gruppierung
+//   5. Icon setzen     → WM_SETICON auf eigenes Konsolenfenster
 //
 // Der Update-Helfer ("--install-update", Build 87) überspringt all das.
 //
 // @author Kurt Ingwer
-// @date   2026-10-31 14:40
+// @date   2026-11-16 16:45
 
 //go:build windows
 
@@ -31,6 +32,8 @@ package main
 
 import (
 	"os"
+	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/charmbracelet/lipgloss"
@@ -64,6 +67,8 @@ var (
 	procSetForegroundWindow = user32Win.NewProc("SetForegroundWindow")
 	// showWindow ändert den Anzeigezustand eines Fensters (restore/minimiert/...).
 	procShowWindow = user32Win.NewProc("ShowWindow")
+	// setConsoleCtrlHandler meldet einen Handler für Konsolen-Steuerereignisse an.
+	procSetConsoleCtrlHandler = kernel32Win.NewProc("SetConsoleCtrlHandler")
 )
 
 const (
@@ -266,27 +271,72 @@ func fixLipglossColorProfile() {
 	lipgloss.SetColorProfile(termenv.TrueColor)
 }
 
+// consoleCtrlCallback ist der Handler, den Windows auf einem eigenen Thread
+// aufruft (Signatur BOOL WINAPI HandlerRoutine(DWORD)). Die Logik steckt in
+// handleConsoleCtrlEvent (exit_signals_console.go, unter Linux getestet).
+//
+// @param ev - Ereignis-Code (CTRL_CLOSE_EVENT = 2 usw.)
+// @return uintptr - 1 = behandelt, 0 = nächster Handler
+// @date   2026-11-16 16:45
+func consoleCtrlCallback(ev uintptr) uintptr {
+	return handleConsoleCtrlEvent(uint32(ev), consoleCloseRelay, consoleCtrlHoldTimeout, time.Sleep)
+}
+
+// registerConsoleCtrlHandler meldet consoleCtrlCallback bei Windows an.
+//
+// Nötig, weil AllocConsole die Handler-Tabelle des Prozesses zurücksetzt und
+// damit auch Gos eigenen Handler entfernt (laut Microsoft „Handlers must be
+// registered again“). Ohne Anmeldung beendet Windows den Prozess beim
+// Schließkreuz sofort (ExitProcess) - ohne Trennen, Speichern und Update.
+// Der zuletzt angemeldete Handler wird zuerst gefragt. Nur einmal aufrufen
+// (syscall.NewCallback hat eine feste Obergrenze an Rückrufen).
+//
+// @return error - nil bei Erfolg, sonst der Fehler von Windows
+// @date   2026-11-16 16:45
+func registerConsoleCtrlHandler() error {
+	if err := procSetConsoleCtrlHandler.Find(); err != nil {
+		return err
+	}
+	callback := syscall.NewCallback(consoleCtrlCallback)
+	// Add = 1 (TRUE): Handler hinzufügen
+	ret, _, callErr := procSetConsoleCtrlHandler.Call(callback, 1)
+	if ret == 0 {
+		return callErr
+	}
+	return nil
+}
+
 // init läuft automatisch beim Programmstart vor main().
 //
 // Reihenfolge ist kritisch:
 //  1. AllocConsole          – eigenes Konsolenfenster (GUI-Subsystem)
 //  2. stdio umleiten        – Bubbletea braucht gültige os.Stdin/Stdout
-//  3. Farbprofil korrigieren – Lipgloss-Renderer auf TrueColor setzen
-//  4. AUMID setzen          – App-Identität für Taskleiste
-//  5. Icon setzen           – EXE-Icon auf eigenes Konsolenfenster
-//  6. Fokus setzen          – Konsolenfenster in den Vordergrund holen
+//  3. Konsolen-Handler      – NACH AllocConsole neu anmelden (Build 91),
+//     sonst beendet das Schließkreuz den Prozess ohne Aufräumen und Update
+//  4. Farbprofil korrigieren – Lipgloss-Renderer auf TrueColor setzen
+//  5. AUMID setzen          – App-Identität für Taskleiste
+//  6. Icon setzen           – EXE-Icon auf eigenes Konsolenfenster
+//  7. Fokus setzen          – Konsolenfenster in den Vordergrund holen
+//
+// Der Handler wird unabhängig vom Ergebnis von allocOwnConsole angemeldet:
+// Auch wenn danach z. B. CreateFile("CONIN$") scheitert, hat AllocConsole
+// die Tabelle schon geleert. Gab es bereits eine Konsole, schadet ein
+// zusätzlicher Handler nicht (er wird vor Gos Handler gefragt und leitet in
+// denselben Watcher). Das Ergebnis schreibt watchCloseSignals ins Log,
+// sobald es einen Logger gibt.
 //
 // Ausnahme Update-Helfer ("--install-update", Build 87): Er läuft nach dem
 // Ende des Hauptprozesses unsichtbar weiter und startet nur das Setup. Für
 // ihn KEINE eigene Konsole (sonst ginge ein leeres Fenster auf) und KEIN
 // Fokuswechsel (sonst stiehlt er dem UAC-Dialog bzw. dem Nutzer den Fokus).
 //
-// @date 2026-10-31 14:40
+// @date 2026-11-16 16:45
 func init() {
 	if isInstallHelperInvocation(os.Args) {
 		return
 	}
 	allocOwnConsole()
+	consoleCtrlRegistrationState = consoleCtrlRegistration{attempted: true, err: registerConsoleCtrlHandler()}
 	fixLipglossColorProfile()
 	setAppUserModelID()
 	applyConsoleIcon()

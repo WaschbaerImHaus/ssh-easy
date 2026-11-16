@@ -5,7 +5,7 @@
 // mit Local-Port-Forwarding-Tunneln.
 //
 // @author Kurt Ingwer
-// @date   2026-11-01 10:37
+// @date   2026-11-16 16:45
 package main
 
 import (
@@ -36,7 +36,9 @@ import (
 // (onSignal), damit ein Fehler aus der Ereignisschleife (Run) beim Schließen
 // nicht zu Exit-Code 1 führt (Build 88).
 //
-// @date   2026-11-01 10:37
+// Start- und Endzeile im Log nennen Version und PID (Build 91).
+//
+// @date   2026-11-16 16:45
 func main() {
 	// Helfer-Modus für das Update (Windows): kein Terminal, keine TUI, keine
 	// Aufräumarbeiten - das Setup-Verzeichnis gehört gerade diesem Helfer.
@@ -59,10 +61,10 @@ func main() {
 	logger := NewLogger()
 	// Korrekturen am waagrechten Bildlaufbalken der Konsole protokollieren
 	hscrollLog = logger.Info
-	logger.Info("ssh-easy gestartet (%s/%s)", runtime.GOOS, runtime.GOARCH)
-
-	// Build-Nummer lesen
+	// Build-Nummer lesen - vor der Startzeile, damit das Log die laufende
+	// Version nennt. Die PID trennt zwei Starts in derselben Sekunde (Build 91).
 	buildNumber := readBuildNumber()
+	logger.Info("%s", formatStartLogLine(buildNumber, runtime.GOOS, runtime.GOARCH, os.Getpid()))
 
 	// Konfigurationsverzeichnis sicherstellen
 	if err := EnsureConfigDir(); err != nil {
@@ -127,11 +129,16 @@ func main() {
 		apply:      func() { updater.ApplyOnExit(logger) },
 	}
 
-	// Schließen des Fensters abfangen (Linux: SIGHUP/SIGTERM, Windows:
-	// CTRL_CLOSE_EVENT als SIGTERM). signal.Stop wird BEWUSST nie gerufen:
-	// Unter Windows hält der registrierte Handler den Prozess am Leben, bis
-	// die Aufgaben erledigt sind (sonst sofort ExitProcess). Puffer 2, damit
-	// ein zweites Signal nicht verloren geht oder blockiert.
+	// Schließen des Fensters abfangen (Linux: SIGHUP/SIGTERM). signal.Stop
+	// wird nie gerufen. Puffer 2, damit ein zweites Signal nicht verloren
+	// geht oder blockiert.
+	// Windows: Der Go-Handler für CTRL_CLOSE_EVENT greift hier nicht, weil
+	// AllocConsole in icon_windows.go init() die Handler-Tabelle zurücksetzt.
+	// Den Prozess hält stattdessen der eigene Handler handleConsoleCtrlEvent
+	// (exit_signals_console.go, registriert in icon_windows.go init() über
+	// registerConsoleCtrlHandler) bis zu 10 s am Leben, sonst folgt sofort
+	// ExitProcess. Er gibt das Ereignis über consoleCloseRelay an
+	// watchCloseSignals weiter.
 	sigs := make(chan os.Signal, 2)
 	signal.Notify(sigs, closeSignals()...)
 	allDone := make(chan struct{})
@@ -152,7 +159,7 @@ func main() {
 	if code != 0 {
 		fmt.Fprintf(os.Stderr, "Fehler in der TUI: %v\n", err)
 	}
-	logger.Info("ssh-easy beendet")
+	logger.Info("%s", formatExitLogLine(buildNumber, os.Getpid()))
 	if code != 0 {
 		os.Exit(code)
 	}
@@ -199,6 +206,46 @@ func formatAppTitle(build string) string {
 		return "ssh-easy (Build dev)"
 	}
 	return fmt.Sprintf("ssh-easy v0.%s (Build %s)", build, build)
+}
+
+// formatVersionLabel liefert die Versionsangabe für Log-Zeilen nach dem
+// Release-Schema: "v0.<Build>" oder "Build dev" für Entwicklungsversionen.
+//
+// @param build - Build-Nummer (wird getrimmt; "dev" oder leer = Entwicklung)
+// @return string - z. B. "v0.91" oder "Build dev"
+// @date   2026-11-16 16:38
+func formatVersionLabel(build string) string {
+	build = strings.TrimSpace(build)
+	if build == "" || build == "dev" {
+		return "Build dev"
+	}
+	return "v0." + build
+}
+
+// formatStartLogLine erzeugt die Startzeile für das Log, z. B.
+// "ssh-easy v0.91 gestartet (windows/amd64, PID 1234)". Version und PID
+// machen Nutzerberichte zuordenbar (Build 91).
+//
+// @param build  - Build-Nummer
+// @param goos   - Betriebssystem (runtime.GOOS)
+// @param goarch - Architektur (runtime.GOARCH)
+// @param pid    - Prozessnummer (os.Getpid())
+// @return string - Startzeile ohne Zeitstempel
+// @date   2026-11-16 16:38
+func formatStartLogLine(build, goos, goarch string, pid int) string {
+	return fmt.Sprintf("ssh-easy %s gestartet (%s/%s, PID %d)",
+		formatVersionLabel(build), goos, goarch, pid)
+}
+
+// formatExitLogLine erzeugt die Endzeile für das Log, z. B.
+// "ssh-easy v0.91 beendet (PID 1234)" - passend zur Startzeile.
+//
+// @param build - Build-Nummer
+// @param pid   - Prozessnummer (os.Getpid())
+// @return string - Endzeile ohne Zeitstempel
+// @date   2026-11-16 16:38
+func formatExitLogLine(build string, pid int) string {
+	return fmt.Sprintf("ssh-easy %s beendet (PID %d)", formatVersionLabel(build), pid)
 }
 
 // getBuildInfo gibt Build-Informationen als formatierten String zurück.

@@ -80,6 +80,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -1589,7 +1590,8 @@ func TestWatchCloseSignalsOnSignalBeforeFirstLogEntry(t *testing.T) {
 //	    ein blockierender Write hält Rückkehr und exit nicht länger auf.
 //	    Reihenfolge von Restore und Write untereinander ist nicht festgelegt;
 //	    beide sind die letzten Ereignisse vor exit(0).
-//	Der Logeintrag "ssh-easy beendet (Notfall-Ablauf)" steht VOR dem zweiten
+//	Der Logeintrag "ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)" (Build 91,
+//	formatEmergencyExitLogLine) steht VOR dem zweiten
 //	Restore; zwischen dem zweiten Restore (und dem Write) und exit(0) wird nichts
 //	mehr geloggt (das Schreiben ins Log kann hängen).
 
@@ -1600,9 +1602,13 @@ const (
 	resetSequence = "\x1b[?2004l\x1b[?1049l\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?25h"
 	// emergencyResetWriteMax - größte Zusatzzeit durch einen hängenden Write
 	emergencyResetWriteMax = 500 * time.Millisecond
-	// emergencyDoneLine - Logeintrag am Ende des Notfall-Ablaufs
-	emergencyDoneLine = "ssh-easy beendet (Notfall-Ablauf)"
 )
+
+// emergencyDoneLine - Logeintrag am Ende des Notfall-Ablaufs (seit Build 91 mit
+// Version und PID: "ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)"). Bewusst
+// aus der Produktivfunktion abgeleitet; ihr Format prüft
+// TestFormatEmergencyExitLogLine mit festen Werten.
+var emergencyDoneLine = formatEmergencyExitLogLine(readBuildNumber(), os.Getpid())
 
 // resetWrites zeichnet die Aufrufe des Funktionszeigers emergencyTerminalReset auf.
 type resetWrites struct {
@@ -1914,7 +1920,7 @@ func TestWatchCloseSignalsBlockingResetWriteStillExits(t *testing.T) {
 
 // TestWatchCloseSignalsRestoreIsLastBeforeExit prüft Punkt 1 (Reihenfolge): Das
 // zweite Restore (bei Unix zusammen mit der Terminalfolge) ist der LETZTE
-// Schritt vor exit(0). Der Logeintrag "ssh-easy beendet (Notfall-Ablauf)" steht
+// Schritt vor exit(0). Der Logeintrag "ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)" steht
 // VOR dem zweiten Restore, und zwischen Restore, Write und exit(0) kommt kein
 // Logeintrag mehr: Das Schreiben ins Log kann auf einem langsamen oder toten
 // Laufwerk hängen, und das Terminal bliebe in dieser Zeit im Raw-Modus.
@@ -2006,5 +2012,112 @@ func TestWatchCloseSignalsRestoreIsLastBeforeExit(t *testing.T) {
 		if ev.name == "write" && !ev.hasDone {
 			t.Errorf("Write vor dem Logeintrag %q: %+v", emergencyDoneLine, events)
 		}
+	}
+}
+
+// TestFormatEmergencyExitLogLine prüft die Endzeile des Notfall-Ablaufs
+// (Build 91): Sie beginnt mit der normalen Endzeile formatExitLogLine (gleiche
+// Version und PID wie die Startzeile, damit Nutzerberichte zuordenbar sind),
+// endet auf "(Notfall-Ablauf)" und trägt den Zusatz genau einmal. Randfälle:
+// Entwicklerversion ("dev" -> "Build dev"), leere Build-Nummer, PID 0 und eine
+// sehr große PID dürfen das Format nicht verändern.
+func TestFormatEmergencyExitLogLine(t *testing.T) {
+	got := formatEmergencyExitLogLine("91", 1234)
+	if want := "ssh-easy v0.91 beendet (PID 1234) (Notfall-Ablauf)"; got != want {
+		t.Errorf("Endzeile = %q, erwartet %q", got, want)
+	}
+	cases := []struct {
+		build string
+		pid   int
+	}{
+		{"91", 1234}, {"dev", 7}, {"", 1}, {"  91\n", 0}, {"5", 4294967295},
+	}
+	for _, c := range cases {
+		line := formatEmergencyExitLogLine(c.build, c.pid)
+		base := formatExitLogLine(c.build, c.pid)
+		if !strings.HasPrefix(line, base) {
+			t.Errorf("(%q, %d): %q beginnt nicht mit der normalen Endzeile %q", c.build, c.pid, line, base)
+		}
+		if !strings.HasSuffix(line, "(Notfall-Ablauf)") {
+			t.Errorf("(%q, %d): %q endet nicht auf (Notfall-Ablauf)", c.build, c.pid, line)
+		}
+		if n := strings.Count(line, "(Notfall-Ablauf)"); n != 1 {
+			t.Errorf("(%q, %d): Zusatz %d mal in %q, erwartet 1", c.build, c.pid, n, line)
+		}
+		if want := fmt.Sprintf("PID %d", c.pid); !strings.Contains(line, want) {
+			t.Errorf("(%q, %d): %q ohne %q", c.build, c.pid, line, want)
+		}
+		if strings.Contains(line, "\n") {
+			t.Errorf("(%q, %d): Zeilenumbruch in %q", c.build, c.pid, line)
+		}
+	}
+	if line := formatEmergencyExitLogLine("91", 1234); !strings.Contains(line, "v0.91") {
+		t.Errorf("Version v0.91 fehlt in %q", line)
+	}
+	if line := formatEmergencyExitLogLine("dev", 7); !strings.Contains(line, "Build dev") {
+		t.Errorf("Entwicklerversion: %q ohne \"Build dev\"", line)
+	}
+}
+
+// TestWatchCloseSignalsEmergencyWritesVersionedEndLine prüft, dass der
+// Notfall-Ablauf von watchCloseSignalsFrom eine Endzeile mit Version und der
+// eigenen PID schreibt ("ssh-easy v0.N beendet (PID n) (Notfall-Ablauf)") und
+// nicht mehr die alte Zeile ohne Version. allDone bleibt offen, die Frist ist
+// kurz; der Notfall-Ablauf läuft einmal mit Aufgaben (runEmergencyThen-Weg) und
+// einmal ohne (tasks == nil, anderer Zweig im Code). Die Zeile muss genau
+// einmal vorkommen (Normal- und Notfallweg dürfen nicht doppelt loggen).
+func TestWatchCloseSignalsEmergencyWritesVersionedEndLine(t *testing.T) {
+	for _, withTasks := range []bool{true, false} {
+		name := "ohneAufgaben"
+		if withTasks {
+			name = "mitAufgaben"
+		}
+		t.Run(name, func(t *testing.T) {
+			logPath := filepath.Join(t.TempDir(), "emergency.log")
+			logger := &Logger{enabled: true, filePath: logPath}
+			setResetHandler(t, func(string) {})
+
+			var tasks *exitTasks
+			if withTasks {
+				tasks = (&exitRecorder{}).tasks()
+			}
+			exited := make(chan struct{})
+			sigs := make(chan os.Signal, 1)
+			allDone := make(chan struct{}) // bleibt offen: Notfall-Ablauf
+			go watchCloseSignalsFrom(sigs, nil, nil, nil, allDone, tasks,
+				50*time.Millisecond, func(int) { close(exited) }, logger)
+			sigs <- syscall.SIGHUP
+			if !waitChan(exited, 5*time.Second) {
+				t.Fatal("kein exit im Notfall")
+			}
+
+			data, err := os.ReadFile(logPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			text := string(data)
+			var lines []string
+			for _, l := range strings.Split(text, "\n") {
+				if strings.Contains(l, "(Notfall-Ablauf)") {
+					lines = append(lines, l)
+				}
+			}
+			if len(lines) != 1 {
+				t.Fatalf("%d Zeilen mit (Notfall-Ablauf), erwartet 1; Log:\n%s", len(lines), text)
+			}
+			line := lines[0]
+			if want := fmt.Sprintf("PID %d", os.Getpid()); !strings.Contains(line, want) {
+				t.Errorf("Endzeile ohne %q: %q", want, line)
+			}
+			if want := "ssh-easy " + formatVersionLabel(readBuildNumber()) + " beendet"; !strings.Contains(line, want) {
+				t.Errorf("Endzeile ohne %q: %q", want, line)
+			}
+			if !strings.HasSuffix(strings.TrimSpace(line), "(Notfall-Ablauf)") {
+				t.Errorf("Endzeile endet nicht auf (Notfall-Ablauf): %q", line)
+			}
+			if strings.Contains(text, "ssh-easy beendet (Notfall-Ablauf)") {
+				t.Errorf("alte Endzeile ohne Version und PID im Log:\n%s", text)
+			}
+		})
 	}
 }

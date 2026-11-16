@@ -65,6 +65,10 @@ const (
 	maxUpdateBytes = 200 << 20
 	// updateCheckTimeout - Gesamtfrist für Suche und Download
 	updateCheckTimeout = 5 * time.Minute
+	// updateRecheckInterval - Abstand zwischen zwei Update-Suchen eines
+	// laufenden Programms (nach "aktuell" oder Fehler). Ohne Wiederholung fände
+	// ein Prozess, der vor einem Release gestartet wurde, das Update nie.
+	updateRecheckInterval = 6 * time.Hour
 	// releaseSigningPublicKeyHex - öffentlicher Ed25519-Schlüssel, mit dem
 	// die Prüfsummenliste jedes Releases signiert ist (privater Schlüssel:
 	// ~/.config/ssh-easy/release-signing.key auf dem Build-Rechner)
@@ -150,11 +154,19 @@ type releaseInfo struct {
 }
 
 // updateResultMsg meldet der TUI das Ergebnis der Update-Suche.
+//
+// Dieselbe Nachricht dient auch als Wecker für die wiederholte Suche
+// (tick = true): So läuft das Routing weiter über den vorhandenen Fall in
+// AppModel.Update, ohne neuen Nachrichtentyp in tui.go.
 type updateResultMsg struct {
 	// Heruntergeladenes Update (nil = keines bzw. Fehler)
 	pending *pendingUpdate
 	// Fehler der Suche oder des Downloads
 	err error
+	// tick = true: Wecker der wiederholten Suche (pending/err bleiben leer)
+	tick bool
+	// Generation des Weckers; nur der jüngste gilt (siehe Updater.recheckGen)
+	gen uint64
 }
 
 // Updater sucht, lädt und installiert Updates.
@@ -193,6 +205,18 @@ type Updater struct {
 	// startSetup startet das Windows-Setup (Naht, austauschbar für Tests).
 	// Standard: defaultSetupStarter der Plattform.
 	startSetup func(path, sha string) error
+	// recheckInterval - Abstand der wiederholten Suche (Naht für Tests;
+	// 0 = updateRecheckInterval)
+	recheckInterval time.Duration
+	// recheckGen zählt die Wecker der wiederholten Suche. Jeder neue Wecker und
+	// jedes Umschalten von Auto-Update erhöht den Zähler; ein Wecker mit
+	// älterer Nummer ist veraltet und wird ignoriert. So gibt es nie doppelte
+	// Suchläufe, auch wenn der Schalter mehrfach umgelegt wird.
+	recheckGen atomic.Uint64
+	// exitNoteLogged: Die Hinweiszeile von ApplyOnExit ("Kein Update
+	// vorgemerkt" bzw. "Auto-Update aus") wurde in diesem Lauf schon
+	// geschrieben. Geschützt durch applyMu.
+	exitNoteLogged bool
 }
 
 // NewUpdater erstellt einen Updater für die laufende Binary.
@@ -388,6 +412,13 @@ func (u *Updater) Pending() *pendingUpdate {
 // @return error - Fehler bei Suche, Download oder Prüfung
 // @date   2026-10-16 10:00
 func (u *Updater) CheckAndDownload(ctx context.Context) (*pendingUpdate, error) {
+	// Liegt schon ein geprüftes Update bereit, wird nichts weiter geladen: Ein
+	// zweiter Download würde dessen Datei (oder bei Setups einen weiteren
+	// setup-*-Ordner) überschreiben bzw. liegen lassen, während ApplyOnExit sie
+	// womöglich gerade installiert.
+	if existing := u.Pending(); existing != nil {
+		return existing, nil
+	}
 	if _, err := strconv.Atoi(strings.TrimSpace(u.currentBuild)); err != nil {
 		// Entwicklerversion: nie aktualisieren
 		return nil, nil
@@ -706,18 +737,32 @@ func (u *Updater) Apply() error {
 // Installation steht (UAC) noch aus - protokolliert wird "gestartet". Nur der
 // Ersetzen-Weg meldet "installiert".
 //
+// Beim Beenden wird NIE gesucht oder geladen: Ein Download (rund 9 MB) passt
+// nicht in das knappe Zeitbudget des Notfallwegs. Installiert wird nur, was
+// während der Laufzeit schon geladen und geprüft wurde. Fehlt es, steht der
+// Grund einmal je Beenden als Info im Protokoll (Normal- und Notfallweg
+// schreiben die Hinweiszeile zusammen nur einmal).
+//
 // @param logger - Protokoll (darf nil sein)
-// @date   2026-11-01 10:30
+// @date   2026-11-16 16:40
 func (u *Updater) ApplyOnExit(logger *Logger) {
-	if u == nil || !u.InstallOnExit() {
+	if u == nil {
 		return
 	}
 	u.applyMu.Lock()
 	defer u.applyMu.Unlock()
-	pending := u.Pending()
-	if pending == nil {
+	if !u.InstallOnExit() {
+		u.logExitNote(logger, "Auto-Update aus, nichts installiert")
 		return
 	}
+	pending := u.Pending()
+	if pending == nil {
+		u.logExitNote(logger, "Kein Update vorgemerkt")
+		return
+	}
+	// Ab hier folgt eine Installationsmeldung: Eine zweite Hinweiszeile für
+	// denselben Beenden-Vorgang wäre irreführend
+	u.exitNoteLogged = true
 	if err := u.applyLocked(); err != nil {
 		logger.Error("Update auf v0.%d fehlgeschlagen: %v", pending.build, err)
 		return
@@ -727,6 +772,20 @@ func (u *Updater) ApplyOnExit(logger *Logger) {
 		return
 	}
 	logger.Info("Update auf v0.%d installiert", pending.build)
+}
+
+// logExitNote schreibt die Hinweiszeile von ApplyOnExit höchstens einmal.
+// Der Aufrufer hält applyMu.
+//
+// @param logger - Protokoll (darf nil sein)
+// @param text - Hinweistext
+// @date   2026-11-16 16:40
+func (u *Updater) logExitNote(logger *Logger, text string) {
+	if u.exitNoteLogged {
+		return
+	}
+	u.exitNoteLogged = true
+	logger.Info("%s", text)
 }
 
 // applyLocked installiert das Update; der Aufrufer hält applyMu.
@@ -942,35 +1001,144 @@ func (m AppModel) updateCheckCmd() tea.Cmd {
 	}
 }
 
-// handleUpdateResult zeigt das Ergebnis der Update-Suche an.
+// updateLogger liefert das Protokoll des Modells (nil-sicher: Logger-Methoden
+// vertragen nil).
 //
-// @param msg - Ergebnis
+// @return *Logger - Protokoll oder nil
+// @date   2026-11-16 16:40
+func (m AppModel) updateLogger() *Logger {
+	if m.sshManager == nil {
+		return nil
+	}
+	return m.sshManager.logger
+}
+
+// buildLabel liefert die eigene Build-Nummer für Protokolltexte.
+//
+// @return string - Build-Nummer ohne Leerraum ("?" ohne Updater)
+// @date   2026-11-16 16:40
+func (u *Updater) buildLabel() string {
+	if u == nil {
+		return "?"
+	}
+	return strings.TrimSpace(u.currentBuild)
+}
+
+// recheckDelay liefert den Abstand der wiederholten Suche.
+//
+// @return time.Duration - recheckInterval, sonst updateRecheckInterval
+// @date   2026-11-16 16:40
+func (u *Updater) recheckDelay() time.Duration {
+	if u.recheckInterval > 0 {
+		return u.recheckInterval
+	}
+	return updateRecheckInterval
+}
+
+// cancelRechecks entwertet alle ausstehenden Wecker der wiederholten Suche
+// (Generation erhöhen). Nil-sicher.
+//
+// @date   2026-11-16 16:40
+func (u *Updater) cancelRechecks() {
+	if u == nil {
+		return
+	}
+	u.recheckGen.Add(1)
+}
+
+// isCurrentRecheck liefert, ob ein Wecker der jüngste ist (nicht veraltet).
+//
+// @param gen - Generation des Weckers
+// @return bool - true wenn der Wecker noch gilt
+// @date   2026-11-16 16:40
+func (u *Updater) isCurrentRecheck(gen uint64) bool {
+	return u != nil && u.recheckGen.Load() == gen
+}
+
+// scheduleRecheckCmd plant die nächste Update-Suche nach updateRecheckInterval.
+// Geplant wird nur, wenn Auto-Update an ist, ein Updater mit numerischer
+// Build-Nummer (keine Entwicklerversion) existiert und noch KEIN Update
+// bereitliegt. Jeder Wecker bekommt eine neue Generation und entwertet damit
+// alle früheren.
+//
+// @return tea.Cmd - Wecker oder nil
+// @date   2026-11-16 16:40
+func (m AppModel) scheduleRecheckCmd() tea.Cmd {
+	u := m.updater
+	if u == nil || !m.autoUpdate || u.Pending() != nil {
+		return nil
+	}
+	if _, err := strconv.Atoi(u.buildLabel()); err != nil {
+		return nil
+	}
+	gen := u.recheckGen.Add(1)
+	return tea.Tick(u.recheckDelay(), func(time.Time) tea.Msg {
+		return updateResultMsg{tick: true, gen: gen}
+	})
+}
+
+// handleRecheckTick startet beim Wecker die nächste Suche - sofern der Wecker
+// noch gilt, Auto-Update an ist, keine Suche läuft und kein Update bereitliegt.
+// Die Statusanzeige bleibt unverändert (kein Flackern alle 6 Stunden); das
+// Ergebnis meldet handleUpdateResult.
+//
+// @param msg - Wecker
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - Immer nil
-// @date   2026-10-16 10:00
+// @return tea.Cmd - Suche oder nil
+// @date   2026-11-16 16:40
+func (m AppModel) handleRecheckTick(msg updateResultMsg) (tea.Model, tea.Cmd) {
+	if m.updater == nil || !m.autoUpdate || m.updateChecking ||
+		m.updater.Pending() != nil || !m.updater.isCurrentRecheck(msg.gen) {
+		return m, nil
+	}
+	m.updateChecking = true
+	return m, m.updateCheckCmd()
+}
+
+// handleUpdateResult zeigt das Ergebnis der Update-Suche an, protokolliert es
+// und plant bei "aktuell" oder Fehler die nächste Suche. Liegt ein Update
+// bereit, wird nicht weiter gesucht.
+//
+// @param msg - Ergebnis oder Wecker
+// @return tea.Model - Aktualisiertes Modell
+// @return tea.Cmd - Wecker der nächsten Suche oder nil
+// @date   2026-11-16 16:40
 func (m AppModel) handleUpdateResult(msg updateResultMsg) (tea.Model, tea.Cmd) {
+	if msg.tick {
+		return m.handleRecheckTick(msg)
+	}
 	m.updateChecking = false
+	logger := m.updateLogger()
 	switch {
 	case msg.err != nil:
 		m.updateStatus = fmt.Sprintf(m.tr(txtUpdateFailed), msg.err.Error())
-		if m.sshManager != nil {
-			m.sshManager.logger.Warn("Auto-Update fehlgeschlagen: %v", msg.err)
-		}
+		logger.Warn("Auto-Update fehlgeschlagen: %v", msg.err)
 	case msg.pending != nil:
 		m.updateStatus = fmt.Sprintf(m.tr(txtUpdateReady), msg.pending.build)
+		if m.autoUpdate {
+			logger.Info("Update v0.%d heruntergeladen und geprüft, wird beim Beenden installiert", msg.pending.build)
+		} else {
+			logger.Info("Update v0.%d heruntergeladen und geprüft, Auto-Update ist aus (keine Installation)", msg.pending.build)
+		}
+		// Gefunden: nicht weitersuchen (ein neueres Release ersetzt ein
+		// vorgemerktes Update nicht, das fände der nächste Start)
+		return m, nil
 	default:
 		m.updateStatus = m.tr(txtUpdateCurrent)
+		logger.Info("Update-Suche: aktuell (v0.%s)", m.updater.buildLabel())
 	}
-	return m, nil
+	return m, m.scheduleRecheckCmd()
 }
 
 // toggleAutoUpdate schaltet Auto-Update um und speichert die Einstellung.
 // Beim Einschalten wird sofort gesucht (sonst wirkte es erst nach zwei
-// Neustarts: einmal laden, einmal installieren).
+// Neustarts: einmal laden, einmal installieren). Jedes Umschalten entwertet
+// die ausstehenden Wecker der wiederholten Suche; die Suche selbst plant
+// danach ihren eigenen Wecker.
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Update-Suche oder nil
-// @date   2026-10-31 02:30
+// @date   2026-11-16 16:40
 func (m AppModel) toggleAutoUpdate() (tea.Model, tea.Cmd) {
 	newValue := !m.autoUpdate
 	// Unter configUpdateMu schreiben: Eine gleichzeitige Änderung anderer
@@ -986,13 +1154,26 @@ func (m AppModel) toggleAutoUpdate() (tea.Model, tea.Cmd) {
 	m.autoUpdate = newValue
 	// Schalter auch im Updater führen (Schließkreuz/SIGHUP lesen ihn dort)
 	m.updater.SetInstallOnExit(newValue)
+	// Ausstehende Wecker entwerten: aus = keine weitere Suche, an = die neue
+	// Suche (oder ein noch laufender Lauf) plant den einzigen gültigen Wecker
+	m.updater.cancelRechecks()
 	m.errorMsg = ""
 
 	if !m.autoUpdate {
 		m.updateStatus = ""
 		return m, nil
 	}
-	if m.updater == nil || m.updateChecking || m.updater.Pending() != nil {
+	if m.updater == nil {
+		return m, nil
+	}
+	if pending := m.updater.Pending(); pending != nil {
+		// Beim Ausschalten schon geladen: Status wieder anzeigen, nicht suchen
+		m.updateStatus = fmt.Sprintf(m.tr(txtUpdateReady), pending.build)
+		return m, nil
+	}
+	if m.updateChecking {
+		// Lauf noch aktiv: sein Ergebnis plant den nächsten Wecker
+		m.updateStatus = m.tr(txtUpdateChecking)
 		return m, nil
 	}
 	m.updateChecking = true

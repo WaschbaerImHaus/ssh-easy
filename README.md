@@ -290,14 +290,14 @@ Off by default. The switch `v` *Remember connection* in the menu (`m`) turns it 
 
 ### Auto-Update
 
-Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line, shown with `m`, and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; it is installed when you quit – with `q`, `Ctrl+C`, `Alt+F4` and also when you close the window with the X button, even during an SSH session (Windows classic console and Windows Terminal, Linux terminal window):
+Off by default. Press `u` in the main menu to switch it on (the setting is shown in the last menu line, shown with `m`, and saved). When on, ssh-easy checks the latest GitHub release at startup and downloads the matching file in the background; as long as no update is waiting it checks again every 6 hours, so a release that appears while ssh-easy is running is found too (nothing is searched while quitting); it is installed when you quit – with `q`, `Ctrl+C`, `Alt+F4` and also when you close the window with the X button, even during an SSH session (Windows classic console and Windows Terminal, Linux terminal window):
 
 - Linux, or Windows with write access to the program folder: the binary is replaced
 - Windows installed in *Program Files*: the setup runs silently with administrator rights (Windows asks via UAC); the desktop shortcut is kept
 
 Every release contains a checksum list (`ssh-easy-SHA256SUMS`) signed with Ed25519 (`ssh-easy-SHA256SUMS.sig`). ssh-easy verifies the signature with the public key built into the program and only installs a file whose SHA-256 matches the signed list — so even someone with access to the GitHub account cannot push a manipulated update. Size and file format are checked as well — right after the download and again just before installation. Unsigned releases are rejected. Besides the main key, a second public key (backup key) is built in so that the signing key can be replaced without a reinstallation; a signature from either key is valid. Weak keys (points of small order) are rejected. The Windows executables and installers can additionally be Authenticode-signed by `build.sh` when a certificate is set up (optional; not yet in use).
 
-On Windows, ssh-easy starts a short helper without a window for the installation when you quit; it waits until the program has ended and then starts the checked setup (with the UAC prompt). Limit: when Windows logs off or shuts down, programs get no chance to react – the update is then installed at the next regular quit.
+On Windows, ssh-easy starts a short helper without a window for the installation when you quit; it waits until the program has ended and then starts the checked setup (with the UAC prompt). Limit: when Windows logs off or shuts down, programs get no chance to react – the update is then installed at the next regular quit. Up to Build 90, closing the window with the X button on Windows ended the program at once without installing (only `q` worked); fixed in Build 91.
 
 ### Auto-Reconnect
 
@@ -311,6 +311,12 @@ Connections are stored at:
 
 Log file:
 - `~/.ssh-easy/ssh-easy.log`
+
+The log names the version and process ID at start and end ("ssh-easy v0.91 gestartet (windows/amd64, PID 1234)") and records the result of every update check. On Windows PowerShell 5, `Get-Content` shows the UTF-8 log wrongly ("Ã¼" instead of "ü"). Read it like this:
+
+```powershell
+Get-Content $env:USERPROFILE\.ssh-easy\ssh-easy.log -Tail 40 -Encoding UTF8
+```
 
 Passwords are **never** stored and must be entered on each connection attempt.
 
