@@ -34,6 +34,12 @@
   - `chmod`/`touch` gruppiert für Rechte und Zeiten am Ende (`finishDirs`, `setAttributes`).
   - Einlesen eines Fensters per `find -maxdepth 1`, Zählen vor F8 per `find`.
   - Bewusst KEIN tar-Strom über Exec: Dabei fielen Temp-Datei + Umbenennen, Namens- und Pfadprüfungen und die Rückfragen beim Überschreiben weg.
+- **Datei-Manager: `find` nach dem Neuverbinden erneut versuchen** (Nutzerwunsch 2026-11-16, vorgemerkt für Build 91; Fund 1 aus dem Fable-Review des Build-90-Nachtrags): Fällt die Leitung während des `find`-Erfassens aus, wertet ssh-easy das heute wie einen hängenden `find`-Kanal. `inheritFastScanOff` (`tui_filemanager_reconnect.go`) überträgt die Abschaltung auf die neue, gesunde Verbindung, und der Schnellweg bleibt bis zum Schließen des Datei-Managers aus. Große Bäume brauchen dann wieder Minuten statt Sekunden.
+  - Vorschlag des Nutzers: Nach dem Neuverbinden bekommt `find` genau einen neuen Versuch. Unbedenklich, weil `find` nur liest.
+  - Hängt `find` auch auf der neuen Verbindung, bleibt der Schnellweg bis zum Sitzungsende aus. Dann liegt es wirklich am Server, und jeder weitere Versuch kostete wieder 30 + 5 s, eine Trennung und bei Passwort-Anmeldung eine neue Passwortabfrage. Deshalb nur ein Versuch, nicht beliebig viele.
+  - Umsetzung: `inheritFastScanOff` übernimmt statt des Schalters einen Zähler (Fehlversuche je Datei-Manager-Sitzung). Ab 2 Fehlversuchen ist der Schnellweg aus. Esc zählt weiterhin nicht.
+  - Optional zusätzlich: vor `AbortTreeList` kurz prüfen, ob die Verbindung noch antwortet (Keepalive innerhalb der Schonfrist). Ein echter Netzabriss zählt dann gar nicht als Fehlversuch.
+  - Tests: Neuverbinden nach einem hängenden `find`, danach läuft `find` wieder; zweites Hängen schaltet ab; Esc zählt nicht. Jeweils mit Gegenprobe, auch über den In-Prozess-Server (`tests/filemanager_sftpfs_test.go`).
 - **Datei-Manager: Direktübertragung Server → Server** (Nutzerwunsch Build 90, vorgemerkt für Build 92; ersetzt den alten Punkt „Daten laufen über den lokalen Rechner“): Server 1 verbindet sich selbst mit Server 2 (`rsync` über SSH), die Daten laufen nicht mehr über den PC.
   - Anmeldung über einen eingeschränkten, weitergereichten Agenten: nur mit dem einen Schlüssel für Server 2 und nur für die Dauer der Übertragung; vorher deutlicher Risikohinweis (Nutzer entscheidet, wie bei den F9-Endungen).
   - Die `known_hosts`-Einträge von Server 2 werden mitgegeben (kein ungeprüftes Vertrauen).
