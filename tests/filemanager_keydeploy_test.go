@@ -13,7 +13,7 @@
 //   - Meldung: in der Fensteransicht sofort, sonst (Verbindungsaufbau,
 //     Passwortabfrage) erst beim Wechsel dorthin (fm.keyNotice); Fehler nur
 //     als bereinigte Meldung, die Verbindung bleibt bestehen.
-//   - Veraltete Sitzung, gelöschte Verbindung, Gleichzeitigkeit (fmDeployMu)
+//   - Veraltete Sitzung, gelöschte Verbindung, Gleichzeitigkeit (deployMu)
 //     und das gleichzeitige Merken des Pfades (rememberFMPath).
 //
 // Die Tests tauschen die globale Naht aus und laufen deshalb nie mit
@@ -847,7 +847,7 @@ func TestKeyDeployStaleSession(t *testing.T) {
 // TestKeyDeploySkippedWhenConnectionChanged (Fall 11): Zwischen Anmeldung und
 // Vergabe ändert sich die Konfiguration - Verbindung gelöscht, Datei
 // unlesbar oder die Verbindung hat inzwischen einen Schlüssel (erneute
-// Prüfung der Regel unter fmDeployMu, ohne Passwort). Dann gibt es keinen
+// Prüfung der Regel unter deployMu, ohne Passwort). Dann gibt es keinen
 // Aufruf und keine Meldung. Nach dem Löschen darf auch nichts wieder
 // auftauchen (kein Zurückschreiben einer Kopie).
 //
@@ -914,7 +914,7 @@ func TestKeyDeploySkippedWhenConnectionChanged(t *testing.T) {
 
 // TestKeyDeployRunsOneAtATime (Fall 12): Zwei fmDeployKeyCmd laufen parallel
 // (beide Fenster melden sich per Passwort an, etwa an einer Verbindung und
-// ihrer Kopie). Die Vergaben dürfen nie überlappen (fmDeployMu): Sonst
+// ihrer Kopie). Die Vergaben dürfen nie überlappen (deployMu): Sonst
 // sähen beide denselben Konfigurationsstand und wählten denselben
 // Schlüsselnamen. Der Stub zählt Überlappungen unter einem eigenen Mutex und
 // wartet im Aufruf, damit sie sicher auffielen. Auch mit -race laufen.
@@ -952,7 +952,7 @@ func TestKeyDeployRunsOneAtATime(t *testing.T) {
 	// verschiedene Pfade", die immer wahr war, weil stubKeyPath von der ID
 	// abhängt. Aussagekräftig ist, dass BEIDE Schlüssel in der Konfiguration
 	// stehen: Läse die zweite Vergabe einen veralteten Stand, überschriebe sie
-	// den Eintrag der ersten (fmDeployMu + frischer Eintrag verhindern das).
+	// den Eintrag der ersten (deployMu + frischer Eintrag verhindern das).
 	seen := map[string]bool{}
 	for _, result := range results {
 		msg, ok := result.(fmKeyDeployedMsg)
@@ -1479,7 +1479,7 @@ func TestKeyDeploySuspendedSingle(t *testing.T) {
 // TestKeyDeployCmdRechecksSuspension: Zwischen Anmeldung und Vergabe wird die
 // Vergabe ausgesetzt (z. B. der Nutzer entfernt den Schlüssel im anderen
 // Fenster, oder eine parallele Vergabe scheitert zum zweiten Mal). Die
-// erneute Prüfung unter fmDeployMu liest den frischen Eintrag: Ohne Passwort
+// erneute Prüfung unter deployMu liest den frischen Eintrag: Ohne Passwort
 // still übergangen (errFMKeyDeploySkipped, kein Stub-Aufruf), mit Passwort
 // wird trotzdem vergeben.
 //

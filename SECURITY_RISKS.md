@@ -26,9 +26,14 @@ Verzeichnis ersetzen; dessen Inhalt würde dann mit den Rechten des Nutzers gel�
 Abschwächung: Symlinks selbst werden nie verfolgt, Namen mit `/`, `\` oder Steuerzeichen
 werden abgelehnt; seit Build 68 wird nach jedem Einlesen die Kette und vor jedem Löschen das
 Elternverzeichnis per Lstat geprüft und zusätzlich der kanonische Pfad (SFTP `realpath`)
-verglichen (ganze Kette), ein Austausch bricht das Löschen dort ab. Bei Servern, deren
-`realpath` Symlinks nicht auflöst, bleibt für weiter oben liegende Verzeichnisse nur die
-Lstat-Prüfung nach dem Einlesen. Übrig bleibt nur das kurze Fenster zwischen Prüfung und `Remove`. Nur
+verglichen (ganze Kette), ein Austausch bricht das Löschen dort ab. Seit Build 90 wird
+vorab parallel gelesen; die ganze Kette wird deshalb zusätzlich beim Betreten jedes
+Verzeichnisses (vor dem ersten Kind) erneut geprüft. Bei Servern, deren `realpath` Symlinks
+nicht auflöst, bleibt für weiter oben liegende Verzeichnisse zwischen zwei Betreten nur die
+Lstat-Prüfung des Elternverzeichnisses vor jedem `Remove`: Ein Austausch eines
+Großelternverzeichnisses mitten in einem großen Verzeichnis kann so höchstens dessen
+restliche Einträge treffen, deren Pfad durch den Link auf gleich aufgebaute Ziele führt.
+Übrig bleibt sonst das kurze Fenster zwischen Prüfung und `Remove`. Nur
 relevant beim Löschen in Verzeichnissen, in die Dritte schreiben dürfen.
 
 ### Datei-Manager: unbegrenzte Verzeichnisliste beim Anzeigen (Restrisiko)
@@ -40,6 +45,55 @@ Ein bösartiger Server kann beim Öffnen eines Verzeichnisses beliebig viele Ein
 liefern; `ReadDir` sammelt sie vollständig im Speicher. Beim Kopieren gilt eine Grenze
 (1 000 000 Einträge / 128 Ebenen), beim Anzeigen nicht. Abhilfe wäre ein eigenes,
 begrenztes Lesen über die SFTP-Pakete. Betrifft nur Verbindungen zu bösartigen Servern.
+
+### Datei-Manager: find-Schnellweg glaubt einer Stichprobe (Restrisiko)
+
+**Dateien:** `src/filemanager_fastscan.go`, `src/filemanager_fastscan_sample.go`
+**Schweregrad:** NIEDRIG
+
+Beim Erfassen per find (Build 90) prüft ssh-easy die markierten Verzeichnisse selbst und
+eine Stichprobe darunter per SFTP (bis 16 Einträge per Lstat, davon 4 der tiefsten, und bis
+8 Verzeichnisse mit höchstens 256 Einträgen per ReadDir). Bei kleinen Bäumen umfasst die
+Stichprobe alles; bei großen Bäumen bleibt eine Abweichung außerhalb der Stichprobe
+unentdeckt. Ein Server, dessen find-Sicht (Wrapper, chroot, anderer Rechner) bewusst nur
+an wenigen Stellen abweicht, wird nicht sicher erkannt. Folgen:
+- Von find verschwiegene Einträge werden still nicht kopiert. Beim Verschieben bleibt ihr
+  Quellverzeichnis stehen (nicht leer), der oberste Eintrag gilt als unvollständig. Die
+  Daten gehen nicht verloren.
+- Von find erfundene oder falsch typisierte Einträge scheitern in der Kopierphase (Öffnen,
+  ReadLink) oder beim Aufräumen: Seit Build 90 löscht das Aufräumen beim Verschieben nur per
+  `RemoveDir` (rmdir), nie eine Datei.
+- Ein von find als Datei ausgegebener Symlink würde wie eine Datei gelesen (SFTP folgt beim
+  Öffnen dem Link); kopiert wird dann der Inhalt des Linkziels, verschoben (gelöscht) nur
+  der Link selbst.
+Die SFTP-Sicht ist die maßgebliche; ein Server, der auch per SFTP lügt, ist ohnehin
+nicht vertrauenswürdig. Schnellweg abschalten ginge nur im Code (`fastScanEnabled`).
+
+**Maßnahme:** Akzeptiert (Tempo bei großen Bäumen, Nutzerwunsch Build 90). Möglich wäre ein
+vollständiger Abgleich der Zahl der Einträge je Verzeichnis nach dem Kopieren (OPTIMIZE.md).
+
+### Datei-Manager: hängender find-Kanal trennt die Verbindung (akzeptiertes Risiko)
+
+**Datei:** `src/filemanager_fastscan.go` (`runTreeList`), `src/filemanager_remote.go` (`AbortTreeList`)
+**Schweregrad:** NIEDRIG (Verfügbarkeit)
+
+Bestätigt ein Server das Schließen des find-Kanals nicht binnen 5 s, trennt ssh-easy die
+ganze SSH-Verbindung des Fensters: golang.org/x/crypto/ssh gibt einen Kanal lokal erst mit
+der Bestätigung der Gegenseite oder mit dem Ende der Verbindung frei. Das Kopieren meldet
+dann „Verbindung unterbrochen“, das Fenster muss neu verbinden. Bei Esc geschieht das
+Trennen im Hintergrund, nachdem der Vorgang schon beendet ist. Ein normaler Server
+(OpenSSH) bestätigt sofort; betroffen sind nur hängende oder bösartige Server.
+
+### Build: Codesign-Passwort im Speicher der Build-Shell (akzeptiertes Risiko)
+
+**Datei:** `build.sh`
+**Schweregrad:** NIEDRIG
+
+Seit Build 90 sehen Kindprozesse `SSH_EASY_CODESIGN_PASSWORD` nicht mehr. Die Variable steht
+aber weiter in der Umgebung des Prozesses, der build.sh startet (z. B. der aufrufenden
+Shell oder `/proc/<pid>/environ` des bash-Prozesses von build.sh selbst, lesbar nur für den
+Nutzer und root). Ohne `$XDG_RUNTIME_DIR` liegt die Passwortdatei (0600) kurz unter
+`$TMPDIR`/tmp. `SSH_EASY_CODESIGN_PASSFILE` (Datei 0600) ist der bessere Weg.
 
 ### SHA1 in known_hosts-Verifikation (akzeptiertes Risiko)
 

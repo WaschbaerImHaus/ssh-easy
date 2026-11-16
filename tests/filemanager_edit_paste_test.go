@@ -22,14 +22,17 @@
 //     in Bytes (UTF-8), nicht in Zeichen.
 //   - Auch ein Einfügen per Terminal (KeyMsg mit Paste-Flag, Bracketed Paste)
 //     entfernt Steuerzeichen - sonst käme ESC auf diesem Weg in den Text.
-//   - Einfügen wirkt nur im Textmodus ohne Dialog, Eingabezeile oder Hilfe.
+//   - Einfügen in den TEXT wirkt nur im Textmodus ohne Dialog, Eingabezeile oder
+//     Hilfe. Eingabezeilen (Suchen/Ersetzen) nehmen Einfügen seit Build 90 selbst
+//     an (erste Zeile, bereinigt); das prüft filemanager_edit_prompt_paste_test.go.
+//     Rückfragen (Dialoge) nehmen nie Einfügen an.
 //
 // ANMERKUNG zur Hilfe: Die F1-Hilfe des Editors (txtFMEditHelpText in
 // src/i18n_filemanager.go) listet Tasten auf; dort gehört eine Zeile
 // "Strg+V / Shift+Einfg / Strg+Einfg  einfügen" ergänzt (specialist-i18n).
 //
 // @author Kurt Ingwer
-// @date   2026-11-07 11:00
+// @date   2026-11-12 20:27
 package main
 
 import (
@@ -393,6 +396,9 @@ func TestEditorPasteSingleKeysDoNotPaste(t *testing.T) {
 // wenn der Editor in einem anderen Modus ist: Rückfrage "Änderungen speichern?",
 // Eingabezeile (Suchen F7), Hilfe (F1), Hex-Modus einer Binärdatei. Die
 // Eingabezeile und der Dialog bleiben, der Text bleibt, modified ändert sich nicht.
+// (Seit Build 90 landet der Text bei offener Eingabezeile in dieser Zeile statt
+// im Editortext - das prüft filemanager_edit_prompt_paste_test.go; hier zählt
+// nur, dass der TEXT unberührt bleibt.)
 func TestEditorPasteNotInOtherModes(t *testing.T) {
 	for _, v := range pasteVariants() {
 		t.Run(v.name, func(t *testing.T) {

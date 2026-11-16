@@ -170,7 +170,7 @@ func newTestUpdater(t *testing.T, srv *httptest.Server, build, goos string) (*Up
 	u.goos = goos
 	u.goarch = "amd64"
 	u.downloadDir = filepath.Join(dir, "update")
-	u.signingKey = testSigningPub
+	u.signingKeys = []ed25519.PublicKey{testSigningPub}
 	return u, exe
 }
 
@@ -356,6 +356,101 @@ func TestCheckAndDownloadMissingSignature(t *testing.T) {
 func TestCheckAndDownloadForeignSignature(t *testing.T) {
 	evil := ed25519.NewKeyFromSeed([]byte("angreifer-schluessel-0123456789!"))
 	expectDownloadError(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, signWith: evil}, "Signatur")
+}
+
+// runSignedWithKeys lädt ein Release, das mit signWith signiert ist, durch
+// einen Updater mit der Vertrauensliste keys und liefert Ergebnis, Ordner der
+// installierten Binary (für die Prüfung auf Download-Reste) und Fehler.
+func runSignedWithKeys(t *testing.T, signWith ed25519.PrivateKey, keys []ed25519.PublicKey) (*pendingUpdate, string, error) {
+	t.Helper()
+	srv := startReleaseServer(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF, signWith: signWith})
+	u, exe := newTestUpdater(t, srv, "47", "linux")
+	u.signingKeys = keys
+	pending, err := u.CheckAndDownload(context.Background())
+	if err == nil && u.Pending() == nil {
+		t.Error("Erfolg gemeldet, aber Pending() ist nil")
+	}
+	if err != nil && u.Pending() != nil {
+		t.Error("nach Fehler darf kein Update anstehen")
+	}
+	return pending, filepath.Dir(exe), err
+}
+
+// TestCheckAndDownloadAcceptsBackupKey prüft den Zweck der Schlüsselliste:
+// Ein mit dem ZWEITEN (Ersatz-)Schlüssel signiertes Release wird akzeptiert,
+// wenn dieser in der Vertrauensliste des Updaters steht.
+func TestCheckAndDownloadAcceptsBackupKey(t *testing.T) {
+	keys := []ed25519.PublicKey{testSigningPub, testBackupSigningPub}
+	pending, _, err := runSignedWithKeys(t, testBackupSigningKey, keys)
+	if err != nil || pending == nil {
+		t.Fatalf("Release mit Ersatzschlüssel: pending=%+v err=%v", pending, err)
+	}
+	if pending.build != 48 || pending.sha256 != hexSum(fakeELF) {
+		t.Errorf("pending = %+v", pending)
+	}
+}
+
+// TestCheckAndDownloadMainKeyStillWorksWithBackupList prüft dass der
+// Hauptschlüssel weiter gilt, auch wenn er nicht an erster Stelle steht.
+func TestCheckAndDownloadMainKeyStillWorksWithBackupList(t *testing.T) {
+	keys := []ed25519.PublicKey{testBackupSigningPub, testSigningPub}
+	pending, _, err := runSignedWithKeys(t, nil, keys)
+	if err != nil || pending == nil {
+		t.Fatalf("Release mit Hauptschlüssel: pending=%+v err=%v", pending, err)
+	}
+}
+
+// TestCheckAndDownloadRejectsUntrustedBackupKey prüft die Gegenprobe: Steht
+// der Schlüssel NICHT in der Vertrauensliste, wird das Release abgelehnt
+// (Text "Signatur") und es bleiben keine Download-Reste.
+func TestCheckAndDownloadRejectsUntrustedBackupKey(t *testing.T) {
+	pending, dir, err := runSignedWithKeys(t, testBackupSigningKey, []ed25519.PublicKey{testSigningPub})
+	if err == nil || pending != nil {
+		t.Fatalf("Release mit nicht vertrautem Schlüssel akzeptiert: pending=%+v err=%v", pending, err)
+	}
+	if !strings.Contains(err.Error(), "Signatur") {
+		t.Errorf("Fehlertext %q enthält nicht \"Signatur\"", err.Error())
+	}
+	if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+		t.Errorf("Download-Reste nicht aufgeräumt: %v", entries)
+	}
+}
+
+// TestCheckAndDownloadRejectsEmptyKeyList prüft dass ein Updater ohne
+// vertrauenswürdige Schlüssel (nil und leer) nichts installiert - auch nicht
+// ein korrekt signiertes Release (fail closed, nie "kein Schlüssel = ok").
+func TestCheckAndDownloadRejectsEmptyKeyList(t *testing.T) {
+	for name, keys := range map[string][]ed25519.PublicKey{
+		"nil":      nil,
+		"leer":     {},
+		"ungültig": {nil, ed25519.PublicKey([]byte("kurz"))},
+	} {
+		pending, dir, err := runSignedWithKeys(t, nil, keys)
+		if err == nil || pending != nil {
+			t.Errorf("%s: korrekt signiertes Release trotz leerer Vertrauensliste akzeptiert: pending=%+v", name, pending)
+			continue
+		}
+		if entries, _ := os.ReadDir(dir); len(entries) != 1 {
+			t.Errorf("%s: Download-Reste nicht aufgeräumt: %v", name, entries)
+		}
+	}
+}
+
+// TestCheckAndDownloadBackupKeyDoesNotWeakenOtherChecks prüft dass ein
+// vertrauter Ersatzschlüssel die übrigen Prüfungen nicht aushebelt: Eine
+// echt signierte Liste eines anderen Releases (Replay) bleibt abgelehnt.
+func TestCheckAndDownloadBackupKeyDoesNotWeakenOtherChecks(t *testing.T) {
+	srv := startReleaseServer(t, fakeRelease{tag: "v0.48", assetName: "ssh-easy", content: fakeELF,
+		signWith: testBackupSigningKey, manifestTag: "v0.40"})
+	u, _ := newTestUpdater(t, srv, "47", "linux")
+	u.signingKeys = []ed25519.PublicKey{testSigningPub, testBackupSigningPub}
+	pending, err := u.CheckAndDownload(context.Background())
+	if err == nil || pending != nil {
+		t.Fatalf("Replay mit Ersatzschlüssel akzeptiert: pending=%+v err=%v", pending, err)
+	}
+	if !strings.Contains(err.Error(), "v0.48") {
+		t.Errorf("Fehlertext %q nennt das Release nicht", err.Error())
+	}
 }
 
 // TestCheckAndDownloadReplayedManifest prüft dass eine echte, aber für ein
@@ -764,5 +859,38 @@ func TestCleanupRemovesSetupDirectories(t *testing.T) {
 	cleanupUpdateLeftovers(exe, downloadDir, setupLeftoverMinAge)
 	if _, err := os.Stat(sub); !os.IsNotExist(err) {
 		t.Error("Setup-Unterordner wurde nicht aufgeräumt")
+	}
+}
+
+// TestEmbeddedSigningKeysAreValidPoints prüft jeden eingebetteten Schlüssel
+// (Haupt- und Ersatzschlüssel) direkt mit releasesig.ValidPublicKey und
+// verlangt paarweise verschiedene Werte (Audit Build 90). Wichtig: Es wird
+// der ROHE Hex-Text geprüft, nicht die Ausgabe von releaseSigningKeys() -
+// ParsePublicKeysHex würde einen ungültigen Eintrag still verwerfen, und der
+// Fehler fiele erst im Ernstfall auf (Update lässt sich nicht verifizieren).
+func TestEmbeddedSigningKeysAreValidPoints(t *testing.T) {
+	entries := append([]string{releaseSigningPublicKeyHex}, releaseBackupSigningPublicKeysHex...)
+	seen := map[string]int{}
+	for i, entry := range entries {
+		raw, err := hex.DecodeString(entry)
+		if err != nil {
+			t.Fatalf("Eintrag %d ist kein Hex: %v", i, err)
+		}
+		if !releasesig.ValidPublicKey(raw) {
+			t.Errorf("Eintrag %d (%s) ist kein gültiger Schlüssel (kleine Ordnung, nicht kanonisch oder nicht auf der Kurve)", i, entry)
+		}
+		if first, dup := seen[string(raw)]; dup {
+			t.Errorf("Eintrag %d ist gleich Eintrag %d", i, first)
+		}
+		seen[string(raw)] = i
+	}
+}
+
+// TestEmbeddedSigningKeysCountMatchesEntries prüft, dass kein eingebetteter
+// Eintrag beim Einlesen verloren geht: releaseSigningKeys() liefert genau
+// 1 + len(releaseBackupSigningPublicKeysHex) Schlüssel (Haupt- + Ersatz).
+func TestEmbeddedSigningKeysCountMatchesEntries(t *testing.T) {
+	if got, want := len(releaseSigningKeys()), 1+len(releaseBackupSigningPublicKeysHex); got != want {
+		t.Errorf("releaseSigningKeys() liefert %d Schlüssel, erwartet %d (ein Eintrag wurde verworfen)", got, want)
 	}
 }

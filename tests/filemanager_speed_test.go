@@ -474,6 +474,7 @@ func (f *foldFS) CreateExclusive(p string) (io.WriteCloser, error) {
 func (f *foldFS) RenameOverwrite(o, n string) error { return f.memFS.RenameOverwrite(fold(o), fold(n)) }
 func (f *foldFS) Mkdir(p string) error              { return f.memFS.Mkdir(fold(p)) }
 func (f *foldFS) Remove(p string) error             { return f.memFS.Remove(fold(p)) }
+func (f *foldFS) RemoveDir(p string) error          { return f.memFS.RemoveDir(fold(p)) }
 func (f *foldFS) Symlink(t, l string) error         { return f.memFS.Symlink(t, fold(l)) }
 func (f *foldFS) Chmod(p string, m os.FileMode) error {
 	return f.memFS.Chmod(fold(p), m)

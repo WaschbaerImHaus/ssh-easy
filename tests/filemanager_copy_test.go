@@ -374,6 +374,36 @@ func (m *memFS) Remove(p string) error {
 	return nil
 }
 
+// RemoveDir löscht wie rmdir / SFTP RMDIR NUR ein leeres Verzeichnis: eine
+// Datei oder ein Symlink ergibt "not a directory" und bleibt stehen (ein
+// Server darf hier nie unlink ausführen). onRemove läuft wie bei Remove.
+// @author Kurt Ingwer
+// @date 2026-11-15 14:44
+func (m *memFS) RemoveDir(p string) error {
+	if m.onRemove != nil {
+		m.onRemove()
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	n, ok := m.nodes[p]
+	if !ok {
+		return os.ErrNotExist
+	}
+	if m.noRemove[p] {
+		return os.ErrPermission
+	}
+	if !n.mode.IsDir() {
+		return errors.New("not a directory")
+	}
+	for name := range m.nodes {
+		if name != "/" && name != p && path.Dir(name) == p {
+			return errors.New("directory not empty")
+		}
+	}
+	delete(m.nodes, p)
+	return nil
+}
+
 func (m *memFS) Symlink(target, linkPath string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

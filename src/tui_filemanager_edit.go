@@ -642,11 +642,25 @@ func (e *fmEditor) openPrompt(kind edPrompt, value string) tea.Cmd {
 	return textinput.Blink
 }
 
-// handleFMEditorPrompt verarbeitet Tasten in der Eingabezeile.
+// handleFMEditorPrompt verarbeitet Tasten in der Eingabezeile. Einfügen
+// (Strg+V, Shift+Einfg, Strg+Einfg und vom Terminal gemeldetes Einfügen)
+// übernimmt die erste Zeile (pasteIntoPrompt). Unter Windows kommen Einfg,
+// Alt, Strg usw. als NUL-Rune an; sie tippen kein Zeichen und dürfen die
+// Vorbelegung nicht löschen.
 //
-// @date   2026-10-22 00:52
+// @date   2026-11-12 20:21
 func (m AppModel) handleFMEditorPrompt(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := &m.fm.edit
+	if isEditorPasteKey(msg) {
+		return m.fmEditorPaste()
+	}
+	if msg.Paste {
+		e.pasteIntoPrompt(string(msg.Runes))
+		return m, nil
+	}
+	if isNulKey(msg) {
+		return m, nil
+	}
 	switch msg.String() {
 	case "esc":
 		e.prompt = edPromptNone

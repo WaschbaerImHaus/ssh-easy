@@ -572,7 +572,7 @@ func sanitizeFilename(s string) string {
 // oder zwei Entfernungen geteilter Schlüssel hielten sich gegenseitig für
 // den letzten Nutzer.
 //
-// Sperr-Reihenfolge (sonst Deadlock): fmDeployMu (Datei-Manager) ->
+// Sperr-Reihenfolge (sonst Deadlock): deployMu (Datei-Manager) ->
 // autoDeployMu -> configUpdateMu (updateKeyFields/updateConfig) -> configFileMu
 // (LoadConfig/SaveConfig). autoDeployMu wird nur am Anfang von
 // AutoDeployKey und RemoveDeployedKey genommen und nie, während

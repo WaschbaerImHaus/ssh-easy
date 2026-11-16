@@ -10,7 +10,7 @@
 ;   makensis /DARCH=arm64 /DVERSION=0.15 /DBUILD=15 ssh-easy-setup.nsi
 ;
 ; @author Kurt Ingwer
-; @date   2026-10-27 16:15
+; @date   2026-11-15 15:04
 
 ;----------------------------------------------------------------------
 ; Version aus den Kommandozeilen-Defines von build.sh (/DVERSION, /DBUILD).
@@ -50,6 +50,23 @@
 
 Name "ssh-easy"
 OutFile "${INSTALLER_NAME}"
+
+;----------------------------------------------------------------------
+; Authenticode für Uninstall.exe (nur wenn build.sh -DSIGN_UNINSTALLER=1
+; übergibt, also eine Signatur eingerichtet ist; Build 90).
+; !uninstfinalize (NSIS >= 3.08) ruft den Befehl auf, sobald der Deinstaller
+; erzeugt ist, und %1 ist dessen Pfad. build.sh signiert die Datei an Ort und
+; Stelle. Das "= 0" ist Pflicht: ohne es meldet NSIS einen Fehlschlag nur als
+; Hinweis und baut das Setup trotzdem (mit unsigniertem Deinstaller).
+; Der Skriptpfad kommt aus der Umgebungsvariable SSH_EASY_SIGN_SCRIPT (setzt
+; build.sh), nie aus dem Befehl: Sonderzeichen im Pfad (z. B. $ oder ') würden
+; sonst von der Shell ausgewertet.
+;----------------------------------------------------------------------
+!ifdef SIGN_UNINSTALLER
+  !if "${SIGN_UNINSTALLER}" == "1"
+    !uninstfinalize 'bash "$SSH_EASY_SIGN_SCRIPT" --codesign-uninstaller "%1"' = 0
+  !endif
+!endif
 
 ; Default install directory (from registry if already installed)
 InstallDir "$PROGRAMFILES64\ssh-easy"

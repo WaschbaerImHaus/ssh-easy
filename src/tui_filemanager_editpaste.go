@@ -20,13 +20,21 @@
 // nicht größer als fmViewMaxBytes werden, sonst ließe sie sich danach nicht
 // mehr öffnen.
 //
+// Eingabezeilen (Suchen F7, Ersetzen F4 mit Suchbegriff und Ersatz) nehmen
+// dieselben Tasten an (Build 90). Dort kommt nur die erste Zeile an,
+// Steuerzeichen fallen weg, ein Tab wird wie beim Tippen zum Leerzeichen,
+// und die Zeile bleibt in ihrer Längengrenze (CharLimit). Eine noch
+// unberührte Vorbelegung wird ersetzt - wie beim ersten getippten Zeichen.
+// In Rückfragen (Dialoge mit j/n) wird nie eingefügt.
+//
 // @author Kurt Ingwer
-// @date   2026-11-07 12:10
+// @date   2026-11-12 20:21
 package main
 
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -56,29 +64,37 @@ func isEditorPasteKey(msg tea.KeyMsg) bool {
 	return shiftInsertPressed() || ctrlInsertPressed()
 }
 
-// fmEditorAcceptsPaste prüft, ob gerade in den Text des Editors eingefügt
-// werden darf: Datei-Manager-Ansicht, Editor offen und fertig geladen,
-// Textmodus (nicht Hex), keine Hilfe, kein Dialog, keine Eingabezeile, kein
-// laufendes Speichern. tui.go fragt das für die Unix-CSI-Sequenzen ab.
+// fmEditorAcceptsPaste prüft, ob gerade im Editor eingefügt werden darf:
+// Datei-Manager-Ansicht, Editor offen und fertig geladen, keine Hilfe, kein
+// Dialog (Rückfragen bekommen nie eingefügten Text), kein laufendes
+// Speichern. Dann gilt: Ist eine Eingabezeile offen, wird dort eingefügt
+// (auch im Hex-Modus, etwa "ad ff" in die Suche), sonst in den Text - aber
+// nur im Textmodus. tui.go fragt das für die Unix-CSI-Sequenzen ab.
 //
-// @return bool - true, wenn Einfügen in den Text wirkt
-// @date   2026-11-07 11:51
+// @return bool - true, wenn Einfügen in Text oder Eingabezeile wirkt
+// @date   2026-11-12 20:21
 func (m AppModel) fmEditorAcceptsPaste() bool {
 	if m.state != ViewFileManager || !m.fm.editing {
 		return false
 	}
 	e := &m.fm.edit
-	return !e.loading && !e.saving && !e.showHelp && !e.hexMode && e.text != nil &&
-		e.dialog == edDialogNone && e.prompt == edPromptNone
+	if e.loading || e.saving || e.showHelp || e.dialog != edDialogNone {
+		return false
+	}
+	if e.prompt != edPromptNone {
+		return true
+	}
+	return !e.hexMode && e.text != nil
 }
 
 // fmEditorPaste liest die Zwischenablage und fügt ihren Inhalt an der
-// Cursorposition ein. Ist der Editor nicht bereit (fmEditorAcceptsPaste),
-// die Zwischenablage leer oder nicht lesbar, ändert sich nichts.
+// Cursorposition ein - in die offene Eingabezeile (pasteIntoPrompt) oder in
+// den Text. Ist der Editor nicht bereit (fmEditorAcceptsPaste), die
+// Zwischenablage leer oder nicht lesbar, ändert sich nichts.
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - kein Folgekommando
-// @date   2026-11-07 11:51
+// @date   2026-11-12 20:21
 func (m AppModel) fmEditorPaste() (tea.Model, tea.Cmd) {
 	if !m.fmEditorAcceptsPaste() {
 		return m, nil
@@ -88,6 +104,10 @@ func (m AppModel) fmEditorPaste() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	e := &m.fm.edit
+	if e.prompt != edPromptNone {
+		e.pasteIntoPrompt(text)
+		return m, nil
+	}
 	e.message = ""
 	e.insertPasted(text, m.tr)
 	width, _ := m.fmScreenSize()
@@ -155,6 +175,73 @@ func cleanEditPaste(text string) string {
 			// Steuerzeichen: weglassen
 		default:
 			out.WriteRune(r)
+		}
+	}
+	return out.String()
+}
+
+// pasteIntoPrompt fügt Text in die offene Eingabezeile ein, an der
+// Cursorposition des Eingabefelds; der Cursor steht danach hinter dem
+// eingefügten Text. Übernommen wird nur die erste Zeile (cleanPromptPaste),
+// höchstens so viele Zeichen, wie bis zur Längengrenze (CharLimit) noch
+// Platz ist - der Rest fällt weg. Ist die Vorbelegung noch unberührt
+// (inputFresh), ersetzt der eingefügte Text sie wie ein getipptes Zeichen.
+// Bleibt nach dem Bereinigen nichts übrig, ändert sich nichts (auch die
+// Vorbelegung bleibt stehen).
+//
+// @param text - Text aus Zwischenablage oder Terminal (nicht vertrauenswürdig)
+// @date   2026-11-12 20:21
+func (e *fmEditor) pasteIntoPrompt(text string) {
+	if e.prompt == edPromptNone {
+		return
+	}
+	limit := e.input.CharLimit
+	if !e.inputFresh && limit > 0 {
+		// Platz bis zur Grenze; die Vorbelegung zählt nur, wenn sie bleibt
+		limit -= utf8.RuneCountInString(e.input.Value())
+		if limit <= 0 {
+			return
+		}
+	}
+	clean := cleanPromptPaste(text, limit)
+	if clean == "" {
+		return
+	}
+	if e.inputFresh {
+		e.input.SetValue("")
+		e.inputFresh = false
+	}
+	// Das Eingabefeld fügt an seiner Cursorposition ein und hält CharLimit
+	// selbst ein (zweite Sicherung); ein Tab wird dort zum Leerzeichen
+	e.input, _ = e.input.Update(makePasteKeyMsg(clean))
+}
+
+// cleanPromptPaste bereitet Text für eine einzeilige Eingabezeile vor: Nur
+// die erste Zeile zählt (CR oder LF beenden sie), Steuerzeichen außer Tab
+// fallen weg (C0, DEL, C1; ungültiges UTF-8 ebenfalls), und es werden
+// höchstens maxRunes Zeichen übernommen (maxRunes <= 0: ohne Grenze). Der
+// Text wird nur bis zur Grenze durchlaufen - eine riesige Zwischenablage
+// kostet so kaum Zeit.
+//
+// @param text - Rohtext
+// @param maxRunes - höchste Zeichenzahl (<= 0: unbegrenzt)
+// @return string - bereinigte erste Zeile (leer, wenn nichts übrig bleibt)
+// @date   2026-11-12 20:21
+func cleanPromptPaste(text string, maxRunes int) string {
+	var out strings.Builder
+	count := 0
+	for _, r := range text {
+		if r == '\r' || r == '\n' {
+			break
+		}
+		if r == utf8.RuneError || (r != '\t' && (r < 0x20 || r == 0x7f || (r >= 0x80 && r <= 0x9f))) {
+			// Steuerzeichen bzw. ungültiges UTF-8: weglassen
+			continue
+		}
+		out.WriteRune(r)
+		count++
+		if maxRunes > 0 && count >= maxRunes {
+			break
 		}
 	}
 	return out.String()

@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -647,5 +648,78 @@ func TestFileManagerDriveUpFromDriveRoot(t *testing.T) {
 	m = pressRun(t, m, "enter")
 	if m.fm.panels[0].path != "/D:" {
 		t.Errorf("Pfad %q, erwartet /D:", m.fm.panels[0].path)
+	}
+}
+
+// TestLocalFSRemoveDir - RemoveDir löscht NUR ein leeres Verzeichnis (rmdir):
+// eine Datei, ein nicht leeres Verzeichnis, ein Symlink auf ein Verzeichnis
+// und ein fehlender Pfad ergeben einen Fehler und lassen alles stehen. Das
+// Aufräumen beim Verschieben darf nie eine Datei oder einen Link per unlink
+// entfernen (Audit Build 90).
+//
+// @author Kurt Ingwer
+// @date   2026-11-15 14:44
+func TestLocalFSRemoveDir(t *testing.T) {
+	fsys, dir := newLocalTestFS(t)
+	home, _ := fsys.Getwd()
+	exists := func(p string) bool {
+		_, err := os.Lstat(filepath.Join(dir, p))
+		return err == nil
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "leer"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "voll"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "voll", "inhalt.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "datei.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Leeres Verzeichnis: weg
+	if err := fsys.RemoveDir(home + "/leer"); err != nil {
+		t.Fatalf("leeres Verzeichnis: %v", err)
+	}
+	if exists("leer") {
+		t.Error("leeres Verzeichnis nicht gelöscht")
+	}
+	// Datei: Fehler, Datei bleibt
+	if err := fsys.RemoveDir(home + "/datei.txt"); err == nil {
+		t.Error("RemoveDir auf eine Datei meldet keinen Fehler")
+	}
+	if !exists("datei.txt") {
+		t.Error("Datei von RemoveDir gelöscht")
+	}
+	// Nicht leeres Verzeichnis: Fehler, Inhalt bleibt
+	if err := fsys.RemoveDir(home + "/voll"); err == nil {
+		t.Error("RemoveDir auf ein nicht leeres Verzeichnis meldet keinen Fehler")
+	}
+	if !exists("voll/inhalt.txt") {
+		t.Error("Inhalt von RemoveDir gelöscht")
+	}
+	// Fehlender Pfad: Fehler
+	if err := fsys.RemoveDir(home + "/gibtsnicht"); err == nil {
+		t.Error("RemoveDir auf einen fehlenden Pfad meldet keinen Fehler")
+	}
+	// Symlink auf ein (leeres) Verzeichnis: Fehler, Link und Ziel bleiben
+	if runtime.GOOS != "windows" {
+		if err := os.Mkdir(filepath.Join(dir, "ziel"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(filepath.Join(dir, "ziel"), filepath.Join(dir, "link")); err != nil {
+			t.Fatal(err)
+		}
+		if err := fsys.RemoveDir(home + "/link"); err == nil {
+			t.Error("RemoveDir auf einen Symlink meldet keinen Fehler")
+		}
+		if info, err := os.Lstat(filepath.Join(dir, "link")); err != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Errorf("Symlink von RemoveDir entfernt oder verändert: %v", err)
+		}
+		if !exists("ziel") {
+			t.Error("Ziel des Symlinks gelöscht")
+		}
 	}
 }

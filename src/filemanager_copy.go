@@ -26,13 +26,15 @@
 //
 // Verschieben (move) ist dasselbe Kopieren; danach wird jede vollständig
 // angekommene Datei in der Quelle gelöscht, am Ende auch die leer
-// gewordenen Verzeichnisse (siehe filemanager_move.go).
+// gewordenen Verzeichnisse (siehe filemanager_move.go). Auf demselben
+// Konto wird stattdessen zuerst umbenannt (renameMoved, Build 90).
+// Das Erfassen steht in filemanager_scan.go.
 //
 // Die Funktion kennt keine Oberfläche: Sie meldet Fortschritt, Rückfragen
 // und das Ergebnis als copyEvent und wartet bei Rückfragen auf eine Antwort.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-11-15 15:03
 package main
 
 import (
@@ -45,7 +47,6 @@ import (
 	"math"
 	"os"
 	"path"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -136,6 +137,27 @@ func fsConnectionLost(fsys remoteFS) bool {
 	return ok && w.connectionLost()
 }
 
+// connectionLossJudge bewertet den Fehler einer Anfrage: Ging dabei die
+// Verbindung verloren? (sftpFS.lostAfter; wartet ggf. kurz auf die
+// Überwachung)
+type connectionLossJudge interface {
+	lostAfter(err error) bool
+}
+
+// fsLostAfter meldet nach einem Fehler, ob die Verbindung verloren ist
+// (sftpFS.lostAfter, sonst fsConnectionLost).
+//
+// @param fsys - Dateisystem
+// @param err - Fehler der Anfrage
+// @return bool - true wenn verloren
+// @date   2026-11-15 15:03
+func fsLostAfter(fsys remoteFS, err error) bool {
+	if j, ok := fsys.(connectionLossJudge); ok {
+		return j.lostAfter(err)
+	}
+	return fsConnectionLost(fsys)
+}
+
 // errCopyLimit - zu viele Einträge oder zu tief verschachtelt (Schutz vor
 // bösartigen Servern mit endlosen Verzeichnisbäumen); nichts wird kopiert.
 var errCopyLimit = errors.New("too many entries or nesting too deep")
@@ -166,6 +188,10 @@ type copyRequest struct {
 	names []string
 	// Quelle und Ziel liegen auf demselben Server (Host + Port gleich)
 	sameHost bool
+	// Beide Fenster nutzen dieselbe Verbindung (gleicher Eintrag, also
+	// derselbe Benutzer): Verschieben darf dann umbenennen statt kopieren
+	// (renameMoved, filemanager_move.go)
+	sameAccount bool
 	// Verschieben: Quelle nach erfolgreichem Kopieren löschen
 	move bool
 	// Kopierte Dateien als heruntergeladen kennzeichnen (Server -> PC)
@@ -207,6 +233,13 @@ type copyProgress struct {
 	// Erledigte / gesamte Dateien (inkl. Symlinks) und Bytes
 	doneFiles, totalFiles int
 	doneBytes, totalBytes int64
+	// Gefundene Verzeichnisse (beim Erfassen angezeigt, Build 90)
+	totalDirs int
+	// Verschieben: leere Quellverzeichnisse werden gerade gelöscht
+	// (removeMovedDirs); erledigte und gesamte Verzeichnisse dieser Phase
+	removingDirs bool
+	removedDirs  int
+	removeTotal  int
 }
 
 // copyConflictInfo beschreibt Quelle und vorhandenes Ziel einer Rückfrage.
@@ -229,6 +262,9 @@ type copyResult struct {
 	// Kopierte Dateien (inkl. Symlinks) und Bytes
 	files int
 	bytes int64
+	// Verschieben: per Umbenennen verschobene oberste Einträge (renameMoved;
+	// nicht in files/bytes)
+	renamed int
 	// Fehler einzelner Einträge
 	failures []copyFailure
 	// Vom Nutzer abgebrochen
@@ -301,6 +337,9 @@ type copyRun struct {
 	// Verschieben: Ergebnis der Prüfung "Quell- und Zielverzeichnis sind
 	// dasselbe?" pro Verzeichnispaar
 	sameDirs map[string]bool
+	// Verschieben: oberste Einträge, die per Umbenennen schon fertig sind
+	// (renameMoved; danach nur gelesen)
+	renamed map[string]bool
 	// Vorgehaltene Listen der Zielverzeichnisse (targetInfo; nil = einzeln
 	// fragen); nur der Ablauf greift darauf zu, nie die Arbeiter
 	dstDirs map[string]*targetListing
@@ -317,39 +356,29 @@ type copyRun struct {
 
 // runCopy führt einen Kopierauftrag aus und meldet am Ende genau ein
 // copyEvent mit result. Abbruch über ctx oder die Antwort copyAnswerAbort.
+// Beim Verschieben auf demselben Konto werden oberste Einträge zuerst per
+// Umbenennen verschoben (renameMoved); nur der Rest wird kopiert.
 //
 // @param ctx - Abbruch-Kontext
 // @param req - Auftrag
 // @param events - Kanal für Fortschritt, Rückfragen und Ergebnis
 // @param answers - Kanal für Antworten auf Rückfragen
-// @date   2026-10-21 21:03
+// @date   2026-11-13 09:08
 func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answers <-chan copyConflictAnswer) {
-	ctx, cancel := context.WithCancel(ctx)
+	run, cancel := newCopyRun(ctx, req, events, answers)
 	defer cancel()
-	run := &copyRun{
-		ctx:        ctx,
-		cancel:     cancel,
-		dstDirs:    map[string]*targetListing{},
-		assigned:   map[string]bool{},
-		req:        req,
-		events:     events,
-		answers:    answers,
-		incomplete: map[string]bool{},
-		skipDirs:   map[string]bool{},
-		sameDirs:   map[string]bool{},
-		dirJobs:    map[string]*dirJob{},
-		dirSlots:   make(chan struct{}, max(copyParallel, 1)),
-		dirPending: make(chan struct{}, copyMaxPendingDirs),
-	}
 	run.progress.scanning = true
+	run.renameMoved()
 	nodes := run.scan()
 	run.progress.scanning = false
 	if run.limitHit {
-		// Grenze erreicht: gar nichts kopieren
+		// Grenze erreicht: gar nichts kopieren (schon Umbenanntes ist fertig)
 		nodes = nil
 		run.incomplete = map[string]bool{}
 		for _, name := range req.names {
-			run.incomplete[name] = true
+			if !run.renamed[name] {
+				run.incomplete[name] = true
+			}
 		}
 	}
 	run.sendProgress(true)
@@ -361,12 +390,44 @@ func runCopy(ctx context.Context, req copyRequest, events chan<- copyEvent, answ
 	}
 
 	for _, name := range req.names {
-		if !run.incomplete[name] && !run.result.cancelled {
+		// Umbenanntes ist fertig, auch wenn danach abgebrochen wurde
+		if run.renamed[name] || (!run.incomplete[name] && !run.result.cancelled) {
 			run.result.copiedNames = append(run.result.copiedNames, name)
 		}
 	}
 	result := run.result
 	events <- copyEvent{result: &result}
+}
+
+// newCopyRun legt den Zustand eines Kopiervorgangs an (auch für Tests,
+// die einzelne Schritte wie scan prüfen).
+//
+// @param ctx - Abbruch-Kontext
+// @param req - Auftrag
+// @param events - Kanal für Fortschritt, Rückfragen und Ergebnis
+// @param answers - Kanal für Antworten auf Rückfragen
+// @return *copyRun - Zustand
+// @return context.CancelFunc - beendet den eigenen Kontext des Vorgangs
+// @date   2026-11-13 09:08
+func newCopyRun(ctx context.Context, req copyRequest, events chan<- copyEvent, answers <-chan copyConflictAnswer) (*copyRun, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctx)
+	run := &copyRun{
+		ctx:        ctx,
+		cancel:     cancel,
+		dstDirs:    map[string]*targetListing{},
+		assigned:   map[string]bool{},
+		req:        req,
+		events:     events,
+		answers:    answers,
+		incomplete: map[string]bool{},
+		skipDirs:   map[string]bool{},
+		sameDirs:   map[string]bool{},
+		renamed:    map[string]bool{},
+		dirJobs:    map[string]*dirJob{},
+		dirSlots:   make(chan struct{}, max(copyParallel, 1)),
+		dirPending: make(chan struct{}, copyMaxPendingDirs),
+	}
+	return run, cancel
 }
 
 // safeEntryName prüft einen einzelnen Verzeichniseintrag für die Anzeige:
@@ -460,94 +521,18 @@ func (r *copyRun) markIncomplete(top string) {
 	r.mu.Unlock()
 }
 
-// scan erfasst alle Einträge (Verzeichnisse vor ihrem Inhalt).
-//
-// @return []copyNode - Einträge in Kopierreihenfolge
-// @date   2026-10-21 21:03
-func (r *copyRun) scan() []copyNode {
-	var nodes []copyNode
-	// info: Angaben aus ReadDir des Elternverzeichnisses (nil = per Lstat
-	// fragen) - spart eine Server-Rundreise pro Eintrag
-	var walk func(rel, top string, info os.FileInfo)
-	walk = func(rel, top string, info os.FileInfo) {
-		if r.ctx.Err() != nil || r.limitHit {
-			return
-		}
-		// Schutz vor endlosen Bäumen eines bösartigen Servers
-		if len(nodes) >= copyMaxEntries || strings.Count(rel, "/") >= copyMaxDepth {
-			r.limitHit = true
-			r.fail(copyNode{top: top}, path.Join(r.req.srcDir, rel), errCopyLimit)
-			return
-		}
-		srcPath := path.Join(r.req.srcDir, rel)
-		if info == nil {
-			var err error
-			if info, err = r.req.src.Lstat(srcPath); err != nil {
-				r.fail(copyNode{top: top}, srcPath, err)
-				return
-			}
-		}
-		node := copyNode{rel: rel, top: top, info: info}
-		nodes = append(nodes, node)
-		if info.IsDir() {
-			children, err := r.req.src.ReadDir(srcPath)
-			if err != nil {
-				// Verzeichnis selbst wird angelegt, sein Inhalt fehlt
-				r.fail(node, srcPath, err)
-				return
-			}
-			sort.Slice(children, func(i, j int) bool { return children[i].Name() < children[j].Name() })
-			for _, child := range children {
-				if child.Name() == "." || child.Name() == ".." {
-					continue
-				}
-				if !safeCopyName(child.Name()) || !fsAcceptsName(r.req.dst, child.Name()) {
-					// Nicht path.Join: das würde ".." auflösen
-					r.fail(node, srcPath+"/"+child.Name(), errUnsafeName)
-					continue
-				}
-				// Ohne Rechte-Angaben in der Liste (Mode 0) einzeln fragen -
-				// sonst gälte ein Verzeichnis als Datei
-				var known os.FileInfo
-				if child.Mode() != 0 {
-					known = child
-				}
-				walk(path.Join(rel, child.Name()), top, known)
-			}
-			return
-		}
-		r.mu.Lock()
-		r.progress.totalFiles++
-		if info.Mode().IsRegular() {
-			r.progress.totalBytes = satAdd(r.progress.totalBytes, max(info.Size(), 0))
-		}
-		r.mu.Unlock()
-		r.sendProgress(false)
-	}
-	known := r.sourceInfos()
-	for _, name := range r.req.names {
-		if !safeCopyName(name) || !fsAcceptsName(r.req.dst, name) {
-			r.fail(copyNode{top: name}, name, errUnsafeName)
-			continue
-		}
-		if r.movesIntoItself(name) {
-			r.fail(copyNode{top: name}, path.Join(r.req.srcDir, name), errMoveIntoItself)
-			continue
-		}
-		walk(name, name, known[name])
-	}
-	return nodes
-}
-
 // copyAll kopiert die erfassten Einträge: dispatch geht sie der Reihe nach
 // durch, copyParallel Arbeiter übertragen die Dateien gleichzeitig. Kehrt
-// erst zurück, wenn alle Arbeiter fertig sind.
+// erst zurück, wenn alle Arbeiter fertig sind. Ein schon beim Erfassen
+// beendeter Kontext gilt ebenfalls als Abbruch (sonst bliebe bei einem
+// Abbruch vor dem ersten erfassten Eintrag die Liste leer und der Vorgang
+// gälte als erfolgreich).
 //
 // @param nodes - Erfasste Einträge
-// @date   2026-10-23 19:44
+// @date   2026-11-13 09:08
 func (r *copyRun) copyAll(nodes []copyNode) {
 	jobs, wait := r.startWorkers()
-	if !r.dispatch(nodes, jobs) {
+	if !r.dispatch(nodes, jobs) || r.ctx.Err() != nil {
 		// Abbruch: laufende Übertragungen anhalten (Temp-Dateien werden
 		// dabei gelöscht)
 		r.setCancelled()

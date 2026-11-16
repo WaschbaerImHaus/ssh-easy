@@ -19,7 +19,7 @@
 // Quarantäne), damit Windows beim Ausführen warnt.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 06:40
+// @date   2026-11-15 09:09
 package main
 
 import (
@@ -29,6 +29,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 	"unicode"
 )
@@ -305,6 +306,30 @@ func (l *localFS) RenameOverwrite(oldPath, newPath string) error {
 	return os.Rename(from, to)
 }
 
+// RenameNoReplace benennt um, ohne ein vorhandenes Ziel zu ersetzen
+// (Verschieben Lokaler PC -> Lokaler PC, renameMoved). Linux: renameat2
+// mit RENAME_NOREPLACE, Windows: MoveFileEx ohne Ersetzen (nur auf
+// demselben Laufwerk); andere Systeme: nicht unterstützt (dann kopieren).
+//
+// @param oldPath - bisheriger Fensterpfad
+// @param newPath - neuer Fensterpfad (darf nicht existieren)
+// @return error - Fehler beim Umbenennen
+// @date   2026-11-13 09:08
+func (l *localFS) RenameNoReplace(oldPath, newPath string) error {
+	from, err := l.native(oldPath)
+	if err != nil {
+		return err
+	}
+	to, err := l.native(newPath)
+	if err != nil {
+		return err
+	}
+	if err := localRenameNoReplace(from, to); err != nil {
+		return &os.LinkError{Op: "rename", Old: from, New: to, Err: err}
+	}
+	return nil
+}
+
 // Mkdir legt ein Verzeichnis an.
 func (l *localFS) Mkdir(p string) error {
 	n, err := l.native(p)
@@ -322,6 +347,24 @@ func (l *localFS) Remove(p string) error {
 		return err
 	}
 	return os.Remove(n)
+}
+
+// RemoveDir löscht nur ein leeres Verzeichnis (rmdir bzw. unter Windows
+// RemoveDirectory) - nie eine Datei. os.Remove würde zuerst unlink
+// versuchen (Aufräumen beim Verschieben, Audit Build 90).
+//
+// @param p - Pfad
+// @return error - Fehler (auch: kein Verzeichnis, nicht leer)
+// @date   2026-11-15 09:09
+func (l *localFS) RemoveDir(p string) error {
+	n, err := l.native(p)
+	if err != nil {
+		return err
+	}
+	if err := syscall.Rmdir(n); err != nil {
+		return &os.PathError{Op: "rmdir", Path: n, Err: err}
+	}
+	return nil
 }
 
 // Symlink legt unter linkPath einen Symlink auf target an.

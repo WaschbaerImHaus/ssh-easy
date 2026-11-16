@@ -15,7 +15,7 @@
 // der Antwort, weil die Kopie bis dahin ruht.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-11-15 15:03
 package main
 
 import (
@@ -57,6 +57,9 @@ const (
 	fmDialogExtRisk
 	// fmDialogExtDelete - Endung aus der Liste entfernen? (j/y, n)
 	fmDialogExtDelete
+	// fmDialogReconnect - Passwort für das Neu-Verbinden nach einem
+	// Verbindungsabriss (tui_filemanager_reconnect.go)
+	fmDialogReconnect
 )
 
 // Höchstbreite der Dialoge in Zeichen
@@ -140,7 +143,7 @@ func (m AppModel) fmOpenCopyConfirm(move bool) (tea.Model, tea.Cmd) {
 //
 // @return tea.Model - Modell mit Fortschrittsdialog
 // @return tea.Cmd - wartet auf die erste Meldung
-// @date   2026-10-26 21:15
+// @date   2026-11-15 15:03
 func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 	src := m.fm.panels[m.fm.copy.source]
 	dst := m.fm.panels[1-m.fm.copy.source]
@@ -149,12 +152,18 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 	m.fm.copy.events = make(chan copyEvent, 64)
 	m.fm.copy.answers = make(chan copyConflictAnswer, 1)
 	m.fm.copy.copyProgress = copyProgress{scanning: true}
+	sameHost := fmSameHost(src.conn, dst.conn)
 	req := copyRequest{
 		src: src.fs, dst: dst.fs,
 		srcDir: src.path, dstDir: dst.path,
 		names:    m.fm.copy.names,
-		sameHost: strings.EqualFold(src.conn.Host, dst.conn.Host) && src.conn.Port == dst.conn.Port,
-		move:     m.fm.copy.move,
+		sameHost: sameHost,
+		// Gleicher Host, Port und Benutzer (Nutzerentscheidung Build 90,
+		// auch zwei verschiedene Einträge): F6 darf auf dem Server
+		// umbenennen statt kopieren; die Prüfdatei (renameReachesTarget)
+		// sichert zusätzlich ab. Anderer Benutzer: kopieren (Besitzer, Rechte)
+		sameAccount: fmSameAccount(src.conn, dst.conn),
+		move:        m.fm.copy.move,
 		// Vom Server auf den PC: Dateien als heruntergeladen kennzeichnen,
 		// nur Symlinks innerhalb des kopierten Verzeichnisses
 		markDownloads: fmShouldMarkDownloads(src.fs, dst.fs),
@@ -167,6 +176,35 @@ func (m AppModel) fmStartCopy() (tea.Model, tea.Cmd) {
 	go runCopy(ctx, req, m.fm.copy.events, m.fm.copy.answers)
 	m.fm.dialog = fmDialogCopying
 	return m, m.waitCopyEvent()
+}
+
+// fmSameHost prüft, ob zwei Verbindungen auf denselben Server zeigen:
+// Host ohne Groß-/Kleinschreibung und ohne Leerraum am Rand, gleicher Port.
+//
+// @param a - erste Verbindung
+// @param b - zweite Verbindung
+// @return bool - true = derselbe Server
+// @date   2026-11-15 15:03
+func fmSameHost(a, b Connection) bool {
+	return strings.EqualFold(strings.TrimSpace(a.Host), strings.TrimSpace(b.Host)) && a.Port == b.Port
+}
+
+// fmSameAccount prüft, ob zwei Fenster dasselbe Konto nutzen: derselbe
+// Server (fmSameHost) und derselbe Benutzer (genau gleich, ohne Leerraum
+// am Rand). Der Lokale PC zählt nur mit sich selbst als dasselbe Konto.
+//
+// @param a - erste Verbindung
+// @param b - zweite Verbindung
+// @return bool - true = dasselbe Konto (Umbenennen beim Verschieben erlaubt)
+// @date   2026-11-15 15:03
+func fmSameAccount(a, b Connection) bool {
+	if a.ID == fmLocalConnID || b.ID == fmLocalConnID {
+		return a.ID == b.ID
+	}
+	if strings.TrimSpace(a.Host) == "" || strings.TrimSpace(a.User) == "" {
+		return false
+	}
+	return fmSameHost(a, b) && strings.TrimSpace(a.User) == strings.TrimSpace(b.User)
 }
 
 // waitCopyEvent wartet auf die nächste Meldung des Kopiervorgangs.
@@ -215,7 +253,7 @@ func (m AppModel) handleFMCopyEvent(msg fmCopyEventMsg) (tea.Model, tea.Cmd) {
 // @param result - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Neuladen der Fenster
-// @date   2026-10-22 05:17
+// @date   2026-11-15 15:00
 func (m AppModel) fmFinishCopy(result copyResult) (tea.Model, tea.Cmd) {
 	if m.fm.copy.cancel != nil {
 		m.fm.copy.cancel()
@@ -230,6 +268,15 @@ func (m AppModel) fmFinishCopy(result copyResult) (tea.Model, tea.Cmd) {
 		m.fm.message = m.tr(cancelled)
 	case len(result.failures) > 0:
 		m.fm.message = fmt.Sprintf(m.tr(errorsText), len(result.failures), m.fmDescribeFailure(result.failures[0]))
+	case m.fm.copy.move && result.renamed > 0:
+		// Mit Umbenennen verschoben: Dateizahl und Größe sagen nichts (es
+		// wurde nichts übertragen) - die obersten Einträge nennen, auch wenn
+		// ein Teil kopiert wurde
+		if len(result.copiedNames) == 1 {
+			m.fm.message = fmt.Sprintf(m.tr(txtFMMoveDoneOne), sanitizeFileName(result.copiedNames[0]))
+		} else {
+			m.fm.message = fmt.Sprintf(m.tr(txtFMMoveDoneEntries), len(result.copiedNames))
+		}
 	default:
 		m.fm.message = fmt.Sprintf(m.tr(doneText), result.files, formatSizeWithUnit(result.bytes))
 	}
@@ -297,12 +344,14 @@ func (m AppModel) fmDescribeFailure(f copyFailure) string {
 // @param msg - Tastendruck
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Folgekommando
-// @date   2026-10-21 21:03
+// @date   2026-11-13 09:08
 func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 	switch m.fm.dialog {
 	case fmDialogMkdir:
 		return m.handleFMMkdirKeys(msg)
+	case fmDialogReconnect:
+		return m.handleFMReconnectKeys(msg)
 	case fmDialogDeleteConfirm, fmDialogDeleting:
 		return m.handleFMDeleteKeys(key)
 	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk, fmDialogExtDelete:
@@ -352,7 +401,7 @@ func (m AppModel) handleFMDialogKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 // @return string - Titel
 // @return []string - Inhalt (je Zeile höchstens inner breit)
 // @return string - Tastenhilfe (wird umbrochen)
-// @date   2026-10-22 05:17
+// @date   2026-11-13 09:08
 func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 	c := m.fm.copy
 	title, confirmOne, confirmMany, confirmHelp := txtFMCopyTitle, txtFMCopyConfirmOne, txtFMCopyConfirmMany, txtFMConfirmHelp
@@ -364,6 +413,8 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 		return m.fmOpsDialogLines(inner)
 	case fmDialogTheme, fmDialogExtensions, fmDialogExtRisk, fmDialogExtDelete:
 		return m.fmOptionDialogLines(inner)
+	case fmDialogReconnect:
+		return m.fmReconnectDialogLines(inner)
 	case fmDialogCopyConfirm:
 		target := m.fm.panels[1-c.source].title()
 		text := fmt.Sprintf(m.tr(confirmMany), len(c.names), target)
@@ -374,17 +425,21 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 	case fmDialogCopying:
 		p := c.copyProgress
 		if p.scanning {
-			return m.tr(title), []string{fmt.Sprintf(m.tr(txtFMCopyScanning), p.totalFiles)}, m.tr(txtFMCancelHelp)
+			// Dateien UND Verzeichnisse zählen: bei vielen leeren
+			// Verzeichnissen stünde die Dateizahl sonst scheinbar still
+			return m.tr(title), wrapText(fmt.Sprintf(m.tr(txtFMCopyScanned), p.totalFiles, p.totalDirs), inner), m.tr(txtFMCancelHelp)
+		}
+		if p.removingDirs {
+			// Verschieben: leere Quellverzeichnisse werden gelöscht
+			lines := append(wrapText(fmt.Sprintf(m.tr(txtFMMoveCleanup), p.removedDirs, p.removeTotal), inner),
+				progressBar(int64(p.removedDirs), int64(p.removeTotal), max(inner-5, 0))+fmt.Sprintf(" %3d%%", fmPercent(int64(p.removedDirs), int64(p.removeTotal))))
+			return m.tr(title), lines, m.tr(txtFMCancelHelp)
 		}
 		done, total := p.doneBytes, p.totalBytes
 		if total == 0 {
 			done, total = int64(p.doneFiles), int64(p.totalFiles)
 		}
-		percent := 100
-		if total > 0 {
-			// Kommazahl statt done*100: kein Überlauf bei absurden Größen
-			percent = int(math.Min(math.Max(float64(done)/float64(total), 0), 1) * 100)
-		}
+		percent := fmPercent(done, total)
 		lines := []string{
 			fitWidthLeft(sanitizeFileName(p.current), inner),
 			fmt.Sprintf(m.tr(txtFMCopyProgress), p.doneFiles, p.totalFiles, formatSizeWithUnit(p.doneBytes), formatSizeWithUnit(p.totalBytes)),
@@ -410,6 +465,20 @@ func (m AppModel) fmDialogLines(inner int) (string, []string, string) {
 		return m.tr(txtFMOverwriteTitle), lines, m.tr(txtFMOverwriteHelp)
 	}
 	return "", nil, ""
+}
+
+// fmPercent liefert den Anteil done/total in Prozent (0-100; total 0 = 100).
+// Kommazahl statt done*100: kein Überlauf bei absurden Größen.
+//
+// @param done - erledigt
+// @param total - gesamt
+// @return int - Prozent
+// @date   2026-11-13 09:08
+func fmPercent(done, total int64) int {
+	if total <= 0 {
+		return 100
+	}
+	return int(math.Min(math.Max(float64(done)/float64(total), 0), 1) * 100)
 }
 
 // renderFMDialogBox rendert den offenen Dialog als Kasten.
@@ -516,7 +585,7 @@ func overlayDialog(lines, box []string, boxWidth, width int) {
 // @param top - oberste Zeile
 // @param left - linke Spalte
 // @param width - Bildschirmbreite
-// @date   2026-10-22 07:50
+// @date   2026-11-13 09:08
 func overlayAt(lines, box []string, boxWidth, top, left, width int) {
 	for i, boxLine := range box {
 		y := top + i
@@ -526,6 +595,12 @@ func overlayAt(lines, box []string, boxWidth, top, left, width int) {
 		before := ansi.Truncate(lines[y], left, "")
 		before += strings.Repeat(" ", max(left-ansi.StringWidth(before), 0))
 		after := ansi.TruncateLeft(lines[y], left+boxWidth, "")
+		if want := ansi.StringWidth(lines[y]) - left - boxWidth; want >= 0 && ansi.StringWidth(after) > want {
+			// Breites Zeichen (z. B. CJK) an der rechten Schnittkante: halb
+			// vom Kasten verdeckt - durch ein Leerzeichen ersetzen, sonst
+			// wird die Zeile eine Spalte zu breit
+			after = " " + ansi.TruncateLeft(lines[y], left+boxWidth+1, "")
+		}
 		line := before + boxLine + after
 		// Breite Zeichen an den Schnittkanten: auf volle Breite auffüllen
 		line += strings.Repeat(" ", max(width-ansi.StringWidth(line), 0))

@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	sshagent "golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh"
+	sshagent "golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
@@ -355,13 +355,13 @@ func (m *SSHManager) connectAutoDiscover(conn Connection) (context.Context, *Con
 
 // discoverSSHKeys listet alle Dateien aus ~/.ssh/ die wie SSH-Private-Keys
 // aussehen. Schutzmaßnahmen:
-//  - Symlinks werden ignoriert (Symlink-Escape verhindern)
-//  - Nur reguläre Dateien
-//  - .pub-Dateien werden übersprungen (öffentliche Schlüssel)
-//  - Inhaltsprüfung: Datei muss mit einem PEM-Marker beginnen
-//    ("-----BEGIN" bzw. "-----BEGIN OPENSSH"). Dateinamen-basierte Blacklist
-//    war unvollständig und konnte andere Dateien (z.B. "rc", "config.old")
-//    fälschlicherweise als Key öffnen.
+//   - Symlinks werden ignoriert (Symlink-Escape verhindern)
+//   - Nur reguläre Dateien
+//   - .pub-Dateien werden übersprungen (öffentliche Schlüssel)
+//   - Inhaltsprüfung: Datei muss mit einem PEM-Marker beginnen
+//     ("-----BEGIN" bzw. "-----BEGIN OPENSSH"). Dateinamen-basierte Blacklist
+//     war unvollständig und konnte andere Dateien (z.B. "rc", "config.old")
+//     fälschlicherweise als Key öffnen.
 //
 // @param excludePath - Bereits separat geprüfter Pfad wird übersprungen
 // @param logger      - Logger für Skip-Meldungen
@@ -976,7 +976,9 @@ func (m *SSHManager) getAgentAuth() (ssh.AuthMethod, error) {
 // (nur wenn allowNewHosts), geänderte Keys werden abgelehnt (MITM-Schutz).
 //
 // @param allowNewHosts - false wenn die Adresse vom öffentlichen Fallback-
-//   DNS stammt: dann wird ein unbekannter Key abgelehnt (untrustedHostError)
+//
+//	DNS stammt: dann wird ein unbekannter Key abgelehnt (untrustedHostError)
+//
 // @return ssh.HostKeyCallback - Callback-Funktion
 // @return error - Fehler wenn known_hosts nicht verfügbar
 // @date   2026-10-16 11:00

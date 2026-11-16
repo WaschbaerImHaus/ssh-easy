@@ -10,7 +10,7 @@
 //  1. handleFMConnected: Anmeldung erfolgreich, nicht der Lokale PC, und
 //     Passwort benutzt ODER connectionNeedsOwnKey -> fmDeployKeyCmd.
 //  2. fmDeployKeyCmd läuft im Hintergrund (der Datei-Manager bleibt sofort
-//     bedienbar). Unter fmDeployMu liest es den AKTUELLEN Eintrag aus der
+//     bedienbar). Unter deployMu liest es den AKTUELLEN Eintrag aus der
 //     Konfiguration, prüft die Regel erneut und ruft fmDeployKey auf.
 //  3. handleFMKeyDeployed zeigt dieselben Texte wie der Hauptablauf
 //     (KeyDeployedMsg bzw. KeyDeployFailed) und lädt die Konfiguration neu
@@ -24,7 +24,7 @@
 // Felder (updateKeyFields in ssh.go), entscheidet aber nach dem übergebenen
 // Stand. Die Kopie im Fenster stammt aus der Zeit der Auswahl (ohne Tunnel,
 // ohne spätere Änderungen). Die Regel (fmNeedsKeyDeploy) wird deshalb unter
-// fmDeployMu am aktuellen Eintrag erneut geprüft: Hat die Verbindung
+// deployMu am aktuellen Eintrag erneut geprüft: Hat die Verbindung
 // inzwischen einen Schlüssel - etwa durch die Vergabe im anderen Fenster -
 // oder wurde sie gelöscht, unterbleibt die Vergabe.
 //
@@ -76,16 +76,19 @@ type fmDeployKeyFunc func(conn Connection, fsys remoteFS, configPath string) (st
 // @date   2026-10-28 13:16
 var fmDeployKey fmDeployKeyFunc = fmDeployKeyOverSSH
 
-// fmDeployMu lässt immer nur eine Vergabe des Datei-Managers gleichzeitig
-// laufen. Grund: Melden sich beide Fenster per Passwort an - etwa an einer
+// deployMu lässt immer nur eine Schlüsselvergabe gleichzeitig laufen - sowohl
+// im Datei-Manager als auch im Hauptablauf (autoDeployKeyCmd in tui.go). Es
+// ist die erste Stufe der Sperr-Reihenfolge. Grund: Melden sich beide Fenster per Passwort an - etwa an einer
 // Verbindung und ihrer Kopie (Taste c) mit gleichem Host und Benutzer -,
 // wählt AutoDeployKey den Dateinamen nach dem Stand der Konfiguration.
 // Gleichzeitig gestartet sähen beide denselben Stand, wählten denselben
 // Namen und schrieben in dieselbe Schlüsseldatei. Nacheinander sieht die
 // zweite Vergabe den Schlüssel der ersten und nimmt einen eigenen Namen.
+// (Früher fmDeployMu, umbenannt am 2026-11-12, weil nicht mehr nur der
+// Datei-Manager sie nutzt.)
 //
-// @date   2026-10-28 13:16
-var fmDeployMu sync.Mutex
+// @date   2026-11-12 20:21
+var deployMu sync.Mutex
 
 // fmKeyDeployedMsg meldet das Ergebnis einer Schlüsselvergabe.
 //
@@ -152,15 +155,17 @@ func (m AppModel) fmCurrentConnection(side int) Connection {
 	return panelConn
 }
 
-// fmFreshConnection liest den aktuellen Eintrag einer Verbindung aus der
-// Konfigurationsdatei (mit Tunneln und allen Feldern).
+// freshConnection liest den aktuellen Eintrag einer Verbindung aus der
+// Konfigurationsdatei (mit Tunneln und allen Feldern). Wird vom Datei-Manager
+// und vom Hauptablauf benutzt (früher fmFreshConnection, umbenannt am
+// 2026-11-12).
 //
 // @param configPath - Pfad zur Konfiguration
 // @param id - Verbindungs-ID
 // @return Connection - Eintrag
 // @return bool - false bei unlesbarer Datei oder gelöschter Verbindung
-// @date   2026-10-27 19:31
-func fmFreshConnection(configPath, id string) (Connection, bool) {
+// @date   2026-11-12 20:21
+func freshConnection(configPath, id string) (Connection, bool) {
 	cfg, err := LoadConfig(configPath)
 	if err != nil {
 		return Connection{}, false
@@ -173,7 +178,7 @@ func fmFreshConnection(configPath, id string) (Connection, bool) {
 	return Connection{}, false
 }
 
-// fmDeployKeyCmd startet die Vergabe im Hintergrund. Unter fmDeployMu wird
+// fmDeployKeyCmd startet die Vergabe im Hintergrund. Unter deployMu wird
 // der aktuelle Eintrag gelesen und die Regel erneut geprüft - so vergibt
 // eine zweite Anmeldung derselben Verbindung (z. B. beide Fenster) keinen
 // zweiten Schlüssel, wenn die erste schon einen eingetragen hat (außer nach
@@ -192,9 +197,9 @@ func (m AppModel) fmDeployKeyCmd(side int, fsys remoteFS, withPassword bool) tea
 	deploy := fmDeployKey
 	return func() tea.Msg {
 		result := fmKeyDeployedMsg{session: session, side: side, connID: connID}
-		fmDeployMu.Lock()
-		defer fmDeployMu.Unlock()
-		conn, ok := fmFreshConnection(configPath, connID)
+		deployMu.Lock()
+		defer deployMu.Unlock()
+		conn, ok := freshConnection(configPath, connID)
 		if !ok || !fmNeedsKeyDeploy(conn, withPassword) {
 			result.err = errFMKeyDeploySkipped
 			return result

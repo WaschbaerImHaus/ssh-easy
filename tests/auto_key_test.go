@@ -677,7 +677,7 @@ func TestStatusKeyRemoveThenEditKeepsAutoKeyOff(t *testing.T) {
 // --- Frische Prüfung im Vergabe-Kommando (autoDeployKeyCmd, Build 86) ---
 //
 // m.connections ist nur der Stand beim Anmelden. Das Kommando liest unter
-// fmDeployMu den Eintrag frisch aus der Datei und prüft nach einem Auto-Login
+// deployMu den Eintrag frisch aus der Datei und prüft nach einem Auto-Login
 // connectionNeedsOwnKey dort erneut. Gilt die Regel nicht mehr, kommt
 // sshKeyDeployedMsg{skipped: true}: kein Aufruf, keine Meldung, Liste neu
 // geladen. Nach einem Passwort-Login wird immer vergeben. Die Tests lassen den

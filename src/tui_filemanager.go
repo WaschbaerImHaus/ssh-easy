@@ -42,7 +42,7 @@
 // der Wahl speichert sie. Abbruch mit q/Esc speichert nichts.
 //
 // @author Kurt Ingwer
-// @date   2026-11-07 11:51
+// @date   2026-11-13 09:08
 package main
 
 import (
@@ -119,6 +119,9 @@ type fileManager struct {
 	// Seite, deren Verbindung gerade aufgebaut wird bzw. ein Passwort braucht
 	connectSide  int
 	passwordSide int
+	// Seite, deren Neu-Verbinden im Passwort-Dialog (fmDialogReconnect)
+	// auf ein Passwort wartet (tui_filemanager_reconnect.go)
+	reconnectSide int
 	// Passwortfeld
 	passwordInput textinput.Model
 	// Offener Dialog (Kopieren usw.) und Zustand des Kopiervorgangs
@@ -181,6 +184,12 @@ type fmDirLoadedMsg struct {
 	// Namen, die nach dem Einlesen wieder markiert werden
 	marks map[string]bool
 	err   error
+	// Neue Verbindung nach einem Verbindungsabriss (nil = keine) und
+	// Fehler des Neu-Verbindens (tui_filemanager_reconnect.go)
+	newFS        remoteFS
+	reconnectErr error
+	// Wurde mit Passwort neu verbunden?
+	withPassword bool
 }
 
 // openFileManager startet den Datei-Manager mit der Auswahl der linken
@@ -902,11 +911,12 @@ func (m AppModel) handleFileManagerKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // fmEnter führt Enter auf dem aktuellen Eintrag des aktiven Fensters aus:
 // Verzeichnis wechseln (im Hintergrund), bei Symlinks auf Verzeichnisse
-// nur eine Meldung, bei Dateien nichts.
+// nur eine Meldung, bei Dateien nichts. Ist die Verbindung abgerissen,
+// wird dabei neu verbunden (fmReadPanelCmd).
 //
 // @return tea.Model - Aktualisiertes Modell
 // @return tea.Cmd - Hintergrundkommando oder nil
-// @date   2026-10-21 19:45
+// @date   2026-11-13 09:08
 func (m AppModel) fmEnter() (tea.Model, tea.Cmd) {
 	side := m.fm.active
 	panel := &m.fm.panels[side]
@@ -921,32 +931,45 @@ func (m AppModel) fmEnter() (tea.Model, tea.Cmd) {
 		return m, nil
 	case fmEnterChangeDir:
 		panel.loading = true
-		fsys := panel.fs
-		session := m.fm.session
-		return m, func() tea.Msg {
-			entries, err := readPanelDir(fsys, target)
-			return fmDirLoadedMsg{session: session, side: side, path: target, entries: entries, focus: focus, err: err}
-		}
+		// Verbindet bei Bedarf neu (Verbindungsabriss, Build 90)
+		return m, m.fmReadPanelCmd(side, target, focus, 0, nil, "")
 	}
 	return m, nil
 }
 
 // handleFMDirLoaded übernimmt ein gelesenes Verzeichnis und merkt es sich
 // für die Verbindung. Bei einem Fehler (z. B. fehlende Rechte) bleibt das
-// Fenster im bisherigen Verzeichnis.
+// Fenster im bisherigen Verzeichnis. Wurde unterwegs neu verbunden, kommt
+// die neue Verbindung ins Fenster; ein gescheitertes Neu-Verbinden meldet
+// fmReconnectFailed (ggf. Passwort-Dialog). Eine veraltete neue Verbindung
+// (Datei-Manager inzwischen geschlossen) wird geschlossen.
 //
 // @param msg - Ergebnis
 // @return tea.Model - Aktualisiertes Modell
-// @return tea.Cmd - kein Folgekommando
-// @date   2026-10-23 19:37
+// @return tea.Cmd - kein Folgekommando bzw. Cursor-Blinken des Dialogs
+// @date   2026-11-13 09:08
 func (m AppModel) handleFMDirLoaded(msg fmDirLoadedMsg) (tea.Model, tea.Cmd) {
 	if msg.session != m.fm.session || m.state != ViewFileManager {
+		if msg.newFS != nil {
+			msg.newFS.Close()
+		}
 		return m, nil
 	}
 	panel := &m.fm.panels[msg.side]
 	panel.loading = false
+	if msg.newFS != nil {
+		m.fmAdoptReconnect(msg)
+	}
+	if msg.reconnectErr != nil {
+		return m.fmReconnectFailed(msg)
+	}
 	if msg.err != nil {
-		m.fm.message = m.fmDirError(msg.path, msg.err)
+		dirErr := m.fmDirError(msg.path, msg.err)
+		if msg.newFS != nil {
+			// Neu verbunden, aber das Verzeichnis ist nicht lesbar: beides melden
+			dirErr = joinFMNotice(m.fm.message, dirErr)
+		}
+		m.fm.message = dirErr
 		return m, nil
 	}
 	panel.applyListing(msg.path, msg.entries, msg.focus)

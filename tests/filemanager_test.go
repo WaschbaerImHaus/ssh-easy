@@ -105,6 +105,7 @@ func (f *fakeRemoteFS) CreateExclusive(p string) (io.WriteCloser, error) {
 func (f *fakeRemoteFS) RenameOverwrite(o, n string) error      { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Mkdir(p string) error                   { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Remove(p string) error                  { return errors.ErrUnsupported }
+func (f *fakeRemoteFS) RemoveDir(p string) error               { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Symlink(target, linkPath string) error  { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Chmod(p string, mode os.FileMode) error { return errors.ErrUnsupported }
 func (f *fakeRemoteFS) Chtimes(p string, a, m time.Time) error { return errors.ErrUnsupported }

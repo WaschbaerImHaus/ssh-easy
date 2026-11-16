@@ -105,8 +105,8 @@ type sshConnectedMsg struct {
 var autoDeployKeyFunc = AutoDeployKey
 
 // autoDeployKeyCmd startet die Schlüsselvergabe des Hauptablaufs im
-// Hintergrund. Unter fmDeployMu (dieselbe Sperre wie im Datei-Manager, erste
-// Stufe der Sperr-Reihenfolge fmDeployMu -> autoDeployMu -> ...) liest das
+// Hintergrund. Unter deployMu (dieselbe Sperre wie im Datei-Manager, erste
+// Stufe der Sperr-Reihenfolge deployMu -> autoDeployMu -> ...) liest das
 // Kommando den AKTUELLEN Eintrag aus der Konfiguration. Nach einem Auto-Login
 // (wasPassword=false) prüft es connectionNeedsOwnKey dort erneut: m.connections
 // ist nur der Stand beim Anmelden. Zwei Anmeldungen kurz hintereinander, eine
@@ -128,10 +128,10 @@ var autoDeployKeyFunc = AutoDeployKey
 func autoDeployKeyCmd(conn Connection, status *ConnectionStatus, configPath string, wasPassword bool) tea.Cmd {
 	return func() tea.Msg {
 		result := sshKeyDeployedMsg{connID: conn.ID}
-		fmDeployMu.Lock()
-		defer fmDeployMu.Unlock()
+		deployMu.Lock()
+		defer deployMu.Unlock()
 		if !wasPassword {
-			fresh, ok := fmFreshConnection(configPath, conn.ID)
+			fresh, ok := freshConnection(configPath, conn.ID)
 			if !ok || !connectionNeedsOwnKey(fresh) {
 				result.skipped = true
 				return result

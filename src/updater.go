@@ -71,7 +71,37 @@ const (
 	releaseSigningPublicKeyHex = "e548b36992f95417e386183b3b57929b97fdd6801def9aee90b3489dccd7192f"
 )
 
-// releaseSigningKey liefert den eingebetteten öffentlichen Schlüssel.
+// releaseBackupSigningPublicKeysHex - öffentliche Ersatzschlüssel (Ed25519).
+// Eine Signatur von IRGENDEINEM eingebetteten Schlüssel (Haupt- oder
+// Ersatzschlüssel) gilt. build.sh signiert weiter mit dem Hauptschlüssel.
+//
+// Schlüsselrotation: Geht der Hauptschlüssel verloren oder wird er bekannt,
+// signiert man das nächste Release mit dem Ersatzschlüssel (build.sh mit
+// SSH_EASY_SIGNING_KEY=~/.config/ssh-easy/release-signing-backup.key).
+// Installierte Versionen vertrauen dem Ersatzschlüssel schon und nehmen
+// dieses Update an. In genau diesem Release bettet man einen NEUEN
+// Ersatzschlüssel ein (und trägt den neuen Hauptschlüssel ein), damit auch
+// danach wieder ein Ersatz bereitsteht. Privater Teil des aktuellen
+// Ersatzschlüssels: ~/.config/ssh-easy/release-signing-backup.key (nur auf
+// dem Build-Rechner, nie im Repo).
+//
+// @date 2026-11-12 20:30
+var releaseBackupSigningPublicKeysHex = []string{
+	"45cc3e61bdadc1e781cf33395ba1468eec05bced9dc61d062f220aeaad7bd964",
+}
+
+// releaseSigningKeys liefert alle vertrauenswürdigen Schlüssel: zuerst den
+// Hauptschlüssel, dann die gültigen, eindeutigen Ersatzschlüssel. Ungültige
+// Einträge werden übersprungen und bestätigen nie eine Signatur.
+//
+// @return []ed25519.PublicKey - vertrauenswürdige Schlüssel
+// @date   2026-11-12 20:30
+func releaseSigningKeys() []ed25519.PublicKey {
+	entries := append([]string{releaseSigningPublicKeyHex}, releaseBackupSigningPublicKeysHex...)
+	return releasesig.ParsePublicKeysHex(entries)
+}
+
+// releaseSigningKey liefert den eingebetteten öffentlichen Hauptschlüssel.
 //
 // @return ed25519.PublicKey - Schlüssel (nil bei ungültigem Eintrag)
 // @date   2026-10-17 22:40
@@ -145,8 +175,9 @@ type Updater struct {
 	downloadDir string
 	// Prüft ob ein Verzeichnis beschreibbar ist (austauschbar für Tests)
 	canWriteDir func(dir string) bool
-	// Öffentlicher Schlüssel für die Prüfsummenliste (austauschbar für Tests)
-	signingKey ed25519.PublicKey
+	// Vertrauenswürdige öffentliche Schlüssel (Haupt- und Ersatzschlüssel) für
+	// die Prüfsummenliste (austauschbar für Tests)
+	signingKeys []ed25519.PublicKey
 	// Mutex für pending
 	mu sync.Mutex
 	// Heruntergeladenes Update, das beim Beenden installiert wird
@@ -208,7 +239,7 @@ func NewUpdater(currentBuild string) *Updater {
 		exePath:          exe,
 		downloadDir:      downloadDir,
 		canWriteDir:      dirWritable,
-		signingKey:       releaseSigningKey(),
+		signingKeys:      releaseSigningKeys(),
 		startSetup:       defaultSetupStarter,
 	}
 }
@@ -503,7 +534,7 @@ func (u *Updater) fetchSignedDigest(ctx context.Context, rel *releaseInfo, asset
 	if err != nil {
 		return "", err
 	}
-	if err := releasesig.Verify(u.signingKey, manifest, sig); err != nil {
+	if err := releasesig.VerifyAny(u.signingKeys, manifest, sig); err != nil {
 		return "", fmt.Errorf("%w - Update abgelehnt", err)
 	}
 	sums, err := releasesig.ParseManifest(manifest, rel.TagName)

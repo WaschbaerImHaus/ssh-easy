@@ -15,7 +15,7 @@
 // eines alten Releases lässt sich nicht als neues Release ausgeben.
 //
 // @author Kurt Ingwer
-// @date   2026-10-17 22:40
+// @date   2026-11-15 09:09
 package releasesig
 
 import (
@@ -158,9 +158,9 @@ func Sign(priv ed25519.PrivateKey, manifest []byte) []byte {
 // @param manifest - Inhalt der Liste
 // @param sig - Inhalt der Signaturdatei (Base64)
 // @return error - nil nur bei gültiger Signatur
-// @date   2026-10-17 22:40
+// @date   2026-11-15 09:09
 func Verify(pub ed25519.PublicKey, manifest, sig []byte) error {
-	if len(pub) != ed25519.PublicKeySize {
+	if len(pub) != ed25519.PublicKeySize || !ValidPublicKey(pub) {
 		return errors.New("Signaturschlüssel ungültig")
 	}
 	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sig)))
@@ -171,6 +171,70 @@ func Verify(pub ed25519.PublicKey, manifest, sig []byte) error {
 		return errors.New("Signatur der Prüfsummenliste ungültig")
 	}
 	return nil
+}
+
+// VerifyAny prüft die Signatur gegen eine Liste vertrauenswürdiger
+// Schlüssel (Hauptschlüssel + Ersatzschlüssel). Gültig ist die Signatur,
+// wenn IRGENDEIN Schlüssel der Liste sie bestätigt. Schlüssel mit falscher
+// Länge oder ungültigem Punkt (ValidPublicKey) werden übersprungen und
+// gelten nie als Treffer; eine leere Liste lehnt alles ab (lieber kein
+// Update als ein ungeprüftes).
+//
+// @param keys - Vertrauenswürdige öffentliche Schlüssel
+// @param manifest - Inhalt der Liste
+// @param sig - Inhalt der Signaturdatei (Base64)
+// @return error - nil nur, wenn mindestens ein Schlüssel die Signatur bestätigt
+// @date   2026-11-15 09:09
+func VerifyAny(keys []ed25519.PublicKey, manifest, sig []byte) error {
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sig)))
+	if err != nil || len(raw) != ed25519.SignatureSize {
+		return errors.New("Signatur der Prüfsummenliste unlesbar")
+	}
+	message := signedMessage(manifest)
+	for _, key := range keys {
+		// Auch hier nur gültige Punkte der Primordnung (ValidPublicKey):
+		// ein Schlüssel kleiner Ordnung bestätigt sonst Fälschungen
+		if len(key) != ed25519.PublicKeySize || !ValidPublicKey(key) {
+			continue
+		}
+		if ed25519.Verify(key, message, raw) {
+			return nil
+		}
+	}
+	return errors.New("Signatur der Prüfsummenliste ungültig")
+}
+
+// ParsePublicKeysHex wandelt eingebettete Hex-Einträge in öffentliche
+// Schlüssel um. Einträge mit Hex-Fehler, falscher Länge, leere und doppelte
+// Einträge werden übersprungen - ein kaputter Eintrag kann so nie eine
+// Signatur bestätigen. Ebenso Einträge, die kein gültiger Punkt der
+// Primordnungs-Untergruppe sind (ValidPublicKey): Mit einem Punkt kleiner
+// Ordnung, etwa dem neutralen Element 0100…00, bestätigt ed25519.Verify
+// Fälschungen für beliebige Nachrichten (Audit Build 90). Die Reihenfolge
+// der gültigen Einträge bleibt erhalten.
+//
+// @param list - Hex-Texte (Groß-/Kleinschreibung egal)
+// @return []ed25519.PublicKey - gültige, eindeutige Schlüssel
+// @date   2026-11-15 09:09
+func ParsePublicKeysHex(list []string) []ed25519.PublicKey {
+	keys := make([]ed25519.PublicKey, 0, len(list))
+	for _, entry := range list {
+		raw, err := hex.DecodeString(strings.TrimSpace(entry))
+		if err != nil || len(raw) != ed25519.PublicKeySize || !ValidPublicKey(raw) {
+			continue
+		}
+		duplicate := false
+		for _, known := range keys {
+			if bytes.Equal(known, raw) {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			keys = append(keys, ed25519.PublicKey(raw))
+		}
+	}
+	return keys
 }
 
 // signedMessage liefert die tatsächlich signierten Bytes (Kontext + Liste).

@@ -1,7 +1,7 @@
 // Paket main - Datei-Manager: "Lokaler PC" unter Windows (Laufwerksliste)
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 06:40
+// @date   2026-11-13 09:08
 
 //go:build windows
 
@@ -35,4 +35,24 @@ func localDrives() []os.FileInfo {
 		}
 	}
 	return drives
+}
+
+// localRenameNoReplace benennt um, ohne ein vorhandenes Ziel zu ersetzen:
+// MoveFileEx ohne MOVEFILE_REPLACE_EXISTING (und ohne COPY_ALLOWED, also
+// nur auf demselben Laufwerk).
+//
+// @param from - bisheriger Pfad
+// @param to - neuer Pfad
+// @return error - Fehler (z. B. Ziel vorhanden, anderes Laufwerk)
+// @date   2026-11-13 09:08
+func localRenameNoReplace(from, to string) error {
+	fromW, err := windows.UTF16PtrFromString(from)
+	if err != nil {
+		return err
+	}
+	toW, err := windows.UTF16PtrFromString(to)
+	if err != nil {
+		return err
+	}
+	return windows.MoveFileEx(fromW, toW, 0)
 }

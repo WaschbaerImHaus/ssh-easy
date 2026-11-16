@@ -18,7 +18,7 @@
 // markiert; der Cursor bleibt an seiner Stelle.
 //
 // @author Kurt Ingwer
-// @date   2026-10-22 05:17
+// @date   2026-11-13 09:08
 package main
 
 import (
@@ -75,15 +75,12 @@ type fmMkdirDoneMsg struct {
 // @param fallback - Cursorposition, falls focus fehlt
 // @param marks - wieder zu markierende Namen (nil = keine)
 // @return tea.Cmd - Hintergrundkommando
-// @date   2026-10-22 05:17
+// @date   2026-11-13 09:08
 func (m *AppModel) fmReloadPanel(side int, focus string, fallback int, marks map[string]bool) tea.Cmd {
 	panel := &m.fm.panels[side]
 	panel.loading = true
-	fsys, dir, session := panel.fs, panel.path, m.fm.session
-	return func() tea.Msg {
-		entries, err := readPanelDir(fsys, dir)
-		return fmDirLoadedMsg{session: session, side: side, path: dir, entries: entries, focus: focus, fallback: fallback, marks: marks, err: err}
-	}
+	// Verbindet bei Bedarf neu (Verbindungsabriss, Build 90)
+	return m.fmReadPanelCmd(side, panel.path, focus, fallback, marks, "")
 }
 
 // fmPanelFocus liefert Name und Position des Cursors eines Fensters (für

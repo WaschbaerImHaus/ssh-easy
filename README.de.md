@@ -159,6 +159,10 @@ nebeneinander zu arbeiten – oder mit einem:
 2. Beide Verbindungen werden als eigene SSH-Verbindungen **ohne Tunnel** aufgebaut
    (zuerst SSH-Agent/Schlüssel, bei Bedarf Passwortabfrage; `Esc` bricht sie ab).
    Auf den Servern muss nichts installiert sein – die Dateilisten kommen per SFTP.
+   Nur zum Erfassen eines großen Baums vor dem Kopieren oder Verschieben fragt ssh-easy den Server
+   zusätzlich mit einem einzigen `find`-Befehl über dieselbe Verbindung nach dem ganzen Baum (siehe
+   *Kopieren*); ohne `find` oder ohne Erlaubnis, Befehle auszuführen, fällt es selbstständig auf
+   SFTP zurück.
 3. Beide Fenster starten im Home-Verzeichnis des Users.
 
 | Taste | Aktion |
@@ -199,17 +203,47 @@ Verbindungsabriss) eine solche Temp-Datei `.ssh-easy-copy-….tmp` liegen, räum
 beim nächsten Kopieren in denselben Ordner weg, sobald sie mindestens 24 Stunden unverändert
 ist (auf Servern nur mit Rechten 0600); jede Löschung steht im Log.
 
+Vor dem Kopieren erfasst ssh-easy alles, was kopiert werden soll (das Fenster zeigt
+*Erfasse … N Dateien, M Verzeichnisse*). Ist die Quelle ein Server, liest es den ganzen Baum
+zuerst mit **einem** `find`-Befehl über einen eigenen Kanal derselben SSH-Verbindung; die
+Startpfade gehen über stdin, nie über die Befehlszeile. Die Antwort wird Feld für Feld
+geprüft, in Größe, Eintragszahl und Zeit begrenzt und mit einer kleinen, per SFTP gelesenen
+Stichprobe verglichen. Bei jedem Zweifel (kein `find -printf`, z. B. BusyBox; keine Erlaubnis
+für Befehle; abweichende Sicht auf das Dateisystem; hängender Kanal) fällt ssh-easy auf das
+Lesen per SFTP zurück, das mit bis zu 32 Anfragen gleichzeitig arbeitet. `Esc` bricht das
+Erfassen sofort ab. Hängt oder stockt `find`, wird es für diese Verbindung bis zum Ende der
+Sitzung ausgelassen. Gemessen bei etwa 30 ms Latenz: 30.000 leere Verzeichnisse brauchen mit
+`find` 0,34 s, mit dem parallelen SFTP-Rückfall 119 s; vor Build 90 wurde derselbe Baum
+streng Verzeichnis für Verzeichnis gelesen, was noch weit länger dauerte.
+
 **Verschieben (`F6`)** läuft wie das Kopieren; jede Datei wird in der Quelle erst gelöscht,
 wenn ihre Kopie vollständig angekommen ist. Was fehlschlägt oder übersprungen wird, bleibt
 in der Quelle und bleibt markiert. Ein Ziel, das die Quelle selbst ist (z. B. zwei
-Verbindungseinträge für denselben Server), wird abgelehnt.
+Verbindungseinträge für denselben Server), wird abgelehnt. Nutzen beide Fenster dasselbe
+**Konto** (gleicher Host, Port und Benutzer – auch bei zwei verschiedenen Verbindungseinträgen),
+kopiert das Verschieben nicht: Der Server benennt die Einträge in einem Schritt um. Das dauert
+Millisekunden, behält Besitzer und Rechte und ersetzt nie ein vorhandenes Ziel (dann wird wie
+bisher kopiert, ebenso immer bei verschiedenen Benutzern). Eine Prüfdatei im Zielordner stellt
+sicher, dass beide Verbindungen wirklich dasselbe Dateisystem sehen. Das Ergebnis lautet
+*„Name“ verschoben* bzw. *N Einträge verschoben*. Danach werden die leeren Quellverzeichnisse
+ebenenweise gleichzeitig entfernt (das Fenster zeigt den Fortschritt); dabei fallen nur
+Verzeichnisse, nie eine Datei.
 
 **Verzeichnis anlegen (`F7`)** fragt nach einem einzelnen Namen (ohne `/` und `\`); `Esc`
 bricht ab.
 
 **Löschen (`F8`)** entfernt Verzeichnisse samt Inhalt. Die Rückfrage beantwortest du mit
 `j` oder `y` – `Enter` allein löscht nicht. Symlinks werden selbst entfernt, nie ihr Ziel.
-`Esc` stoppt ein laufendes Löschen.
+`Esc` stoppt ein laufendes Löschen. Der Inhalt der Verzeichnisse wird vorab parallel gelesen;
+Prüfen und Löschen laufen weiter ein Eintrag nach dem anderen, und beim Betreten jedes
+Verzeichnisses wird die ganze Verzeichniskette erneut geprüft.
+
+**Verbindungsabriss:** Reißt die Verbindung eines Fensters ab (auch wenn nur die SFTP-Sitzung
+stirbt), verbindet das Fenster beim nächsten Einlesen einmal neu – `Enter` in ein Verzeichnis,
+`Strg+R` oder das Neuladen nach Kopieren, Löschen und Anlegen. Braucht die Anmeldung ein
+Passwort, fragt ein Dialog danach; es gilt nur für diesen einen Versuch und wird nie gespeichert.
+`known_hosts` bleibt Pflicht: Bei geändertem Host-Key gibt es nur eine Meldung. Nichts
+wiederholt sich von selbst, und ein unterbrochenes Kopieren wird nie fortgesetzt.
 
 **Bearbeiten (`F4`)** funktioniert wie im mcedit. Zeilenenden (auch Windows-CRLF) bleiben
 erhalten. Binärdateien öffnen sich als Hex-Ansicht, in der Hex-Ziffern Bytes überschreiben
@@ -217,7 +251,7 @@ erhalten. Binärdateien öffnen sich als Hex-Ansicht, in der Hex-Ziffern Bytes �
 Temp-Datei, die am Ende umbenannt wird; die Rechte bleiben, und wurde die Datei inzwischen
 auf dem Server geändert, wird vorher nachgefragt.
 
-**Einfügen im Editor:** `Strg+V`, `Shift+Einfg` und `Strg+Einfg` fügen die Zwischenablage an der Cursorposition ein (nur im Textmodus; in den Datei-Fenstern markiert `Strg+Einfg` weiter). Zeilenenden werden zu LF, Steuerzeichen außer Tab und Zeilenumbruch entfallen. Würde die Datei dadurch größer als 16 MiB, lehnt der Editor das Einfügen mit einer Meldung ab. In der Hex-Ansicht, in der Hilfe, in Dialogen und in Eingabezeilen passiert beim Einfügen nichts.
+**Einfügen im Editor:** `Strg+V`, `Shift+Einfg` und `Strg+Einfg` fügen die Zwischenablage an der Cursorposition ein (nur im Textmodus; in den Datei-Fenstern markiert `Strg+Einfg` weiter). Zeilenenden werden zu LF, Steuerzeichen außer Tab und Zeilenumbruch entfallen. Würde die Datei dadurch größer als 16 MiB, lehnt der Editor das Einfügen mit einer Meldung ab. Eingabezeilen (Suchen `F7`, Ersetzen `F4`) nehmen dieselben Tasten an: Es kommt nur die erste Zeile an, Steuerzeichen entfallen, ein Tab wird zum Leerzeichen, und die Zeile behält ihre Längengrenze; eine noch unberührte Vorbelegung wird ersetzt, wie beim ersten getippten Zeichen. In der Hex-Ansicht, in der Hilfe und in Ja/Nein-Rückfragen passiert beim Einfügen nichts (eine Eingabezeile in der Hex-Ansicht nimmt es an).
 
 **Lokal öffnen (`F9` im Betrachter)** lädt die Datei in einen privaten Temp-Ordner und
 übergibt sie dem Standardprogramm deines Rechners (Bildbetrachter, Browser, PDF-Leser …).
@@ -256,7 +290,7 @@ Standardmäßig aus. Mit `u` im Hauptmenü einschalten (der Zustand steht in der
 - Linux oder Windows mit Schreibrecht im Programmordner: Die Programmdatei wird ersetzt
 - Windows-Installation unter *Programme*: Das Setup läuft still mit Administratorrechten (Windows fragt per Benutzerkontensteuerung); die Desktop-Verknüpfung bleibt erhalten
 
-Jedes Release enthält eine mit Ed25519 signierte Prüfsummenliste (`ssh-easy-SHA256SUMS` + `ssh-easy-SHA256SUMS.sig`). ssh-easy prüft die Signatur mit dem im Programm eingebauten öffentlichen Schlüssel und installiert nur eine Datei, deren SHA-256 in der signierten Liste steht – selbst wer Zugriff auf das GitHub-Konto hat, kann so kein manipuliertes Update unterschieben. Dazu kommen Größen- und Formatprüfung – direkt nach dem Download und noch einmal unmittelbar vor der Installation. Unsignierte Releases werden abgelehnt.
+Jedes Release enthält eine mit Ed25519 signierte Prüfsummenliste (`ssh-easy-SHA256SUMS` + `ssh-easy-SHA256SUMS.sig`). ssh-easy prüft die Signatur mit dem im Programm eingebauten öffentlichen Schlüssel und installiert nur eine Datei, deren SHA-256 in der signierten Liste steht – selbst wer Zugriff auf das GitHub-Konto hat, kann so kein manipuliertes Update unterschieben. Dazu kommen Größen- und Formatprüfung – direkt nach dem Download und noch einmal unmittelbar vor der Installation. Unsignierte Releases werden abgelehnt. Neben dem Hauptschlüssel ist ein zweiter öffentlicher Schlüssel (Ersatzschlüssel) eingebaut, damit sich der Signaturschlüssel ohne Neuinstallation austauschen lässt; die Signatur jedes der beiden gilt. Schwache Schlüssel (Punkte kleiner Ordnung) werden abgelehnt. Zusätzlich kann `build.sh` die Windows-Programme und Setups mit Authenticode signieren, sobald ein Zertifikat eingerichtet ist (optional; noch nicht im Einsatz).
 
 Unter Windows startet ssh-easy für die Installation beim Beenden einen kurzen Helfer ohne Fenster; er wartet, bis das Programm beendet ist, und startet dann das geprüfte Setup (mit Benutzerkontensteuerung). Grenze: Beim Abmelden oder Herunterfahren gibt Windows Programmen keine Gelegenheit zu reagieren – das Update wird dann beim nächsten regulären Beenden installiert.
 
@@ -287,8 +321,12 @@ Weitere Einstellungen in `connections.json`: `language`, `font_size`, `window_co
 - Konfigurationsdatei hat Berechtigung 0600
 - Atomares Schreiben der Konfiguration
 - OSC-52-Zwischenablage: Remote-Programme duerfen nur **schreiben** (max. 1 MiB); Leseanfragen werden nie beantwortet
-- Auto-Update: lädt nur aus den GitHub-Releases dieses Repositorys; die SHA-256 muss zur Ed25519-signierten Prüfsummenliste genau dieses Releases passen (öffentlicher Schlüssel eingebaut, privater nur auf dem Build-Rechner), vor der Installation erneut geprüft, dazu Größen- und Formatprüfung
+- Auto-Update: lädt nur aus den GitHub-Releases dieses Repositorys; die SHA-256 muss zur Ed25519-signierten Prüfsummenliste genau dieses Releases passen (öffentliche Schlüssel eingebaut – Hauptschlüssel plus Ersatzschlüssel für eine Schlüsselrotation; private nur auf dem Build-Rechner), vor der Installation erneut geprüft, dazu Größen- und Formatprüfung
 - Export: keine SSH-Schlüssel oder Schlüsselpfade, Dateirechte `0600`, überschreibt nie und folgt keinem Symlink
 - Import: Größenlimit, jeder Eintrag geprüft, keine Steuer-/Formatzeichen, Schlüsselpfade aus der Datei werden ignoriert, neue IDs
 - Die DNS-Fallback-Server werden nur genutzt, wenn der DNS des Netzwerks nicht antwortet, und nie für lokale Namen (`.local`, `.lan`, Namen ohne Punkt …); einem unbekannten Host-Key, der über den Fallback-DNS erreicht wurde, wird nicht automatisch vertraut
 - Einfügen per Shift+Einfg nutzt Bracketed Paste, sobald die Remote-Shell es aktiviert (`ESC[?2004h`): Der Text wird in `ESC[200~ … ESC[201~` eingeschlossen, eingebettete Marker werden entfernt – mehrzeiliger Inhalt wird nicht Zeile für Zeile sofort ausgeführt
+
+## Lizenz
+
+MIT – siehe die Datei [LICENSE](LICENSE). Copyright (c) 2026 Kurt Ingwer.

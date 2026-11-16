@@ -1030,6 +1030,15 @@ func (s *swapFS) Remove(p string) error {
 	return s.memFS.Remove(p)
 }
 
+// RemoveDir tauscht wie Remove einmalig den Pfad swapOnRemove gegen einen
+// Symlink aus (Verschieben nutzt RemoveDir statt Remove).
+func (s *swapFS) RemoveDir(p string) error {
+	if s.swapOnRemove != "" && !s.swapped {
+		s.swap(s.swapOnRemove)
+	}
+	return s.memFS.RemoveDir(p)
+}
+
 // TestDeleteStopsWhenDirectoryReplacedAfterRead - wird ein Verzeichnis nach
 // dem Einlesen durch einen Symlink ersetzt, wird darin nichts mehr gelöscht
 // (über SFTP würde der Pfad sonst ins Ziel des Links führen).
@@ -1142,6 +1151,7 @@ func (a *aliasFS) real(p string) string {
 func (a *aliasFS) Lstat(p string) (os.FileInfo, error)     { return a.memFS.Lstat(a.real(p)) }
 func (a *aliasFS) ReadDir(p string) ([]os.FileInfo, error) { return a.memFS.ReadDir(a.real(p)) }
 func (a *aliasFS) Remove(p string) error                   { return a.memFS.Remove(a.real(p)) }
+func (a *aliasFS) RemoveDir(p string) error                { return a.memFS.RemoveDir(a.real(p)) }
 func (a *aliasFS) RealPath(p string) (string, error)       { return a.memFS.RealPath(a.real(p)) }
 
 // literalRealPathFS ist ein Server, dessen realpath Symlinks NICHT auflöst

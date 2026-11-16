@@ -11,7 +11,7 @@
 // Windows "\" einsetzen).
 //
 // @author Kurt Ingwer
-// @date   2026-10-21 21:16
+// @date   2026-11-15 09:09
 package main
 
 import (
@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -57,6 +58,11 @@ type remoteFS interface {
 	Mkdir(p string) error
 	// Remove löscht eine Datei, einen Symlink oder ein leeres Verzeichnis
 	Remove(p string) error
+	// RemoveDir löscht NUR ein leeres Verzeichnis (rmdir, SFTP RMDIR) -
+	// nie eine Datei oder einen Symlink. Für das Aufräumen der Quelle beim
+	// Verschieben: hält eine Liste (find-Schnellweg) eine Datei fälschlich
+	// für ein Verzeichnis, darf sie dabei nicht verloren gehen
+	RemoveDir(p string) error
 	// Symlink legt unter linkPath einen Symlink auf target an
 	Symlink(target, linkPath string) error
 	// Chmod setzt die Zugriffsrechte
@@ -117,15 +123,22 @@ const (
 	fmEnterSymlinkDir
 )
 
+// fmStatParallel - so viele Symlink-Ziele prüft readPanelDir höchstens
+// gleichzeitig (SFTP erlaubt mehrere offene Anfragen; Variable, damit
+// Tests sie verkleinern können).
+var fmStatParallel = 32
+
 // readPanelDir liest ein entferntes Verzeichnis und bereitet die Einträge
 // für die Anzeige auf: Symlinks werden per Stat eingeordnet (zeigt das Ziel
 // auf ein Verzeichnis?), außer im Wurzelverzeichnis steht ".." vorne.
+// Die Stat-Aufrufe der Symlinks laufen gleichzeitig (statSymlinkTargets) -
+// in Verzeichnissen wie /usr/lib sonst eine Rundreise pro Link nacheinander.
 //
 // @param fsys - Entferntes Dateisystem
 // @param dir - Absoluter Verzeichnispfad
 // @return []fmEntry - Sortierte Einträge
 // @return error - Lesefehler (z. B. os.ErrPermission)
-// @date   2026-10-21 19:45
+// @date   2026-11-13 09:08
 func readPanelDir(fsys remoteFS, dir string) ([]fmEntry, error) {
 	infos, err := fsys.ReadDir(dir)
 	if err != nil {
@@ -135,6 +148,8 @@ func readPanelDir(fsys remoteFS, dir string) ([]fmEntry, error) {
 	if dir != "/" {
 		entries = append(entries, fmEntry{name: "..", dir: true, parent: true})
 	}
+	// Positionen der Symlinks in entries (ihr Ziel wird danach geprüft)
+	var links []int
 	for _, info := range infos {
 		// "." und ".." liefert SFTP je nach Server mit - selbst erzeugen.
 		// Namen mit "/" kann es in einem echten Verzeichnis nicht geben; ein
@@ -150,18 +165,59 @@ func readPanelDir(fsys remoteFS, dir string) ([]fmEntry, error) {
 			symlink: info.Mode()&os.ModeSymlink != 0,
 		}
 		if entry.symlink {
-			// Ziel ansehen (nur Metadaten, es wird nichts geöffnet)
-			target, err := fsys.Stat(path.Join(dir, entry.name))
-			if err != nil {
-				entry.broken = true
-			} else {
-				entry.dir = target.IsDir()
-			}
+			links = append(links, len(entries))
 		}
 		entries = append(entries, entry)
 	}
+	statSymlinkTargets(fsys, dir, entries, links)
 	sortFMEntries(entries)
 	return entries, nil
+}
+
+// statSymlinkTargets prüft die Ziele der Symlinks (nur Metadaten, es wird
+// nichts geöffnet) mit bis zu fmStatParallel Anfragen gleichzeitig. Jeder
+// Arbeiter schreibt nur in seinen eigenen Eintrag (Index aus links), die
+// Reihenfolge der Einträge ändert sich also nicht. Ein nicht erreichbares
+// Ziel macht den Eintrag "defekt" (broken), wie bisher.
+//
+// @param fsys - Entferntes Dateisystem
+// @param dir - Verzeichnis der Einträge
+// @param entries - Einträge (werden an den Positionen links ergänzt)
+// @param links - Positionen der Symlinks in entries
+// @date   2026-11-13 09:08
+func statSymlinkTargets(fsys remoteFS, dir string, entries []fmEntry, links []int) {
+	check := func(i int) {
+		target, err := fsys.Stat(path.Join(dir, entries[i].name))
+		if err != nil {
+			entries[i].broken = true
+			return
+		}
+		entries[i].dir = target.IsDir()
+	}
+	workers := min(max(fmStatParallel, 1), len(links))
+	if workers <= 1 {
+		// Ein Link (oder Grenze 1): ohne Goroutinen
+		for _, i := range links {
+			check(i)
+		}
+		return
+	}
+	work := make(chan int)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := range work {
+				check(i)
+			}
+		}()
+	}
+	for _, i := range links {
+		work <- i
+	}
+	close(work)
+	wg.Wait()
 }
 
 // sortFMEntries sortiert wie der mc: ".." zuerst, dann Verzeichnisse (inkl.

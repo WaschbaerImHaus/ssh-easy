@@ -170,6 +170,9 @@ Midnight-Commander-style file manager for working with two SSH hosts side by sid
 2. Both connections are opened as separate SSH connections **without tunnels**
    (SSH agent / keys first, password prompt if needed; `Esc` cancels the prompt).
    Nothing needs to be installed on the servers — the file lists come via SFTP.
+   Only for collecting a large tree before copying or moving, ssh-easy additionally asks the server
+   for the whole tree with one `find` command over the same connection (see *Copying*); without
+   `find` or without permission to run commands it falls back to SFTP on its own.
 3. Both panels start in the user's home directory.
 
 | Key | Action |
@@ -209,16 +212,44 @@ left behind by an interrupted copy (e.g. a lost connection), ssh-easy removes it
 time you copy into the same folder, once it has been unchanged for at least 24 hours (on
 servers only with mode 0600); every removal is written to the log.
 
+Before copying, ssh-easy collects everything to copy (the window shows *Collecting … N files,
+M folders*). For a server as source it first reads the whole tree with **one** `find` command
+over a separate channel of the same SSH connection; the start paths are passed through stdin,
+never on the command line. The answer is checked field by field, limited in size, entries and
+time, and compared with a small sample read via SFTP; on any doubt (no `find -printf`, e.g.
+BusyBox, no permission to run commands, a different view of the file system, a hanging
+channel) ssh-easy falls back to reading via SFTP, which works with up to 32 requests at the
+same time. `Esc` stops collecting at once. If `find` hangs or stalls, it is skipped for that
+connection until the end of the session. Measured at about 30 ms latency: 30,000 empty
+directories take 0.34 s with `find` and 119 s with the parallel SFTP fallback; before Build 90
+the same tree was read strictly one directory after the other, which took far longer still.
+
 **Moving (`F6`)** works like copying; each file is deleted from the source only after
 its copy has arrived completely. Whatever failed or was skipped stays in the source and
 stays marked. A target that is the source itself (e.g. two connection entries for the
-same server) is refused.
+same server) is refused. If both panels use the **same account** (same host, port and user –
+also with two different connection entries), moving does not copy: the server renames the
+entries in one step, which is done in milliseconds, keeps owner and permissions, and never
+replaces an existing target (it is copied as before in that case, and always when the user
+differs). A check file in the target folder makes sure that both connections really see the
+same file system. The result reads *“name” moved* or *N entries moved*. Afterwards the empty
+source directories are removed level by level in parallel (the window shows the progress);
+only directories are ever removed in this step, never a file.
 
 **Creating a directory (`F7`)** asks for a single name (no `/` or `\`); `Esc` cancels.
 
 **Deleting (`F8`)** removes directories with all their contents. Answer the question with
 `j` or `y` – `Enter` alone does not delete. Symlinks are removed themselves, never their
-target. `Esc` stops a running deletion.
+target. `Esc` stops a running deletion. The directory contents are read in parallel beforehand;
+checking and deleting still happen one entry after the other, and the whole directory chain is
+checked again when entering every directory.
+
+**Lost connection:** if a panel's connection breaks (also when only the SFTP session dies),
+the panel reconnects once at the next reading – `Enter` into a directory, `Ctrl+R`, or the
+reload after copying, deleting or creating. If the login needs a password, a dialog asks for
+it; it is used for this one attempt and never stored. `known_hosts` stays mandatory: a changed
+host key only gives a message. Nothing repeats by itself, and an interrupted copy is never
+resumed.
 
 **Editing (`F4`)** works like mcedit. Line endings (also Windows CRLF) are kept. Binary
 files open in a hex view where hex digits overwrite bytes (`Tab` switches to the
@@ -226,7 +257,7 @@ character column); the size never changes. Saving goes through a temporary file 
 renamed at the end, keeps the permissions and asks first if the file was changed on the
 server in the meantime.
 
-**Pasting in the editor:** `Ctrl+V`, `Shift+Insert` and `Ctrl+Insert` insert the clipboard at the cursor (text mode only; in the file windows `Ctrl+Insert` still marks). Line endings become LF, control characters except Tab and line break are removed. A paste that would make the file larger than 16 MiB is refused with a message. In the hex view, in help, dialogs and input lines pasting does nothing.
+**Pasting in the editor:** `Ctrl+V`, `Shift+Insert` and `Ctrl+Insert` insert the clipboard at the cursor (text mode only; in the file windows `Ctrl+Insert` still marks). Line endings become LF, control characters except Tab and line break are removed. A paste that would make the file larger than 16 MiB is refused with a message. Input lines (search `F7`, replace `F4`) accept the same keys: only the first line arrives, control characters are dropped, a Tab becomes a space, and the line keeps its length limit; an untouched preset is replaced, as with the first typed character. In the hex view, in help and in yes/no dialogs pasting does nothing (an input line in the hex view does accept it).
 
 **Opening locally (`F9` in the viewer)** downloads the file into a private temporary
 folder and hands it to the default program of your computer (image viewer, browser, PDF
@@ -264,7 +295,7 @@ Off by default. Press `u` in the main menu to switch it on (the setting is shown
 - Linux, or Windows with write access to the program folder: the binary is replaced
 - Windows installed in *Program Files*: the setup runs silently with administrator rights (Windows asks via UAC); the desktop shortcut is kept
 
-Every release contains a checksum list (`ssh-easy-SHA256SUMS`) signed with Ed25519 (`ssh-easy-SHA256SUMS.sig`). ssh-easy verifies the signature with the public key built into the program and only installs a file whose SHA-256 matches the signed list — so even someone with access to the GitHub account cannot push a manipulated update. Size and file format are checked as well — right after the download and again just before installation. Unsigned releases are rejected.
+Every release contains a checksum list (`ssh-easy-SHA256SUMS`) signed with Ed25519 (`ssh-easy-SHA256SUMS.sig`). ssh-easy verifies the signature with the public key built into the program and only installs a file whose SHA-256 matches the signed list — so even someone with access to the GitHub account cannot push a manipulated update. Size and file format are checked as well — right after the download and again just before installation. Unsigned releases are rejected. Besides the main key, a second public key (backup key) is built in so that the signing key can be replaced without a reinstallation; a signature from either key is valid. Weak keys (points of small order) are rejected. The Windows executables and installers can additionally be Authenticode-signed by `build.sh` when a certificate is set up (optional; not yet in use).
 
 On Windows, ssh-easy starts a short helper without a window for the installation when you quit; it waits until the program has ended and then starts the checked setup (with the UAC prompt). Limit: when Windows logs off or shuts down, programs get no chance to react – the update is then installed at the next regular quit.
 
@@ -295,7 +326,7 @@ Further settings in `connections.json`: `language`, `font_size`, `window_cols` /
 - Configuration file permissions are set to `0600`
 - Atomic config file writes
 - OSC 52 clipboard: remote programs may only **write** to the local clipboard (max. 1 MiB); read requests are never answered
-- Auto-update: downloads only from this repository's GitHub releases; the SHA-256 must match the Ed25519-signed checksum list of exactly this release (public key built in, private key only on the build machine), re-checked before installing, plus size and format check
+- Auto-update: downloads only from this repository's GitHub releases; the SHA-256 must match the Ed25519-signed checksum list of exactly this release (public keys built in – the main key plus a backup key for key rotation; private keys only on the build machine), re-checked before installing, plus size and format check
 - Export: no SSH keys or key paths, file permissions `0600`, never overwrites or follows a symlink
 - Import: size limit, every entry validated, no control/format characters, key paths from the file are ignored, new IDs
 - DNS fallback servers are only used when the network's DNS does not answer and never for local names (`.local`, `.lan`, names without a dot, …); an unknown host key reached via fallback DNS is not trusted automatically
@@ -319,4 +350,4 @@ GOOS=windows GOARCH=arm64 go build -o ../build/ssh-easy-windows-arm64.exe .
 
 ## License
 
-MIT
+MIT – see the [LICENSE](LICENSE) file. Copyright (c) 2026 Kurt Ingwer.

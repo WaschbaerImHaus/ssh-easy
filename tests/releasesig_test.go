@@ -270,7 +270,7 @@ func TestEmbeddedReleaseKey(t *testing.T) {
 	if strings.Trim(hex.EncodeToString(key), "0") == "" {
 		t.Error("eingebetteter Schlüssel ist ein Platzhalter (nur Nullen)")
 	}
-	if NewUpdater("50").signingKey == nil {
-		t.Error("NewUpdater setzt den Signaturschlüssel nicht")
+	if len(NewUpdater("50").signingKeys) == 0 {
+		t.Error("NewUpdater setzt die Signaturschlüssel nicht")
 	}
 }
